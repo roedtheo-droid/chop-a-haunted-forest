@@ -3,6 +3,7 @@
 --   ChopDamage  more damage per hit (read by TreeManager)
 --   CarryLimit  a bigger backpack (sets the "CarryLimit" attribute)
 --   WalkSpeed   faster walking (MovementManager reads the level and sets the speed)
+--   LanternRadius  the Lantern sees further (read by LanternManager)
 -- Levels are player attributes like "Upgrade_WalkSpeed" that only the server sets.
 
 local Players = game:GetService("Players")
@@ -26,6 +27,11 @@ end
 -- How much to multiply tool damage by (1 = no upgrade).
 function UpgradeManager.damageMultiplier(player: Player): number
 	return 1 + bonus(player, "ChopDamage")
+end
+
+-- How far (in studs) this player's Lantern can see mimics.
+function UpgradeManager.lanternRadius(player: Player): number
+	return Config.Lantern.Radius + bonus(player, "LanternRadius")
 end
 
 local function apply(player: Player)

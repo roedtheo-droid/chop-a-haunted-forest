@@ -26,6 +26,7 @@ local controllers: { Types.Module } = {
 	require(Controllers.ShopController),
 	require(Controllers.SprintController),
 	require(Controllers.KnockdownController),
+	require(Controllers.LanternController),
 }
 
 -- Step 1: set up every controller.

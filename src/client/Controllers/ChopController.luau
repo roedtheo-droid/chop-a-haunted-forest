@@ -52,21 +52,25 @@ local function findTreeAt(screenPosition: Vector3): Model?
 	return nil
 end
 
--- The cooldown of the tool we're holding (the server checks this too).
-local function currentCooldown(): number
+-- The id of the tool we're holding ("Fists" if none).
+local function heldToolId(): string
 	local character = player.Character
 	local tool = if character then character:FindFirstChildOfClass("Tool") else nil
 	local toolId = if tool then tool:GetAttribute("ToolId") else nil
 	if typeof(toolId) == "string" and Config.Tools[toolId] then
-		return Config.Tools[toolId].Cooldown
+		return toolId
 	end
-	return Config.Tools.Fists.Cooldown
+	return "Fists"
 end
 
 local function trySwing()
+	local toolId = heldToolId()
+	if toolId == "Lantern" then
+		return -- the Lantern is for looking, not hitting (the server ignores it too)
+	end
 	-- Don't spam the server faster than the server would accept anyway.
 	local now = os.clock()
-	if now - lastSwing < currentCooldown() then
+	if now - lastSwing < Config.Tools[toolId].Cooldown then
 		return
 	end
 

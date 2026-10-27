@@ -18,6 +18,8 @@
 -- (Config.Mimics.HideAfterCatch). It also roots itself again after a while without
 -- catching anyone.
 -- Chopping an awake mimic down counts toward the zone's % like any other tree.
+-- Hitting a SLEEPING mimic with the Torch burns it safely instead (TreeManager), and
+-- the Lantern shows sleeping mimics near the player holding it (LanternManager).
 
 local CollectionService = game:GetService("CollectionService")
 local PathfindingService = game:GetService("PathfindingService")
@@ -600,6 +602,24 @@ function MimicManager.isMimic(tree: Model): boolean
 	return mimics[tree] ~= nil
 end
 
+-- A mimic standing still as a tree (not awake, and not digging itself back in).
+-- Only these can be burned with the Torch or seen with the Lantern.
+function MimicManager.isSleeping(tree: Model): boolean
+	local mimic = mimics[tree]
+	return mimic ~= nil and not mimic.Awake and CollectionService:HasTag(tree, Tags.Tree)
+end
+
+-- Every sleeping mimic within `radius` studs of `position` (used by LanternManager).
+function MimicManager.sleepingNear(position: Vector3, radius: number): { Model }
+	local found: { Model } = {}
+	for tree in mimics do
+		if MimicManager.isSleeping(tree) and flatDistance(tree:GetPivot().Position, position) <= radius then
+			table.insert(found, tree)
+		end
+	end
+	return found
+end
+
 -- A player hit a sleeping mimic: wake it up.
 function MimicManager.wake(tree: Model, hitBy: Player)
 	local mimic = mimics[tree]
@@ -636,7 +656,8 @@ function MimicManager.wake(tree: Model, hitBy: Player)
 	task.spawn(runAwake, mimic, mimic.Gen)
 end
 
--- A mimic was chopped down: stop everything it was doing. TreeManager makes it fall.
+-- A mimic was chopped down or burned: stop everything it was doing.
+-- TreeManager makes it fall (or burn).
 function MimicManager.forget(tree: Model)
 	local mimic = mimics[tree]
 	if not mimic then

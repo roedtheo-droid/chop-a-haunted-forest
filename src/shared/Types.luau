@@ -34,6 +34,7 @@ export type ShopItem = {
 	Kind: "Tool" | "Upgrade",
 	Name: string,
 	Description: string,
+	Requires: string?, -- a tool you must own before you can buy this (like "Lantern")
 }
 
 -- One kind of tree (see Config.TreeTypes). Each zone has its own kind.

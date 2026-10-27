@@ -4,6 +4,8 @@
 -- allowed (real tree, close enough, not too fast) and then decides the damage.
 -- Mimics are trees too: hitting a sleeping one wakes it (MimicManager), and an awake
 -- one can still be chopped down.
+-- The Torch doesn't chop: it burns a sleeping mimic safely and does nothing to anything
+-- else. The Lantern doesn't hit trees at all.
 
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
@@ -13,6 +15,7 @@ local TweenService = game:GetService("TweenService")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Tags = require(ReplicatedStorage.Shared.Tags)
+local EmberManager = require(script.Parent.EmberManager)
 local KnockdownManager = require(script.Parent.KnockdownManager)
 local LogManager = require(script.Parent.LogManager)
 local MimicManager = require(script.Parent.MimicManager)
@@ -22,6 +25,8 @@ local UpgradeManager = require(script.Parent.UpgradeManager)
 local ZoneManager = require(script.Parent.ZoneManager)
 
 local CHIP_COLOR = Color3.fromRGB(200, 160, 110)
+local CHAR_COLOR = Color3.fromRGB(30, 25, 22) -- a burned mimic turns this colour
+local CRUMBLE_TIME = 0.8 -- seconds a burned mimic takes to fade away
 
 local TreeManager = {}
 
@@ -86,7 +91,8 @@ local function updateTrunkWidth(tree: Model, trunk: BasePart)
 end
 
 -- A short stump stays where the tree stood, so cleared areas are easy to spot.
-local function leaveStump(tree: Model, trunk: BasePart)
+-- A burned mimic leaves a charred black stump.
+local function leaveStump(tree: Model, trunk: BasePart, charred: boolean)
 	local width = getNumberAttribute(tree, "TrunkWidth")
 	local height = Config.Tree.StumpHeight
 	local stump = Instance.new("Part")
@@ -94,7 +100,8 @@ local function leaveStump(tree: Model, trunk: BasePart)
 	stump.Shape = Enum.PartType.Cylinder
 	stump.Size = Vector3.new(height, width, width)
 	stump.CFrame = CFrame.new(tree:GetPivot().Position + Vector3.new(0, height / 2, 0)) * CFrame.Angles(0, 0, math.rad(90))
-	stump.Color = trunk.Color:Lerp(Color3.new(0, 0, 0), 0.25) -- a bit darker than the bark
+	-- Normal stumps are a bit darker than the bark.
+	stump.Color = if charred then CHAR_COLOR else trunk.Color:Lerp(Color3.new(0, 0, 0), 0.25)
 	stump.Material = Enum.Material.Wood
 	stump.Anchored = true
 	stump.CanCollide = false -- so nobody gets stuck on stumps
@@ -108,7 +115,7 @@ local function fellTree(tree: Model, trunk: BasePart, fromPosition: Vector3, wit
 	CollectionService:RemoveTag(tree, Tags.Tree)
 	tree:SetAttribute("Felled", true)
 	if withStump then
-		leaveStump(tree, trunk)
+		leaveStump(tree, trunk, false)
 	end
 	ZoneManager.treeCleared(getNumberAttribute(tree, "ZoneId"))
 
@@ -162,6 +169,50 @@ local function fellTree(tree: Model, trunk: BasePart, fromPosition: Vector3, wit
 	tween:Play()
 end
 
+-- A sleeping mimic was hit with the Torch: it catches fire, chars black and crumbles away.
+-- It counts as cleared, and the player who burned it gets Embers.
+local function burnMimic(player: Player, tree: Model, trunk: BasePart)
+	-- Remove the tag first, so nobody can hit it (or see it with a Lantern) while it burns.
+	CollectionService:RemoveTag(tree, Tags.Tree)
+	tree:SetAttribute("Felled", true)
+	MimicManager.forget(tree)
+	leaveStump(tree, trunk, true)
+	ZoneManager.treeCleared(getNumberAttribute(tree, "ZoneId"))
+
+	local embers = Config.Embers.PerMimic
+	EmberManager.add(player, embers)
+	notifyRemote:FireAllClients(`{player.DisplayName} burned a mimic and got {embers} Embers!`)
+
+	local fire = Instance.new("Fire")
+	fire.Size = math.clamp(getNumberAttribute(tree, "TrunkWidth") * 3, 2, 30) -- Fire can't be bigger than 30
+	fire.Heat = 15
+	fire.Parent = trunk
+
+	local parts: { BasePart } = {}
+	for _, descendant in tree:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			descendant.CanCollide = false
+			table.insert(parts, descendant)
+		end
+	end
+
+	-- Turn black while it burns...
+	local burnTime = Config.Torch.BurnTime
+	for _, part in parts do
+		TweenService:Create(part, TweenInfo.new(burnTime), { Color = CHAR_COLOR }):Play()
+	end
+	-- ...then fade away.
+	task.delay(burnTime, function()
+		fire.Enabled = false
+		for _, part in parts do
+			TweenService:Create(part, TweenInfo.new(CRUMBLE_TIME), { Transparency = 1 }):Play()
+		end
+		task.delay(CRUMBLE_TIME, function()
+			tree:Destroy()
+		end)
+	end)
+end
+
 local function onSwing(player: Player, target: unknown)
 	-- 1. Is the target a real, standing tree or an awake mimic? (The client could send anything.)
 	if typeof(target) ~= "Instance" then
@@ -190,7 +241,11 @@ local function onSwing(player: Player, target: unknown)
 	if not root or KnockdownManager.isDown(player) then
 		return
 	end
-	local stats = ToolManager.getStats(player)
+	local toolId = ToolManager.getEquippedId(player)
+	if toolId == "Lantern" then
+		return -- the Lantern is for looking, not hitting
+	end
+	local stats = Config.Tools[toolId]
 	local base = tree:GetPivot().Position
 	local flatDistance = Vector2.new(root.Position.X - base.X, root.Position.Z - base.Z).Magnitude
 	if flatDistance > stats.Reach + getNumberAttribute(tree, "TrunkWidth") / 2 then
@@ -205,7 +260,18 @@ local function onSwing(player: Player, target: unknown)
 	end
 	lastSwing[player] = now
 
-	-- 4. All good: the SERVER decides the damage, from the held tool and upgrades.
+	-- 4. The Torch burns sleeping mimics. It does nothing to normal trees, and awake
+	-- mimics are moving too fast to catch fire.
+	if toolId == "Torch" then
+		if MimicManager.isSleeping(tree) then
+			burnMimic(player, tree, trunk)
+		elseif CollectionService:HasTag(tree, Tags.AwakeMimic) then
+			notifyRemote:FireClient(player, "Awake mimics won't burn! Only sleeping ones do.")
+		end
+		return
+	end
+
+	-- 5. All good: the SERVER decides the damage, from the held tool and upgrades.
 	local damage = stats.Damage * UpgradeManager.damageMultiplier(player)
 	local hp = math.max(getNumberAttribute(tree, "HP") - damage, 0)
 	tree:SetAttribute("HP", hp)

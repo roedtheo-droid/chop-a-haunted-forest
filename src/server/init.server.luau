@@ -21,10 +21,12 @@ local systems: { Types.Module } = {
 	require(Systems.MimicManager), -- after ForestSpawner (it picks mimics from the spawned trees)
 	require(Systems.LogManager),
 	require(Systems.CoinManager),
+	require(Systems.EmberManager),
 	require(Systems.ToolManager),
 	require(Systems.MovementManager),
 	require(Systems.UpgradeManager),
 	require(Systems.LogVacuumManager),
+	require(Systems.LanternManager),
 	require(Systems.KnockdownManager),
 	require(Systems.SawmillManager),
 	require(Systems.ShopManager),

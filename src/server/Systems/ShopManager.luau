@@ -3,7 +3,8 @@
 --
 -- The client only says "I want to buy item X". The server checks that:
 --   the item exists, the player is standing at the shed, they're not clicking too fast,
---   they don't already own it (or it isn't max level), and they have enough coins.
+--   they don't already own it (or it isn't max level), they own anything it needs first
+--   (Lantern Radius needs the Lantern), and they have enough coins.
 -- Only then does it take the coins and give the tool or upgrade.
 
 local CollectionService = game:GetService("CollectionService")
@@ -135,6 +136,12 @@ local function onBuy(player: Player, itemId: unknown)
 	-- 3. Can it be bought?
 	if item.Kind == "Tool" and ToolManager.owns(player, item.Id) then
 		notifyRemote:FireClient(player, `You already have the {item.Name}.`)
+		return
+	end
+	local required = item.Requires
+	if required and not ToolManager.owns(player, required) then
+		local requiredItem = Shop.getItem(required)
+		notifyRemote:FireClient(player, `Buy the {if requiredItem then requiredItem.Name else required} first.`)
 		return
 	end
 	local level = if item.Kind == "Upgrade" then UpgradeManager.getLevel(player, item.Id) else 0

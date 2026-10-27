@@ -4,13 +4,16 @@
 
 local Types = require(script.Parent.Types)
 
--- Chopping tools. Fists is what you have when you hold nothing.
+-- Tools. Fists is what you have when you hold nothing.
 -- The Tool Shed sells the rest (see Shared/Shop.luau for the order and names).
+-- The Lantern and Torch don't chop (Damage 0): the Lantern shows mimics, the Torch burns them.
 local tools: { [string]: Types.ToolConfig } = {
 	Fists = { Damage = 5, Cooldown = 0.5, Reach = 8, Price = 0 },
 	Axe = { Damage = 10, Cooldown = 0.45, Reach = 9, Price = 50 },
 	SteelAxe = { Damage = 20, Cooldown = 0.4, Reach = 9, Price = 250 },
 	Chainsaw = { Damage = 12, Cooldown = 0.15, Reach = 8, Price = 1000 },
+	Lantern = { Damage = 0, Cooldown = 0.5, Reach = 0, Price = 100 },
+	Torch = { Damage = 0, Cooldown = 1, Reach = 8, Price = 150 },
 }
 
 -- Upgrades bought in the Tool Shed. Each price in the list is one level.
@@ -19,6 +22,7 @@ local upgrades: { [string]: Types.UpgradeConfig } = {
 	CarryLimit = { PerLevel = 3, Prices = { 30, 60, 120, 240, 480 } }, -- +3 logs per level (Log Sack)
 	WalkSpeed = { PerLevel = 2, Prices = { 25, 50, 100, 200, 400 } }, -- +2 walk speed per level
 	LogVacuum = { PerLevel = 1, Prices = { 300 } }, -- one level: you have it or you don't
+	LanternRadius = { PerLevel = 5, Prices = { 60, 120, 240 } }, -- the Lantern sees 5 studs further per level
 }
 
 -- Kinds of trees. Each zone uses one kind (see zones below).
@@ -172,6 +176,27 @@ local Config = {
 		TellMinGap = 4, -- seconds between creaks or blinks (random between min and max)
 		TellMaxGap = 8,
 		DecoyKnotChance = 0.3, -- share of trees with a plain knot, so a knot alone isn't a tell
+	},
+
+	-- Lantern (bought in the Tool Shed): sleeping mimics near you get a faint outline
+	-- that only YOU can see while you hold it.
+	Lantern = {
+		Radius = 20, -- studs; the Lantern Radius upgrade adds to this
+		Refresh = 0.3, -- seconds between checks for mimics nearby
+		OutlineColor = Color3.fromRGB(255, 190, 110),
+		OutlineTransparency = 0.55, -- 0 = solid, 1 = invisible. Higher is fainter.
+		LightRange = 14, -- how far the lantern's glow lights up the ground around you
+	},
+
+	-- Torch (bought in the Tool Shed): hit a SLEEPING mimic to burn it safely.
+	-- Normal trees and awake mimics don't burn.
+	Torch = {
+		BurnTime = 2, -- seconds the mimic burns before it crumbles away
+	},
+
+	-- Embers: the permanent currency (saved from Phase 8 on)
+	Embers = {
+		PerMimic = 5, -- Embers for the player who burns a mimic
 	},
 
 	-- Getting caught by a mimic

@@ -10,12 +10,17 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Types = require(ReplicatedStorage.Shared.Types)
 
--- Order matters: controllers higher in the list are set up first.
--- Empty for now; Phase 2 adds the first controllers.
-local controllers: { Types.Module } = {}
-
 -- Wait until the server has created the remotes, so controllers can use them.
 Remotes.getEvent("Notify")
+
+local Controllers = script.Controllers
+
+-- Order matters: controllers higher in the list are set up first.
+local controllers: { Types.Module } = {
+	require(Controllers.NotifyController),
+	require(Controllers.BackpackController),
+	require(Controllers.ChopController),
+}
 
 -- Step 1: set up every controller.
 for _, controller in controllers do

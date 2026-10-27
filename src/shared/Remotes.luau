@@ -18,6 +18,9 @@ local list: { [string]: Types.RemoteKind } = {
 	-- Server -> client: show a short message to one player
 	-- (later used for things like "Clear every tree first (N left)").
 	Notify = "Event",
+
+	-- Client -> server: "I swung at this tree". The server decides damage.
+	SwingAtTree = "Event",
 }
 Remotes.List = table.freeze(list)
 

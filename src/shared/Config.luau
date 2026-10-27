@@ -269,6 +269,21 @@ local Config = {
 		HazardBlack = Color3.fromRGB(30, 30, 30),
 		Window = Color3.fromRGB(190, 230, 255),
 		Metal = Color3.fromRGB(175, 182, 195), -- saw blades
+		-- The UI (see Client/UiKit): white text with a black outline on dark, rounded boxes,
+		-- and wooden panels for menus.
+		Box = Color3.fromRGB(30, 26, 24), -- HUD boxes
+		BoxTransparency = 0.2,
+		BoxStroke = 2, -- the black border around boxes, panels and buttons, in pixels
+		PanelStroke = 4, -- the dark wood border around menus
+		Corner = 10, -- how round the corners are, in pixels
+		CardWood = Color3.fromRGB(125, 80, 45), -- the rows inside a wooden menu
+		Gold = Color3.fromRGB(255, 215, 70), -- coins and headings
+		Ember = Color3.fromRGB(255, 130, 60),
+		Cream = Color3.fromRGB(245, 225, 190), -- small text on wood
+		Green = Color3.fromRGB(90, 200, 70), -- buy buttons and progress bars
+		Red = Color3.fromRGB(220, 50, 50), -- close buttons, "can't afford", full backpack
+		Grey = Color3.fromRGB(125, 118, 110), -- buttons you can't press (Owned, MAX)
+		BarBack = Color3.fromRGB(55, 45, 40), -- the empty part of a progress bar
 	},
 
 	-- Scenery around the forest, only for looks: you can't chop it (see Server/Systems/SceneryManager).

@@ -1,5 +1,5 @@
 --!strict
--- The Tool Shed shop window. Opens when you press E at the shed's counter.
+-- The Tool Shed shop window: a wooden panel that opens when you press E at the shed's counter.
 -- It only SHOWS prices and what you own (from attributes the server sets).
 -- Clicking "Buy" just asks the server; the server decides if the purchase happens.
 
@@ -13,16 +13,13 @@ local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Shop = require(ReplicatedStorage.Shared.Shop)
 local Tags = require(ReplicatedStorage.Shared.Tags)
 local Types = require(ReplicatedStorage.Shared.Types)
+local UiKit = require(script.Parent.Parent.UiKit)
 
-local BG_COLOR = Color3.fromRGB(28, 30, 28)
-local ROW_COLOR = Color3.fromRGB(45, 50, 45)
-local TEXT_COLOR = Color3.fromRGB(255, 255, 255)
-local DIM_TEXT = Color3.fromRGB(190, 190, 190)
-local GOLD = Color3.fromRGB(255, 220, 90)
-local CAN_BUY = Color3.fromRGB(60, 150, 70)
-local CANT_BUY = Color3.fromRGB(110, 60, 55)
-local DONE = Color3.fromRGB(80, 80, 80)
-local ROW_HEIGHT = 58
+local Style = Config.Style
+local CAN_BUY = Style.Green
+local CANT_BUY = Style.Red
+local DONE = Style.Grey
+local ROW_HEIGHT = 62
 
 local ShopController = {}
 
@@ -30,6 +27,7 @@ type Row = {
 	Item: Types.ShopItem,
 	Info: TextLabel,
 	Button: TextButton,
+	ButtonLabel: TextLabel,
 }
 
 local player = Players.LocalPlayer
@@ -44,29 +42,10 @@ local function getNumber(name: string): number
 	return if typeof(value) == "number" then value else 0
 end
 
-local function makeText(parent: Instance, name: string, text: string, color: Color3, font: Enum.Font): TextLabel
-	local label = Instance.new("TextLabel")
-	label.Name = name
-	label.BackgroundTransparency = 1
-	label.Text = text
-	label.TextColor3 = color
-	label.Font = font
-	label.TextScaled = true
-	label.TextXAlignment = Enum.TextXAlignment.Left
-	label.Parent = parent
-	return label
-end
-
-local function corner(parent: Instance, radius: number)
-	local c = Instance.new("UICorner")
-	c.CornerRadius = UDim.new(0, radius)
-	c.Parent = parent
-end
-
 -- Update every row's text and button from the current attributes.
 local function refresh()
 	local coins = getNumber("Coins")
-	coinsLabel.Text = `Coins: {coins}`
+	coinsLabel.Text = tostring(coins)
 
 	for _, row in rows do
 		local item = row.Item
@@ -104,50 +83,43 @@ local function refresh()
 			end
 		end
 
-		row.Button.Text = buttonText
+		row.ButtonLabel.Text = buttonText
 		row.Button.BackgroundColor3 = buttonColor
 	end
 end
 
 local function addHeader(list: ScrollingFrame, text: string, order: number)
-	local header = makeText(list, "Header", text, GOLD, Enum.Font.GothamBlack)
-	header.Size = UDim2.new(1, 0, 0, 26)
+	local header = UiKit.text(list, "Header", text, Style.Gold, Style.TitleFont)
+	header.Size = UDim2.new(1, 0, 0, 28)
+	header.TextXAlignment = Enum.TextXAlignment.Left
 	header.LayoutOrder = order
 end
 
 local function addRow(list: ScrollingFrame, item: Types.ShopItem, order: number)
-	local frame = Instance.new("Frame")
-	frame.Name = item.Id
-	frame.Size = UDim2.new(1, 0, 0, ROW_HEIGHT)
-	frame.BackgroundColor3 = ROW_COLOR
-	frame.LayoutOrder = order
-	frame.Parent = list
-	corner(frame, 8)
+	local card = UiKit.card(list, item.Id)
+	card.Size = UDim2.new(1, -8, 0, ROW_HEIGHT) -- a little narrower, so the border isn't cut off
+	card.LayoutOrder = order
 
-	local name = makeText(frame, "Name", item.Name, TEXT_COLOR, Enum.Font.GothamBold)
+	local name = UiKit.text(card, "Name", item.Name)
 	name.Position = UDim2.new(0, 10, 0, 6)
-	name.Size = UDim2.new(0.62, -10, 0.45, 0)
+	name.Size = UDim2.new(0.62, -10, 0.42, 0)
+	name.TextXAlignment = Enum.TextXAlignment.Left
 
-	local info = makeText(frame, "Info", "", DIM_TEXT, Enum.Font.Gotham)
+	local info = UiKit.smallText(card, "Info", "", Style.Cream)
 	info.Position = UDim2.new(0, 10, 0.5, 2)
-	info.Size = UDim2.new(0.62, -10, 0.4, -4)
+	info.Size = UDim2.new(0.62, -10, 0.36, -2)
+	info.TextXAlignment = Enum.TextXAlignment.Left
 
-	local button = Instance.new("TextButton")
-	button.Name = "Buy"
+	local button, buttonLabel = UiKit.button(card, "Buy", "", CAN_BUY)
 	button.AnchorPoint = Vector2.new(1, 0.5)
-	button.Position = UDim2.new(1, -8, 0.5, 0)
-	button.Size = UDim2.new(0.36, -8, 1, -14)
-	button.TextColor3 = TEXT_COLOR
-	button.Font = Enum.Font.GothamBold
-	button.TextScaled = true
-	button.Parent = frame
-	corner(button, 8)
+	button.Position = UDim2.new(1, -10, 0.5, 0)
+	button.Size = UDim2.new(0.36, -10, 1, -18)
 
 	button.Activated:Connect(function()
 		buyRemote:FireServer(item.Id)
 	end)
 
-	table.insert(rows, { Item = item, Info = info, Button = button })
+	table.insert(rows, { Item = item, Info = info, Button = button, ButtonLabel = buttonLabel })
 end
 
 local function buildGui()
@@ -157,62 +129,67 @@ local function buildGui()
 	gui.Enabled = false
 	gui.DisplayOrder = 5 -- below the Notify messages, so "Bought ..." shows on top
 
-	local window = Instance.new("Frame")
-	window.Name = "Window"
+	local window = UiKit.panel(gui, "Window")
 	window.AnchorPoint = Vector2.new(0.5, 0.5)
 	window.Position = UDim2.fromScale(0.5, 0.5)
 	window.Size = UDim2.fromScale(0.9, 0.8)
-	window.BackgroundColor3 = BG_COLOR
-	window.BackgroundTransparency = 0.05
-	window.Parent = gui
-	corner(window, 14)
 
 	-- Never bigger than this on big screens; scales down on phones.
 	local limit = Instance.new("UISizeConstraint")
 	limit.MaxSize = Vector2.new(520, 470)
 	limit.Parent = window
 
-	local title = makeText(window, "Title", "TOOL SHED", TEXT_COLOR, Enum.Font.GothamBlack)
+	local title = UiKit.text(window, "Title", "TOOL SHED", Style.Gold, Style.TitleFont)
 	title.Position = UDim2.fromOffset(16, 10)
-	title.Size = UDim2.new(0.5, 0, 0, 34)
+	title.Size = UDim2.new(0.5, 0, 0, 36)
+	title.TextXAlignment = Enum.TextXAlignment.Left
 
-	coinsLabel = makeText(window, "Coins", "Coins: 0", GOLD, Enum.Font.GothamBold)
-	coinsLabel.AnchorPoint = Vector2.new(1, 0)
-	coinsLabel.Position = UDim2.new(1, -60, 0, 14)
-	coinsLabel.Size = UDim2.new(0.35, 0, 0, 28)
+	-- Your coins, next to the close button.
+	local coins = Instance.new("Frame")
+	coins.Name = "Coins"
+	coins.AnchorPoint = Vector2.new(1, 0)
+	coins.Position = UDim2.new(1, -62, 0, 14)
+	coins.Size = UDim2.new(0.35, 0, 0, 30)
+	coins.BackgroundTransparency = 1
+	coins.Parent = window
+	local coinIcon = UiKit.coin(coins, "Icon")
+	coinIcon.AnchorPoint = Vector2.new(1, 0.5)
+	coinIcon.Position = UDim2.fromScale(1, 0.5)
+	coinIcon.Size = UDim2.fromOffset(26, 26)
+	coinsLabel = UiKit.text(coins, "Amount", "0", Style.Gold)
+	coinsLabel.Size = UDim2.new(1, -34, 1, 0)
 	coinsLabel.TextXAlignment = Enum.TextXAlignment.Right
 
-	local close = Instance.new("TextButton")
-	close.Name = "Close"
+	local close = UiKit.button(window, "Close", "X", CANT_BUY)
 	close.AnchorPoint = Vector2.new(1, 0)
-	close.Position = UDim2.new(1, -10, 0, 10)
+	close.Position = UDim2.new(1, -12, 0, 12)
 	close.Size = UDim2.fromOffset(38, 38)
-	close.BackgroundColor3 = CANT_BUY
-	close.Text = "X"
-	close.TextColor3 = TEXT_COLOR
-	close.Font = Enum.Font.GothamBlack
-	close.TextScaled = true
-	close.Parent = window
-	corner(close, 8)
 	close.Activated:Connect(function()
 		gui.Enabled = false
 	end)
 
 	local list = Instance.new("ScrollingFrame")
 	list.Name = "List"
-	list.Position = UDim2.fromOffset(12, 58)
-	list.Size = UDim2.new(1, -24, 1, -70)
+	list.Position = UDim2.fromOffset(14, 60)
+	list.Size = UDim2.new(1, -24, 1, -74)
 	list.BackgroundTransparency = 1
 	list.BorderSizePixel = 0
 	list.ScrollBarThickness = 6
+	list.ScrollBarImageColor3 = Style.DarkWood
 	list.CanvasSize = UDim2.new()
 	list.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	list.Parent = window
 
 	local layout = Instance.new("UIListLayout")
-	layout.Padding = UDim.new(0, 6)
+	layout.Padding = UDim.new(0, 8)
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = list
+
+	-- Room for the cards' borders at the top and left.
+	local padding = Instance.new("UIPadding")
+	padding.PaddingTop = UDim.new(0, 4)
+	padding.PaddingLeft = UDim.new(0, 4)
+	padding.Parent = list
 
 	addHeader(list, "Tools", 0)
 	local order = 1

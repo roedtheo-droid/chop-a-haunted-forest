@@ -7,10 +7,12 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local UiKit = require(script.Parent.Parent.UiKit)
 
 local NotifyController = {}
 
 local player = Players.LocalPlayer
+local box: Frame
 local label: TextLabel
 -- Goes up with every message, so an old message's timer can't hide a newer message.
 local messageId = 0
@@ -19,11 +21,11 @@ local function show(message: string)
 	messageId += 1
 	local myId = messageId
 	label.Text = message
-	label.Visible = true
+	box.Visible = true
 
 	task.delay(Config.UI.NotifyDuration, function()
 		if messageId == myId then
-			label.Visible = false
+			box.Visible = false
 		end
 	end)
 end
@@ -34,22 +36,16 @@ function NotifyController.init()
 	gui.ResetOnSpawn = false
 	gui.DisplayOrder = 10 -- on top of other windows, like the shop
 
-	label = Instance.new("TextLabel")
-	label.Name = "Message"
-	label.AnchorPoint = Vector2.new(0.5, 0)
-	label.Position = UDim2.new(0.5, 0, 0, 70)
-	label.Size = UDim2.fromOffset(360, 40)
-	label.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-	label.BackgroundTransparency = 0.3
-	label.TextColor3 = Color3.fromRGB(255, 255, 255)
-	label.Font = Enum.Font.GothamBold
-	label.TextScaled = true
-	label.Visible = false
-	label.Parent = gui
+	box = UiKit.box(gui, "Message")
+	box.AnchorPoint = Vector2.new(0.5, 0)
+	box.Position = UDim2.new(0.5, 0, 0, 70)
+	box.Size = UDim2.fromOffset(380, 40)
+	box.Visible = false
 
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 10)
-	corner.Parent = label
+	label = UiKit.text(box, "Text", "")
+	label.AnchorPoint = Vector2.new(0.5, 0.5)
+	label.Position = UDim2.fromScale(0.5, 0.5)
+	label.Size = UDim2.new(1, -20, 1, -10)
 
 	gui.Parent = player:WaitForChild("PlayerGui")
 end

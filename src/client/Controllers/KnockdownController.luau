@@ -10,6 +10,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Tags = require(ReplicatedStorage.Shared.Tags)
+local UiKit = require(script.Parent.Parent.UiKit)
 
 local TIP_OVER_SPEED = 6 -- how hard your character tips over when you're knocked down
 
@@ -91,19 +92,12 @@ function KnockdownController.init()
 	tint.BorderSizePixel = 0
 	tint.Parent = gui
 
-	message = Instance.new("TextLabel")
-	message.Name = "Message"
+	message = UiKit.text(tint, "Message", "")
 	-- A fixed distance from the top, just under the boss HP bar (which ends 168 pixels down),
 	-- so it never covers the bar, even on short screens.
 	message.AnchorPoint = Vector2.new(0.5, 0)
 	message.Position = UDim2.new(0.5, 0, 0, 176)
 	message.Size = UDim2.new(0.8, 0, 0, 90)
-	message.BackgroundTransparency = 1
-	message.TextColor3 = Color3.fromRGB(255, 255, 255)
-	message.TextStrokeTransparency = 0.3
-	message.Font = Enum.Font.GothamBlack
-	message.TextScaled = true
-	message.Parent = tint
 
 	local limit = Instance.new("UITextSizeConstraint")
 	limit.MaxTextSize = 36

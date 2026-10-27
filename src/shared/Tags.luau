@@ -8,6 +8,8 @@ local Tags = {
 	ShopPrompt = "ShopPrompt", -- the "Open shop" prompt at the Tool Shed
 	AwakeMimic = "AwakeMimic", -- a mimic that woke up and is chasing players (it can still be chopped)
 	RevivePrompt = "RevivePrompt", -- the "Revive" prompt on a knocked-down player
+	ElderHollow = "ElderHollow", -- the final boss (its trunk can't be chopped)
+	BossRoot = "BossRoot", -- one of the Elder Hollow's roots, its weak points
 }
 
 return table.freeze(Tags)

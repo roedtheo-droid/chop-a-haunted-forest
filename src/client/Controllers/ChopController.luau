@@ -23,7 +23,10 @@ local lastSwing = 0
 local holding = false -- is the mouse button / finger held down?
 local pointer = Vector3.zero -- where on the screen the mouse or finger is
 
--- Find the tree (or awake mimic) under a point on the screen.
+-- Tags of things you can swing at.
+local SWINGABLE = { Tags.Tree, Tags.AwakeMimic, Tags.ElderHollow, Tags.BossRoot }
+
+-- Find the tree (or awake mimic, or the boss or one of its roots) under a point on the screen.
 local function findTreeAt(screenPosition: Vector3): Model?
 	local camera = workspace.CurrentCamera
 	if not camera then
@@ -46,8 +49,13 @@ local function findTreeAt(screenPosition: Vector3): Model?
 	end
 
 	local model = result.Instance:FindFirstAncestorWhichIsA("Model")
-	if model and (CollectionService:HasTag(model, Tags.Tree) or CollectionService:HasTag(model, Tags.AwakeMimic)) then
-		return model
+	if not model then
+		return nil
+	end
+	for _, tag in SWINGABLE do
+		if CollectionService:HasTag(model, tag) then
+			return model
+		end
 	end
 	return nil
 end

@@ -11,6 +11,7 @@
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Boss = require(ReplicatedStorage.Shared.Boss)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Tags = require(ReplicatedStorage.Shared.Tags)
 local Types = require(ReplicatedStorage.Shared.Types)
@@ -126,7 +127,8 @@ function ForestSpawner.addKnot(tree: Model): BasePart?
 	return knot
 end
 
--- Pick random spots inside the zone: away from the walls, the zone's sawmill and each other.
+-- Pick random spots inside the zone: away from the walls, the zone's sawmill, the boss's
+-- clearing and each other.
 local function pickPositions(index: number): { Vector2 }
 	local zone = Config.Zones[index]
 	local bounds = Zones.getBounds(index)
@@ -141,6 +143,7 @@ local function pickPositions(index: number): { Vector2 }
 				random:NextNumber(bounds.MinZ + margin, bounds.MaxZ - margin)
 			)
 			local ok = (candidate - sawmill).Magnitude >= zone.ClearRadius
+				and not Boss.isInClearing(Vector3.new(candidate.X, 0, candidate.Y))
 			if ok then
 				for _, other in positions do
 					if (other - candidate).Magnitude < Config.Forest.MinSpacing then

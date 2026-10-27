@@ -6,6 +6,7 @@
 -- one can still be chopped down.
 -- The Torch doesn't chop: it burns a sleeping mimic safely and does nothing to anything
 -- else. The Lantern doesn't hit trees at all.
+-- Hits on the Elder Hollow (the final boss) and its roots go to BossManager.
 
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
@@ -15,6 +16,7 @@ local TweenService = game:GetService("TweenService")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Tags = require(ReplicatedStorage.Shared.Tags)
+local BossManager = require(script.Parent.BossManager)
 local EmberManager = require(script.Parent.EmberManager)
 local KnockdownManager = require(script.Parent.KnockdownManager)
 local LogManager = require(script.Parent.LogManager)
@@ -216,7 +218,8 @@ local function burnMimic(player: Player, tree: Model, trunk: BasePart)
 end
 
 local function onSwing(player: Player, target: unknown)
-	-- 1. Is the target a real, standing tree or an awake mimic? (The client could send anything.)
+	-- 1. Is the target a real, standing tree, an awake mimic, or the boss (its trunk or a root)?
+	-- (The client could send anything.)
 	if typeof(target) ~= "Instance" then
 		return
 	end
@@ -225,12 +228,11 @@ local function onSwing(player: Player, target: unknown)
 		return
 	end
 	local tree = instance :: Model
-	local choppable = CollectionService:HasTag(tree, Tags.Tree) or CollectionService:HasTag(tree, Tags.AwakeMimic)
+	local isBoss = CollectionService:HasTag(tree, Tags.ElderHollow) or CollectionService:HasTag(tree, Tags.BossRoot)
+	local choppable = isBoss
+		or CollectionService:HasTag(tree, Tags.Tree)
+		or CollectionService:HasTag(tree, Tags.AwakeMimic)
 	if not choppable or not tree:IsDescendantOf(workspace) then
-		return
-	end
-	local trunk = getTrunk(tree)
-	if not trunk then
 		return
 	end
 	-- Trees behind a closed gate can't be chopped (stops players who teleport past it).
@@ -262,7 +264,21 @@ local function onSwing(player: Player, target: unknown)
 	end
 	lastSwing[player] = now
 
-	-- 4. The Torch burns sleeping mimics. It does nothing to normal trees, and awake
+	-- The SERVER decides the damage, from the held tool and upgrades.
+	local damage = stats.Damage * UpgradeManager.damageMultiplier(player)
+
+	-- 4. The Elder Hollow and its roots: BossManager decides what a hit does.
+	if isBoss then
+		BossManager.hit(player, tree, damage)
+		return
+	end
+
+	local trunk = getTrunk(tree)
+	if not trunk then
+		return
+	end
+
+	-- 5. The Torch burns sleeping mimics. It does nothing to normal trees, and awake
 	-- mimics are moving too fast to catch fire.
 	if toolId == "Torch" then
 		if MimicManager.isSleeping(tree) then
@@ -273,8 +289,7 @@ local function onSwing(player: Player, target: unknown)
 		return
 	end
 
-	-- 5. All good: the SERVER decides the damage, from the held tool and upgrades.
-	local damage = stats.Damage * UpgradeManager.damageMultiplier(player)
+	-- 6. All good: chop it.
 	local hp = math.max(getNumberAttribute(tree, "HP") - damage, 0)
 	tree:SetAttribute("HP", hp)
 	emitChips(trunk)

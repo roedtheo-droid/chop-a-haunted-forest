@@ -211,6 +211,26 @@ local Config = {
 		ShutdownWait = 25, -- max seconds to wait for everyone's save when a server shuts down
 	},
 
+	-- The Elder Hollow: a giant mimic at the far end of the last zone, the final boss.
+	-- It sleeps (and can't be hurt) until every other tree in its zone is cleared.
+	-- Then it slams the ground, and players break it by chopping its glowing roots.
+	Boss = {
+		Position = Vector3.new(0, 0, -415), -- where it stands (height is found automatically)
+		ClearRadius = 35, -- no trees grow (and no mimics hide) this close to it
+		TrunkHeight = 40,
+		TrunkWidth = 10,
+		CrownSize = 30, -- the ball of leaves on top
+		RootCount = 4, -- weak points around its base
+		RootHP = 300, -- HP of each root. The boss's HP bar is all its roots added up.
+		RootLength = 12,
+		RootThickness = 3,
+		SlamInterval = 4, -- seconds between slams
+		SlamWarning = 1.5, -- seconds the red circle shows before the slam lands (time to dodge)
+		SlamRadius = 10, -- studs
+		SlamKnockdown = 8, -- seconds a slam knocks you down (mimics use Knockdown.Duration)
+		MessageCooldown = 3, -- seconds between "chop the roots" hints for one player
+	},
+
 	-- Getting caught by a mimic
 	Knockdown = {
 		Duration = 20, -- seconds you're down if nobody revives you

@@ -63,7 +63,10 @@ local function updateCountdown()
 	local secondsLeft = if typeof(downUntil) == "number"
 		then math.max(math.ceil(downUntil - workspace:GetServerTimeNow()), 0)
 		else 0
-	message.Text = `A mimic caught you!\nGetting up in {secondsLeft}s. A friend can hold E on you to revive you.`
+	local what = if player:GetAttribute("DownCause") == "Slam"
+		then "The Elder Hollow flattened you!"
+		else "A mimic caught you!"
+	message.Text = `{what}\nGetting up in {secondsLeft}s. A friend can hold E on you to revive you.`
 end
 
 local function hideIfMine(prompt: Instance)

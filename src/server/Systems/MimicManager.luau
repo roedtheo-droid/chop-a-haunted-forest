@@ -29,6 +29,7 @@ local RunService = game:GetService("RunService")
 local ServerStorage = game:GetService("ServerStorage")
 local TweenService = game:GetService("TweenService")
 
+local Boss = require(ReplicatedStorage.Shared.Boss)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Tags = require(ReplicatedStorage.Shared.Tags)
@@ -506,6 +507,7 @@ local function findSleepSpot(mimic: Mimic): Vector3
 			and spot.Z >= bounds.MinZ + margin
 			and spot.Z <= bounds.MaxZ - margin
 			and flatDistance(spot, zone.Sawmill) >= zone.ClearRadius
+			and not Boss.isInClearing(spot)
 			and isFreeSpot(spot, mimic.Tree)
 		then
 			return spot

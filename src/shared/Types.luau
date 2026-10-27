@@ -59,6 +59,10 @@ export type ZoneConfig = {
 	MimicPercent: number, -- this % of the zone's trees are secretly mimics
 }
 
+-- What knocked a player down (see Server/Systems/KnockdownManager).
+-- It decides how long they're down and what their screen says.
+export type KnockdownCause = "Mimic" | "Slam"
+
 -- What gets saved for each player (see Server/Systems/SaveManager).
 -- Only plain numbers, strings and tables: DataStores store everything as JSON text.
 export type SaveData = {

@@ -20,6 +20,7 @@ local systems: { Types.Module } = {
 	require(Systems.ZoneManager), -- before anything that looks for the ground (it builds the zone floors)
 	require(Systems.ForestSpawner),
 	require(Systems.MimicManager), -- after ForestSpawner (it picks mimics from the spawned trees)
+	require(Systems.BossManager), -- after ZoneManager (the boss counts as one of its zone's trees)
 	require(Systems.LogManager),
 	require(Systems.CoinManager),
 	require(Systems.EmberManager),

@@ -12,6 +12,8 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Tags = require(ReplicatedStorage.Shared.Tags)
 local LogManager = require(script.Parent.LogManager)
+local ToolManager = require(script.Parent.ToolManager)
+local UpgradeManager = require(script.Parent.UpgradeManager)
 
 local CHIP_COLOR = Color3.fromRGB(200, 160, 110)
 
@@ -142,27 +144,29 @@ local function onSwing(player: Player, target: unknown)
 		return
 	end
 
-	-- 2. Is the player alive and close enough?
+	-- 2. Is the player alive and close enough? (Reach depends on the tool they hold.)
 	local root = getRootPart(player)
 	if not root then
 		return
 	end
+	local stats = ToolManager.getStats(player)
 	local base = tree:GetPivot().Position
 	local flatDistance = Vector2.new(root.Position.X - base.X, root.Position.Z - base.Z).Magnitude
-	if flatDistance > Config.Fists.Reach + Config.Tree.TrunkWidth / 2 then
+	if flatDistance > stats.Reach + Config.Tree.TrunkWidth / 2 then
 		return
 	end
 
-	-- 3. Is the player swinging too fast?
+	-- 3. Is the player swinging faster than their tool allows?
 	local now = os.clock()
 	local last = lastSwing[player]
-	if last and now - last < Config.Fists.Cooldown then
+	if last and now - last < stats.Cooldown * Config.Anticheat.CooldownTolerance then
 		return
 	end
 	lastSwing[player] = now
 
-	-- 4. All good: the SERVER decides the damage.
-	local hp = math.max(getNumberAttribute(tree, "HP") - Config.Fists.Damage, 0)
+	-- 4. All good: the SERVER decides the damage, from the held tool and upgrades.
+	local damage = stats.Damage * UpgradeManager.damageMultiplier(player)
+	local hp = math.max(getNumberAttribute(tree, "HP") - damage, 0)
 	tree:SetAttribute("HP", hp)
 	emitChips(trunk)
 	updateTrunkWidth(tree, trunk)

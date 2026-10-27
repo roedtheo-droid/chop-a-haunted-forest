@@ -32,6 +32,7 @@ function NotifyController.init()
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "Notify"
 	gui.ResetOnSpawn = false
+	gui.DisplayOrder = 10 -- on top of other windows, like the shop
 
 	label = Instance.new("TextLabel")
 	label.Name = "Message"

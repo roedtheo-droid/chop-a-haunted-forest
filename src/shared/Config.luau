@@ -80,6 +80,17 @@ local zones: { Types.ZoneConfig } = {
 		Sawmill = Vector3.new(0, 0, -20), -- next to spawn and the Tool Shed
 		ClearRadius = 40, -- keeps spawn, the sawmill and the Tool Shed free of trees
 		MimicPercent = 5, -- this % of the zone's trees are secretly mimics
+		-- A clear afternoon (the place's normal lighting).
+		Look = {
+			ClockTime = 14.5,
+			Brightness = 3,
+			Ambient = Color3.fromRGB(70, 70, 70),
+			FogDensity = 0.3,
+			FogOffset = 0.25,
+			FogColor = Color3.fromRGB(199, 199, 199),
+			FogDecay = Color3.fromRGB(106, 112, 125),
+			Haze = 0,
+		},
 	},
 	{
 		Name = "Fog Hollow",
@@ -91,6 +102,17 @@ local zones: { Types.ZoneConfig } = {
 		Sawmill = Vector3.new(-40, 0, -110), -- just inside the gate, off to the left
 		ClearRadius = 30,
 		MimicPercent = 10,
+		-- Thick grey fog: you can only see a short way ahead.
+		Look = {
+			ClockTime = 14.5,
+			Brightness = 2,
+			Ambient = Color3.fromRGB(80, 85, 85),
+			FogDensity = 0.7,
+			FogOffset = 0,
+			FogColor = Color3.fromRGB(170, 178, 175),
+			FogDecay = Color3.fromRGB(140, 145, 145),
+			Haze = 3,
+		},
 	},
 	{
 		Name = "Graveyard Grove",
@@ -102,6 +124,17 @@ local zones: { Types.ZoneConfig } = {
 		Sawmill = Vector3.new(-40, 0, -290),
 		ClearRadius = 30,
 		MimicPercent = 15,
+		-- Dusk: dark and gloomy, with a purple haze. The Lantern's glow really helps here.
+		Look = {
+			ClockTime = 17.7,
+			Brightness = 1.5,
+			Ambient = Color3.fromRGB(75, 62, 88),
+			FogDensity = 0.45,
+			FogOffset = 0.1,
+			FogColor = Color3.fromRGB(70, 60, 85),
+			FogDecay = Color3.fromRGB(40, 35, 50),
+			Haze = 1.5,
+		},
 	},
 }
 
@@ -146,6 +179,12 @@ local Config = {
 		Width = 16,
 		OpenTime = 2, -- seconds the gate takes to sink into the ground
 		MessageCooldown = 3, -- seconds between "Clear every tree first" messages for one player
+	},
+
+	-- Each zone's light and fog (the Look in each zone above) fades in when you walk in.
+	ZoneLook = {
+		FadeTime = 3, -- seconds the change takes
+		Refresh = 0.5, -- seconds between checks of which zone you're in
 	},
 
 	-- The glowing line to the nearest tree when a zone is almost cleared

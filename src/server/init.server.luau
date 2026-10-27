@@ -14,7 +14,10 @@ local Systems = script.Systems
 
 -- Order matters: systems higher in the list are set up first.
 local systems: { Types.Module } = {
-	require(Systems.RemoteService),
+	require(Systems.RemoteService), -- first, so every other system can use remotes
+	require(Systems.ForestSpawner),
+	require(Systems.LogManager),
+	require(Systems.TreeManager),
 }
 
 -- Step 1: set up every system.

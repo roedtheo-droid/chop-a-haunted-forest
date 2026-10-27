@@ -318,7 +318,7 @@ local function onSwing(player: Player, target: unknown)
 	tree:SetAttribute("HP", hp)
 	local notch = cutNotch(tree, trunk, root.Position)
 	local falling = if hp <= 0 then fallDirection(tree, root.Position) else nil
-	-- Every player draws the chips, HP bar and dust themselves (Client/Controllers/ChopEffectsController).
+	-- Every player draws the chips and dust themselves (Client/Controllers/ChopEffectsController).
 	treeHitRemote:FireAllClients(tree, notch.Position, notch.LookVector, falling)
 	if chopSound then
 		EffectsManager.playSound(chopSound, trunk.Position, player)

@@ -2,7 +2,6 @@
 -- The fun part of chopping, only for looks (see STYLE_GUIDE.md). The server tells every
 -- player about each hit (the TreeHit remote), and each player draws the effects on their own screen:
 --   * little wood cubes fly out of the notch, and the crown of leaves wobbles
---   * an HP bar over the tree, for a few seconds after the last hit
 --   * a puff of dust and a camera shake where a falling tree lands
 -- None of this changes the game, so it's fine that it runs on the client.
 -- (The notch itself is built by the server, so every player sees the same one.)
@@ -18,14 +17,6 @@ local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local cfg = Config.ChopEffects
 local Style = Config.Style
 
-type HpBar = {
-	Gui: BillboardGui,
-	Fill: Frame,
-	Text: TextLabel,
-	Shown: number, -- the HP fraction the bar shows right now (it slides towards the real one)
-	HideAt: number,
-}
-
 type Wobble = {
 	Leaves: BasePart,
 	Axis: Vector3,
@@ -39,18 +30,9 @@ local ChopEffectsController = {}
 local player = Players.LocalPlayer
 local random = Random.new()
 local folder: Folder -- everything we make here goes in this folder, which only this player has
-local bars: { [Model]: HpBar } = {}
 local wobbles: { [Model]: Wobble } = {}
--- The HP fraction each tree's bar showed last time, so a bar that comes back slides from there.
--- (Weak keys: a tree that's gone is forgotten.)
-local lastShown: { [Model]: number } = setmetatable({}, { __mode = "k" }) :: any
 local shakeUntil = 0
 local shakeStrength = 0
-
-local function getNumberAttribute(instance: Instance, name: string): number
-	local value = instance:GetAttribute(name)
-	return if typeof(value) == "number" then value else 0
-end
 
 local function getTrunk(tree: Model): BasePart?
 	local trunk = tree:FindFirstChild("Trunk")
@@ -66,23 +48,6 @@ local function distanceTo(position: Vector3): number
 	end
 	local camera = workspace.CurrentCamera
 	return if camera then (camera.CFrame.Position - position).Magnitude else math.huge
-end
-
--- White text with a black outline (the cartoony UI style).
-local function outlinedText(parent: Instance, text: string, font: Enum.Font, color: Color3): TextLabel
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.fromScale(1, 1)
-	label.BackgroundTransparency = 1
-	label.Text = text
-	label.Font = font
-	label.TextScaled = true
-	label.TextColor3 = color
-	local stroke = Instance.new("UIStroke")
-	stroke.Thickness = Style.TextStroke
-	stroke.Color = Color3.new(0, 0, 0)
-	stroke.Parent = label
-	label.Parent = parent
-	return label
 end
 
 local function plainPart(name: string, size: Vector3, cframe: CFrame, color: Color3): Part
@@ -170,79 +135,6 @@ local function updateWobbles()
 		if t >= 1 then
 			wobbles[tree] = nil
 		end
-	end
-end
-
----------------------------------------------------------------------------
--- HP bar
----------------------------------------------------------------------------
-
-local function makeBar(tree: Model, trunk: BasePart): HpBar
-	local gui = Instance.new("BillboardGui")
-	gui.Name = "HpBar"
-	gui.Adornee = trunk
-	gui.Size = UDim2.fromScale(cfg.HpBarWidth, cfg.HpBarHeight) -- scale on a BillboardGui means studs
-	gui.StudsOffsetWorldSpace = Vector3.new(0, -trunk.Size.Y / 2 + cfg.HpBarAboveGround, 0)
-	gui.AlwaysOnTop = true
-	gui.LightInfluence = 0
-	gui.MaxDistance = cfg.EffectsDistance
-
-	local back = Instance.new("Frame")
-	back.Name = "Back"
-	back.Size = UDim2.fromScale(1, 1)
-	back.BackgroundColor3 = Style.DarkWood
-	back.BorderSizePixel = 0
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0.3, 0)
-	corner.Parent = back
-	local stroke = Instance.new("UIStroke")
-	stroke.Thickness = 2
-	stroke.Color = Color3.new(0, 0, 0)
-	stroke.Parent = back
-	back.Parent = gui
-
-	local fill = Instance.new("Frame")
-	fill.Name = "Fill"
-	fill.Size = UDim2.fromScale(1, 1)
-	fill.BackgroundColor3 = cfg.HpBarFull
-	fill.BorderSizePixel = 0
-	corner:Clone().Parent = fill
-	fill.Parent = back
-
-	local text = outlinedText(back, "", Style.BodyFont, Color3.new(1, 1, 1))
-	text.ZIndex = 2
-
-	gui.ResetOnSpawn = false
-	-- A BillboardGui only shows up from inside the PlayerGui (or a part), not from a folder.
-	gui.Parent = player:WaitForChild("PlayerGui")
-	return { Gui = gui, Fill = fill, Text = text, Shown = lastShown[tree] or 1, HideAt = 0 }
-end
-
-local function showBar(tree: Model, trunk: BasePart)
-	local bar = bars[tree]
-	if not bar then
-		bar = makeBar(tree, trunk)
-		bars[tree] = bar
-	end
-	bar.HideAt = os.clock() + cfg.HpBarShowTime
-end
-
-local function updateBars(deltaTime: number)
-	local now = os.clock()
-	for tree, bar in bars do
-		if now > bar.HideAt or not tree.Parent or tree:GetAttribute("Felled") then
-			bar.Gui:Destroy()
-			bars[tree] = nil
-			continue
-		end
-		local hp = getNumberAttribute(tree, "HP")
-		local fraction = math.clamp(hp / math.max(getNumberAttribute(tree, "MaxHP"), 1), 0, 1)
-		-- Slide towards the real HP instead of jumping, so each hit is easy to see.
-		bar.Shown += (fraction - bar.Shown) * math.min(deltaTime * 12, 1)
-		lastShown[tree] = bar.Shown
-		bar.Fill.Size = UDim2.fromScale(bar.Shown, 1)
-		bar.Fill.BackgroundColor3 = cfg.HpBarLow:Lerp(cfg.HpBarFull, bar.Shown)
-		bar.Text.Text = `{math.ceil(hp)} / {math.ceil(getNumberAttribute(tree, "MaxHP"))}`
 	end
 end
 
@@ -341,7 +233,6 @@ local function onTreeHit(target: unknown, position: unknown, outward: unknown, f
 		onTreeFalling(tree, trunk, falling)
 	else
 		wobble(tree, trunk, outward)
-		showBar(tree, trunk)
 	end
 end
 
@@ -354,10 +245,7 @@ end
 function ChopEffectsController.start()
 	Remotes.getEvent("TreeHit").OnClientEvent:Connect(onTreeHit)
 
-	RunService.RenderStepped:Connect(function(deltaTime: number)
-		updateWobbles()
-		updateBars(deltaTime)
-	end)
+	RunService.RenderStepped:Connect(updateWobbles)
 	RunService:BindToRenderStep("ChopCameraShake", Enum.RenderPriority.Camera.Value + 1, updateShake)
 end
 

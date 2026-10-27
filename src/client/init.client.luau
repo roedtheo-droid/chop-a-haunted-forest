@@ -1,0 +1,32 @@
+--!strict
+-- The ONLY LocalScript in the game. It starts every client controller in a fixed order.
+--
+-- To add a controller: create a ModuleScript in Controllers/ with init() and start(),
+-- then add it to the list below.
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local Types = require(ReplicatedStorage.Shared.Types)
+
+-- Order matters: controllers higher in the list are set up first.
+-- Empty for now; Phase 2 adds the first controllers.
+local controllers: { Types.Module } = {}
+
+-- Wait until the server has created the remotes, so controllers can use them.
+Remotes.getEvent("Notify")
+
+-- Step 1: set up every controller.
+for _, controller in controllers do
+	controller.init()
+end
+
+-- Step 2: start every controller.
+for _, controller in controllers do
+	task.spawn(controller.start)
+end
+
+if Config.DebugPrints then
+	print(`[Client] Started {#controllers} controller(s). Remotes ready.`)
+end

@@ -1,0 +1,4 @@
+# Tools this project uses, pinned to exact versions.
+# Run `aftman install` in this folder to get them.
+[tools]
+rojo = "rojo-rbx/rojo@7.4.4"

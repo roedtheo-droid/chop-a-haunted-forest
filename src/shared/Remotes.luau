@@ -28,6 +28,11 @@ local list: { [string]: Types.RemoteKind } = {
 	-- Client -> server: "I'm holding sprint" (true) or "I let go" (false).
 	-- The server decides the actual speed.
 	SetSprint = "Event",
+
+	-- Server -> client: the sleeping mimics your Lantern can see right now (a list of tree
+	-- Models, empty when you put it away). Only the server knows which trees are mimics,
+	-- so it only ever tells you about the ones close to your own lantern.
+	LanternMimics = "Event",
 }
 Remotes.List = table.freeze(list)
 

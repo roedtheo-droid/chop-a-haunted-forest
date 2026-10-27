@@ -1,10 +1,12 @@
 --!strict
--- Getting caught by a mimic: you're knocked down and can't move for a while.
--- A friend can hold E on you (the "Revive" prompt) to get you back up sooner.
+-- Getting caught by a mimic (or hit by the Elder Hollow's slam): you're knocked down and
+-- can't move for a while. A friend can hold E on you (the "Revive" prompt) to get you
+-- back up sooner.
 --
 -- Player attributes the client reads (only the server sets them):
 --   KnockedDown  true while you're down
 --   DownUntil    when you get up by yourself (server time, for the countdown on screen)
+--   DownCause    what knocked you down: "Mimic" or "Slam" (changes the text on screen)
 
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
@@ -13,6 +15,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Tags = require(ReplicatedStorage.Shared.Tags)
+local Types = require(ReplicatedStorage.Shared.Types)
 local MovementManager = require(script.Parent.MovementManager)
 
 local KnockdownManager = {}
@@ -79,7 +82,8 @@ local function onRevive(downPlayer: Player, helper: Player)
 	notifyRemote:FireClient(helper, `You revived {downPlayer.DisplayName}!`)
 end
 
-function KnockdownManager.knockDown(player: Player)
+-- Knock a player down. `cause` is "Mimic" if not given.
+function KnockdownManager.knockDown(player: Player, cause: Types.KnockdownCause?)
 	if not KnockdownManager.canBeCaught(player) then
 		return
 	end
@@ -88,10 +92,14 @@ function KnockdownManager.knockDown(player: Player)
 		return
 	end
 
+	local why: Types.KnockdownCause = cause or "Mimic"
+	-- Slams come often, so they knock you down for less time than a mimic does.
+	local duration = if why == "Slam" then Config.Boss.SlamKnockdown else Config.Knockdown.Duration
 	local count = (knockCount[player] or 0) + 1
 	knockCount[player] = count
 	player:SetAttribute("KnockedDown", true)
-	player:SetAttribute("DownUntil", workspace:GetServerTimeNow() + Config.Knockdown.Duration)
+	player:SetAttribute("DownUntil", workspace:GetServerTimeNow() + duration)
+	player:SetAttribute("DownCause", why)
 	MovementManager.refresh(player)
 
 	-- Friends hold E on you to revive you. (Your own screen hides this prompt.)
@@ -111,13 +119,14 @@ function KnockdownManager.knockDown(player: Player)
 	prompts[player] = prompt
 
 	-- Tell everyone else, so they can come and help.
+	local what = if why == "Slam" then "was flattened by the Elder Hollow" else "was caught by a mimic"
 	for _, other in Players:GetPlayers() do
 		if other ~= player then
-			notifyRemote:FireClient(other, `{player.DisplayName} was caught by a mimic! Hold E on them to revive them.`)
+			notifyRemote:FireClient(other, `{player.DisplayName} {what}! Hold E on them to revive them.`)
 		end
 	end
 
-	task.delay(Config.Knockdown.Duration, function()
+	task.delay(duration, function()
 		-- Still down from THIS knockdown? (Not revived, reset or caught again since.)
 		if knockCount[player] == count and KnockdownManager.isDown(player) then
 			KnockdownManager.standUp(player)

@@ -34,6 +34,7 @@ export type ShopItem = {
 	Kind: "Tool" | "Upgrade",
 	Name: string,
 	Description: string,
+	Requires: string?, -- a tool you must own before you can buy this (like "Lantern")
 }
 
 -- One kind of tree (see Config.TreeTypes). Each zone has its own kind.
@@ -56,6 +57,19 @@ export type ZoneConfig = {
 	Sawmill: Vector3, -- where this zone's sawmill stands (height is found automatically)
 	ClearRadius: number, -- no trees this close to the sawmill
 	MimicPercent: number, -- this % of the zone's trees are secretly mimics
+}
+
+-- What knocked a player down (see Server/Systems/KnockdownManager).
+-- It decides how long they're down and what their screen says.
+export type KnockdownCause = "Mimic" | "Slam"
+
+-- What gets saved for each player (see Server/Systems/SaveManager).
+-- Only plain numbers, strings and tables: DataStores store everything as JSON text.
+export type SaveData = {
+	Version: number, -- which shape this save has, so old saves can be upgraded later
+	Embers: number,
+	Stats: { [string]: number }, -- lifetime stats, like Stats.TreesFelled
+	Unlocks: { string }, -- permanent unlocks bought with Embers (none yet)
 }
 
 -- One tutorial quest (see Config.Quests).

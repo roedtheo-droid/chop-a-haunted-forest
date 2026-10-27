@@ -23,7 +23,10 @@ local lastSwing = 0
 local holding = false -- is the mouse button / finger held down?
 local pointer = Vector3.zero -- where on the screen the mouse or finger is
 
--- Find the tree (or awake mimic) under a point on the screen.
+-- Tags of things you can swing at.
+local SWINGABLE = { Tags.Tree, Tags.AwakeMimic, Tags.ElderHollow, Tags.BossRoot }
+
+-- Find the tree (or awake mimic, or the boss or one of its roots) under a point on the screen.
 local function findTreeAt(screenPosition: Vector3): Model?
 	local camera = workspace.CurrentCamera
 	if not camera then
@@ -46,27 +49,36 @@ local function findTreeAt(screenPosition: Vector3): Model?
 	end
 
 	local model = result.Instance:FindFirstAncestorWhichIsA("Model")
-	if model and (CollectionService:HasTag(model, Tags.Tree) or CollectionService:HasTag(model, Tags.AwakeMimic)) then
-		return model
+	if not model then
+		return nil
+	end
+	for _, tag in SWINGABLE do
+		if CollectionService:HasTag(model, tag) then
+			return model
+		end
 	end
 	return nil
 end
 
--- The cooldown of the tool we're holding (the server checks this too).
-local function currentCooldown(): number
+-- The id of the tool we're holding ("Fists" if none).
+local function heldToolId(): string
 	local character = player.Character
 	local tool = if character then character:FindFirstChildOfClass("Tool") else nil
 	local toolId = if tool then tool:GetAttribute("ToolId") else nil
 	if typeof(toolId) == "string" and Config.Tools[toolId] then
-		return Config.Tools[toolId].Cooldown
+		return toolId
 	end
-	return Config.Tools.Fists.Cooldown
+	return "Fists"
 end
 
 local function trySwing()
+	local toolId = heldToolId()
+	if toolId == "Lantern" then
+		return -- the Lantern is for looking, not hitting (the server ignores it too)
+	end
 	-- Don't spam the server faster than the server would accept anyway.
 	local now = os.clock()
-	if now - lastSwing < currentCooldown() then
+	if now - lastSwing < Config.Tools[toolId].Cooldown then
 		return
 	end
 

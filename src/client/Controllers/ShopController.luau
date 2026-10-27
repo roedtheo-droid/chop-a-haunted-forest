@@ -75,7 +75,8 @@ local function refresh()
 
 		if item.Kind == "Tool" then
 			local tool = Config.Tools[item.Id]
-			row.Info.Text = `{item.Description}  (damage {tool.Damage})`
+			-- The Lantern and Torch don't chop, so don't show "damage 0" for them.
+			row.Info.Text = if tool.Damage > 0 then `{item.Description}  (damage {tool.Damage})` else item.Description
 			if player:GetAttribute(Shop.ownsAttribute(item.Id)) == true then
 				buttonText, buttonColor = "Owned", DONE
 			else
@@ -88,7 +89,13 @@ local function refresh()
 			-- One-level items (like the Log Vacuum) are just "owned or not", so skip the level text.
 			row.Info.Text = if maxLevel == 1 then item.Description else `{item.Description}  (level {level}/{maxLevel})`
 			local price = Shop.priceOf(item, level)
-			if price then
+			local required = item.Requires
+			local requiredItem = if required then Shop.getItem(required) else nil
+			if required and player:GetAttribute(Shop.ownsAttribute(required)) ~= true then
+				-- Like Lantern Radius before you own the Lantern.
+				buttonText = `Needs {if requiredItem then requiredItem.Name else required}`
+				buttonColor = DONE
+			elseif price then
 				buttonText = `{price} coins`
 				buttonColor = if coins >= price then CAN_BUY else CANT_BUY
 			else

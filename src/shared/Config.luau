@@ -4,13 +4,16 @@
 
 local Types = require(script.Parent.Types)
 
--- Chopping tools. Fists is what you have when you hold nothing.
+-- Tools. Fists is what you have when you hold nothing.
 -- The Tool Shed sells the rest (see Shared/Shop.luau for the order and names).
+-- The Lantern and Torch don't chop (Damage 0): the Lantern shows mimics, the Torch burns them.
 local tools: { [string]: Types.ToolConfig } = {
 	Fists = { Damage = 5, Cooldown = 0.5, Reach = 8, Price = 0 },
 	Axe = { Damage = 10, Cooldown = 0.45, Reach = 9, Price = 50 },
 	SteelAxe = { Damage = 20, Cooldown = 0.4, Reach = 9, Price = 250 },
 	Chainsaw = { Damage = 12, Cooldown = 0.15, Reach = 8, Price = 1000 },
+	Lantern = { Damage = 0, Cooldown = 0.5, Reach = 0, Price = 100 },
+	Torch = { Damage = 0, Cooldown = 1, Reach = 8, Price = 150 },
 }
 
 -- Upgrades bought in the Tool Shed. Each price in the list is one level.
@@ -19,6 +22,7 @@ local upgrades: { [string]: Types.UpgradeConfig } = {
 	CarryLimit = { PerLevel = 3, Prices = { 30, 60, 120, 240, 480 } }, -- +3 logs per level (Log Sack)
 	WalkSpeed = { PerLevel = 2, Prices = { 25, 50, 100, 200, 400 } }, -- +2 walk speed per level
 	LogVacuum = { PerLevel = 1, Prices = { 300 } }, -- one level: you have it or you don't
+	LanternRadius = { PerLevel = 5, Prices = { 60, 120, 240 } }, -- the Lantern sees 5 studs further per level
 }
 
 -- Kinds of trees. Each zone uses one kind (see zones below).
@@ -172,6 +176,59 @@ local Config = {
 		TellMinGap = 4, -- seconds between creaks or blinks (random between min and max)
 		TellMaxGap = 8,
 		DecoyKnotChance = 0.3, -- share of trees with a plain knot, so a knot alone isn't a tell
+	},
+
+	-- Lantern (bought in the Tool Shed): sleeping mimics near you get a faint outline
+	-- that only YOU can see while you hold it.
+	Lantern = {
+		Radius = 20, -- studs; the Lantern Radius upgrade adds to this
+		Refresh = 0.3, -- seconds between checks for mimics nearby
+		OutlineColor = Color3.fromRGB(255, 190, 110),
+		OutlineTransparency = 0.55, -- 0 = solid, 1 = invisible. Higher is fainter.
+		LightRange = 14, -- how far the lantern's glow lights up the ground around you
+	},
+
+	-- Torch (bought in the Tool Shed): hit a SLEEPING mimic to burn it safely.
+	-- Normal trees and awake mimics don't burn.
+	Torch = {
+		BurnTime = 2, -- seconds the mimic burns before it crumbles away
+	},
+
+	-- Embers: the permanent currency (saved, see Save below)
+	Embers = {
+		PerMimic = 5, -- Embers for the player who burns a mimic
+	},
+
+	-- Saving Embers, lifetime stats and unlocks (see Server/Systems/SaveManager)
+	Save = {
+		StoreName = "PlayerData", -- the DataStore's name. Changing it starts everyone from scratch!
+		AutosaveInterval = 120, -- seconds between autosaves for each player
+		Retries = 5, -- tries for each load or save before giving up
+		RetryWait = 1, -- seconds before the first retry; doubles each time (1, 2, 4, 8)
+		LockTimeout = 300, -- a lock older than this is left over from a crashed server (keep it above AutosaveInterval)
+		LockedRetries = 5, -- how many times to wait for another server to finish saving your data
+		LockedWait = 3, -- seconds between those tries
+		ShutdownWait = 25, -- max seconds to wait for everyone's save when a server shuts down
+	},
+
+	-- The Elder Hollow: a giant mimic at the far end of the last zone, the final boss.
+	-- It sleeps (and can't be hurt) until every other tree in its zone is cleared.
+	-- Then it slams the ground, and players break it by chopping its glowing roots.
+	Boss = {
+		Position = Vector3.new(0, 0, -415), -- where it stands (height is found automatically)
+		ClearRadius = 35, -- no trees grow (and no mimics hide) this close to it
+		TrunkHeight = 40,
+		TrunkWidth = 10,
+		CrownSize = 30, -- the ball of leaves on top
+		RootCount = 4, -- weak points around its base
+		RootHP = 300, -- HP of each root. The boss's HP bar is all its roots added up.
+		RootLength = 12,
+		RootThickness = 3,
+		SlamInterval = 4, -- seconds between slams
+		SlamWarning = 1.5, -- seconds the red circle shows before the slam lands (time to dodge)
+		SlamRadius = 10, -- studs
+		SlamKnockdown = 8, -- seconds a slam knocks you down (mimics use Knockdown.Duration)
+		MessageCooldown = 3, -- seconds between "chop the roots" hints for one player
 	},
 
 	-- Getting caught by a mimic

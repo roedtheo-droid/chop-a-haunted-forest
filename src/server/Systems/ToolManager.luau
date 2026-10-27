@@ -12,13 +12,16 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Shop = require(ReplicatedStorage.Shared.Shop)
 local Types = require(ReplicatedStorage.Shared.Types)
 
--- How each placeholder tool looks: a handle, plus an optional "head" stuck to it.
+-- How each placeholder tool looks: a handle, plus a "head" stuck to it.
 type Look = {
 	HandleSize: Vector3,
 	HandleColor: Color3,
 	HeadSize: Vector3,
 	HeadColor: Color3,
 	HeadOffset: Vector3, -- where the head sits, relative to the handle
+	HeadMaterial: Enum.Material?, -- Metal if not set
+	Light: boolean?, -- the head glows and lights up the ground (Lantern)
+	Flame: boolean?, -- the head is on fire (Torch)
 }
 
 local WOOD = Color3.fromRGB(120, 80, 50)
@@ -43,6 +46,24 @@ local LOOKS: { [string]: Look } = {
 		HeadSize = Vector3.new(0.2, 0.6, 2.6),
 		HeadColor = Color3.fromRGB(90, 90, 95),
 		HeadOffset = Vector3.new(0, 0, -2.2),
+	},
+	Lantern = {
+		HandleSize = Vector3.new(0.2, 0.2, 1.2),
+		HandleColor = Color3.fromRGB(50, 50, 55),
+		HeadSize = Vector3.new(0.9, 1.2, 0.9),
+		HeadColor = Color3.fromRGB(255, 200, 120),
+		HeadOffset = Vector3.new(0, -0.3, -1),
+		HeadMaterial = Enum.Material.Neon,
+		Light = true,
+	},
+	Torch = {
+		HandleSize = Vector3.new(0.3, 0.3, 3),
+		HandleColor = WOOD,
+		HeadSize = Vector3.new(0.5, 0.5, 0.7),
+		HeadColor = Color3.fromRGB(40, 30, 25),
+		HeadOffset = Vector3.new(0, 0, -1.7),
+		HeadMaterial = Enum.Material.Fabric,
+		Flame = true,
 	},
 }
 
@@ -71,11 +92,26 @@ local function buildTool(toolId: string): Tool
 	head.Name = "Head"
 	head.Size = look.HeadSize
 	head.Color = look.HeadColor
-	head.Material = Enum.Material.Metal
+	head.Material = look.HeadMaterial or Enum.Material.Metal
 	head.CanCollide = false
 	head.Massless = true
 	head.CFrame = handle.CFrame * CFrame.new(look.HeadOffset)
 	head.Parent = tool
+
+	if look.Light then
+		local light = Instance.new("PointLight")
+		light.Color = look.HeadColor
+		light.Range = Config.Lantern.LightRange
+		light.Brightness = 1.5
+		light.Shadows = true
+		light.Parent = head
+	end
+	if look.Flame then
+		local fire = Instance.new("Fire")
+		fire.Size = 2.5
+		fire.Heat = 6
+		fire.Parent = head
+	end
 
 	-- Glue the head to the handle so they move together.
 	local weld = Instance.new("WeldConstraint")

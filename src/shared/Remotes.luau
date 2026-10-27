@@ -33,6 +33,14 @@ local list: { [string]: Types.RemoteKind } = {
 	-- Models, empty when you put it away). Only the server knows which trees are mimics,
 	-- so it only ever tells you about the ones close to your own lantern.
 	LanternMimics = "Event",
+
+	-- Server -> all clients: the Elder Hollow fell and the whole forest is clear.
+	-- Carries the party's totals for this run (a RunSummary, see Shared/Types).
+	ForestCleared = "Event",
+
+	-- Client -> server: the Studio-only "Skip to boss" button was clicked.
+	-- The server ignores it outside Studio (see Server/Systems/DebugManager).
+	DebugSkipToBoss = "Event",
 }
 Remotes.List = table.freeze(list)
 

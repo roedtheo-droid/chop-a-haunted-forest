@@ -461,11 +461,11 @@ end
 ---------------------------------------------------------------------------
 
 -- Is this spot free (not too close to another tree or a player)?
-local function isFreeSpot(spot: Vector3, self: Model): boolean
+local function isFreeSpot(spot: Vector3, mimicTree: Model): boolean
 	local spacing = Config.Forest.MinSpacing
 	for _, tag in { Tags.Tree, Tags.AwakeMimic } do
 		for _, other in CollectionService:GetTagged(tag) do
-			if other ~= self and other:IsA("Model") and flatDistance(other:GetPivot().Position, spot) < spacing then
+			if other ~= mimicTree and other:IsA("Model") and flatDistance(other:GetPivot().Position, spot) < spacing then
 				return false
 			end
 		end

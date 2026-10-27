@@ -84,13 +84,16 @@ local function refresh()
 			end
 		else
 			local level = getNumber(Shop.levelAttribute(item.Id))
-			row.Info.Text = `{item.Description}  (level {level}/{Shop.maxLevel(item.Id)})`
+			local maxLevel = Shop.maxLevel(item.Id)
+			-- One-level items (like the Log Vacuum) are just "owned or not", so skip the level text.
+			row.Info.Text = if maxLevel == 1 then item.Description else `{item.Description}  (level {level}/{maxLevel})`
 			local price = Shop.priceOf(item, level)
 			if price then
 				buttonText = `{price} coins`
 				buttonColor = if coins >= price then CAN_BUY else CANT_BUY
 			else
-				buttonText, buttonColor = "MAX", DONE
+				buttonText = if maxLevel == 1 then "Owned" else "MAX"
+				buttonColor = DONE
 			end
 		end
 

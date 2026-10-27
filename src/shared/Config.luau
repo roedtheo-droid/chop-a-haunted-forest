@@ -18,6 +18,17 @@ local upgrades: { [string]: Types.UpgradeConfig } = {
 	ChopDamage = { PerLevel = 0.2, Prices = { 40, 80, 160, 320, 640 } }, -- +20% damage per level
 	CarryLimit = { PerLevel = 3, Prices = { 30, 60, 120, 240, 480 } }, -- +3 logs per level (Log Sack)
 	WalkSpeed = { PerLevel = 2, Prices = { 25, 50, 100, 200, 400 } }, -- +2 walk speed per level
+	LogVacuum = { PerLevel = 1, Prices = { 300 } }, -- one level: you have it or you don't
+}
+
+-- Tutorial quests, in order. They teach new players the core loop.
+local quests: { Types.QuestConfig } = {
+	{ Event = "FellTree", Goal = 1, Text = "Chop down a tree" },
+	{ Event = "PickUpLog", Goal = 3, Text = "Pick up logs (press E)" },
+	{ Event = "SellLogs", Goal = 1, Text = "Sell logs on the sawmill pad" },
+	{ Event = "BuyAxe", Goal = 1, Text = "Buy an Axe at the Tool Shed" },
+	{ Event = "BuyUpgrade", Goal = 1, Text = "Buy any upgrade" },
+	{ Event = "FellTree", Goal = 10, Text = "Chop down trees" },
 }
 
 local Config = {
@@ -53,6 +64,14 @@ local Config = {
 
 	Tools = tools,
 	Upgrades = upgrades,
+	Quests = quests,
+
+	-- Log Vacuum (bought in the Tool Shed as an upgrade)
+	LogVacuum = {
+		Radius = 15, -- logs closer than this fly to you
+		Interval = 0.25, -- seconds between checks for nearby logs
+		PullTime = 0.35, -- seconds a log takes to fly to you
+	},
 
 	-- Player
 	Player = {
@@ -100,6 +119,7 @@ local Config = {
 	-- UI
 	UI = {
 		NotifyDuration = 2, -- seconds a message stays on screen
+		QuestsDoneHideDelay = 6, -- seconds the "All quests done" box stays before hiding
 	},
 }
 

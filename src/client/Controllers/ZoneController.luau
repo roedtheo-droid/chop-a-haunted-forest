@@ -12,10 +12,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Tags = require(ReplicatedStorage.Shared.Tags)
 local Zones = require(ReplicatedStorage.Shared.Zones)
+local UiKit = require(script.Parent.Parent.UiKit)
 
-local GOLD = Color3.fromRGB(255, 220, 90)
-local BAR_COLOR = Color3.fromRGB(110, 190, 90)
-local BAR_BACKGROUND = Color3.fromRGB(60, 60, 60)
+local GOLD = Config.Style.Gold
 local MARKER_HEIGHT = 3 -- the line ends this far up the trunk
 
 local ZoneController = {}
@@ -24,8 +23,7 @@ local player = Players.LocalPlayer
 local stateFolder: Instance
 local box: Frame
 local titleLabel: TextLabel
-local barFill: Frame
-local barLabel: TextLabel
+local bar: UiKit.Bar
 -- The "nearest tree" helper. These only exist on this player's screen.
 local marker: Part -- invisible; sits at the nearest tree, the line ends here
 local markerSign: BillboardGui -- an arrow above that tree
@@ -105,9 +103,8 @@ local function update()
 	local cleared = total - left
 	local percent = math.floor(cleared * 100 / total)
 	titleLabel.Text = `Zone {index}: {Config.Zones[index].Name}`
-	barLabel.Text = if left == 0 then "100% cleared!" else `{percent}% cleared`
-	barFill.Size = UDim2.fromScale(cleared / total, 1)
-	barFill.BackgroundColor3 = if left == 0 then GOLD else BAR_COLOR
+	UiKit.setBar(bar, cleared / total, if left == 0 then "100% cleared!" else `{percent}% cleared`)
+	bar.Fill.BackgroundColor3 = if left == 0 then GOLD else Config.Style.Green
 	box.Visible = true
 
 	local tree = if left > 0 and percent >= Config.NearestTree.ShowAtPercent
@@ -125,60 +122,20 @@ local function buildGui()
 	gui.Name = "Zone"
 	gui.ResetOnSpawn = false
 
-	box = Instance.new("Frame")
-	box.Name = "Box"
+	box = UiKit.box(gui, "Box")
 	-- Top middle of the screen, above where messages appear.
 	box.AnchorPoint = Vector2.new(0.5, 0)
 	box.Position = UDim2.new(0.5, 0, 0, 12)
-	box.Size = UDim2.fromOffset(260, 52)
-	box.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-	box.BackgroundTransparency = 0.3
+	box.Size = UDim2.fromOffset(260, 54)
 	box.Visible = false
-	box.Parent = gui
 
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 10)
-	corner.Parent = box
-
-	titleLabel = Instance.new("TextLabel")
-	titleLabel.Name = "Title"
-	titleLabel.BackgroundTransparency = 1
+	titleLabel = UiKit.text(box, "Title", "")
 	titleLabel.Position = UDim2.fromOffset(10, 4)
 	titleLabel.Size = UDim2.new(1, -20, 0, 20)
-	titleLabel.Font = Enum.Font.GothamBlack
-	titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-	titleLabel.TextScaled = true
-	titleLabel.Parent = box
 
-	local bar = Instance.new("Frame")
-	bar.Name = "Bar"
-	bar.Position = UDim2.fromOffset(10, 27)
-	bar.Size = UDim2.new(1, -20, 0, 18)
-	bar.BackgroundColor3 = BAR_BACKGROUND
-	bar.ClipsDescendants = true
-	bar.Parent = box
-
-	local barCorner = Instance.new("UICorner")
-	barCorner.CornerRadius = UDim.new(0, 6)
-	barCorner.Parent = bar
-
-	barFill = Instance.new("Frame")
-	barFill.Name = "Fill"
-	barFill.Size = UDim2.fromScale(0, 1)
-	barFill.BackgroundColor3 = BAR_COLOR
-	barFill.BorderSizePixel = 0
-	barFill.Parent = bar
-
-	barLabel = Instance.new("TextLabel")
-	barLabel.Name = "Percent"
-	barLabel.BackgroundTransparency = 1
-	barLabel.Size = UDim2.fromScale(1, 1)
-	barLabel.Font = Enum.Font.GothamBold
-	barLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-	barLabel.TextStrokeTransparency = 0.4
-	barLabel.TextScaled = true
-	barLabel.ZIndex = 2
-	barLabel.Parent = bar
+	bar = UiKit.bar(box, "Bar")
+	bar.Frame.Position = UDim2.fromOffset(10, 28)
+	bar.Frame.Size = UDim2.new(1, -20, 0, 18)
 
 	gui.Parent = player:WaitForChild("PlayerGui")
 end

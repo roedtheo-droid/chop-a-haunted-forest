@@ -1,13 +1,17 @@
 --!strict
--- Shows the current tutorial quest on the left side of the screen, under the Coins.
+-- Shows the current tutorial quest on the left side of the screen, under the Coins,
+-- with a green bar for quests that take more than one step ("Pick up 3 logs").
 -- It only DISPLAYS the QuestIndex and QuestProgress attributes the server sets.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local UiKit = require(script.Parent.Parent.UiKit)
 
-local GOLD = Color3.fromRGB(255, 220, 90)
+local BOX_WIDTH = 250
+local BOX_HEIGHT = 58 -- without the bar
+local BAR_HEIGHT = 18
 
 local QuestController = {}
 
@@ -15,11 +19,18 @@ local player = Players.LocalPlayer
 local box: Frame
 local titleLabel: TextLabel
 local textLabel: TextLabel
+local bar: UiKit.Bar
 local hideToken = 0 -- so an old "hide" timer can't hide the box after it changed again
 
 local function getNumber(name: string): number
 	local value = player:GetAttribute(name)
 	return if typeof(value) == "number" then value else 0
+end
+
+-- The bar only shows for quests with more than one step. The box grows to make room for it.
+local function showBar(visible: boolean)
+	bar.Frame.Visible = visible
+	box.Size = UDim2.fromOffset(BOX_WIDTH, if visible then BOX_HEIGHT + BAR_HEIGHT + 6 else BOX_HEIGHT)
 end
 
 local function refresh()
@@ -36,6 +47,7 @@ local function refresh()
 	if not quest then
 		titleLabel.Text = "Quests"
 		textLabel.Text = "All quests done!"
+		showBar(false)
 		box.Visible = true
 		local myToken = hideToken
 		task.delay(Config.UI.QuestsDoneHideDelay, function()
@@ -47,11 +59,12 @@ local function refresh()
 	end
 
 	titleLabel.Text = `Quest {index}/{total}`
+	textLabel.Text = quest.Text
 	if quest.Goal > 1 then
-		textLabel.Text = `{quest.Text}  {getNumber("QuestProgress")}/{quest.Goal}`
-	else
-		textLabel.Text = quest.Text
+		local progress = getNumber("QuestProgress")
+		UiKit.setBar(bar, progress / quest.Goal, `{progress}/{quest.Goal}`)
 	end
+	showBar(quest.Goal > 1)
 	box.Visible = true
 end
 
@@ -60,41 +73,26 @@ function QuestController.init()
 	gui.Name = "Quests"
 	gui.ResetOnSpawn = false
 
-	box = Instance.new("Frame")
-	box.Name = "Box"
-	-- Just under the Coins label (which is centered at 45% height).
+	box = UiKit.box(gui, "Box")
+	-- Just under the Coins (which are centered at 45% height).
 	box.Position = UDim2.new(0, 16, 0.45, 28)
-	box.Size = UDim2.fromOffset(250, 62)
-	box.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-	box.BackgroundTransparency = 0.3
+	box.Size = UDim2.fromOffset(BOX_WIDTH, BOX_HEIGHT)
 	box.Visible = false
-	box.Parent = gui
 
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 10)
-	corner.Parent = box
-
-	titleLabel = Instance.new("TextLabel")
-	titleLabel.Name = "Title"
-	titleLabel.BackgroundTransparency = 1
+	titleLabel = UiKit.text(box, "Title", "", Config.Style.Gold)
 	titleLabel.Position = UDim2.fromOffset(10, 6)
-	titleLabel.Size = UDim2.new(1, -20, 0, 20)
-	titleLabel.Font = Enum.Font.GothamBlack
-	titleLabel.TextColor3 = GOLD
-	titleLabel.TextScaled = true
+	titleLabel.Size = UDim2.new(1, -20, 0, 18)
 	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-	titleLabel.Parent = box
 
-	textLabel = Instance.new("TextLabel")
-	textLabel.Name = "Text"
-	textLabel.BackgroundTransparency = 1
-	textLabel.Position = UDim2.fromOffset(10, 30)
+	textLabel = UiKit.text(box, "Text", "")
+	textLabel.Position = UDim2.fromOffset(10, 27)
 	textLabel.Size = UDim2.new(1, -20, 0, 24)
-	textLabel.Font = Enum.Font.GothamBold
-	textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-	textLabel.TextScaled = true
 	textLabel.TextXAlignment = Enum.TextXAlignment.Left
-	textLabel.Parent = box
+
+	bar = UiKit.bar(box, "Bar")
+	bar.Frame.Position = UDim2.fromOffset(10, BOX_HEIGHT)
+	bar.Frame.Size = UDim2.new(1, -20, 0, BAR_HEIGHT)
+	bar.Frame.Visible = false
 
 	gui.Parent = player:WaitForChild("PlayerGui")
 end

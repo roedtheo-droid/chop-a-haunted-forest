@@ -15,6 +15,7 @@ local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Shop = require(ReplicatedStorage.Shared.Shop)
 local Tags = require(ReplicatedStorage.Shared.Tags)
 local CoinManager = require(script.Parent.CoinManager)
+local QuestManager = require(script.Parent.QuestManager)
 local ToolManager = require(script.Parent.ToolManager)
 local UpgradeManager = require(script.Parent.UpgradeManager)
 
@@ -154,9 +155,17 @@ local function onBuy(player: Player, itemId: unknown)
 	if item.Kind == "Tool" then
 		ToolManager.give(player, item.Id)
 		notifyRemote:FireClient(player, `You bought the {item.Name}! Press its number key to hold it.`)
+		if item.Id == "Axe" then
+			QuestManager.report(player, "BuyAxe")
+		end
 	else
 		UpgradeManager.setLevel(player, item.Id, level + 1)
-		notifyRemote:FireClient(player, `{item.Name} is now level {level + 1}!`)
+		if Shop.maxLevel(item.Id) == 1 then
+			notifyRemote:FireClient(player, `You bought the {item.Name}!`)
+		else
+			notifyRemote:FireClient(player, `{item.Name} is now level {level + 1}!`)
+		end
+		QuestManager.report(player, "BuyUpgrade")
 	end
 end
 

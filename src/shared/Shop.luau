@@ -15,6 +15,7 @@ local items: { Types.ShopItem } = {
 	{ Id = "ChopDamage", Kind = "Upgrade", Name = "Chop Damage", Description = "+20% damage per level" },
 	{ Id = "CarryLimit", Kind = "Upgrade", Name = "Log Sack", Description = "Carry 3 more logs per level" },
 	{ Id = "WalkSpeed", Kind = "Upgrade", Name = "Walk Speed", Description = "Walk a bit faster per level" },
+	{ Id = "LogVacuum", Kind = "Upgrade", Name = "Log Vacuum", Description = "Nearby logs fly into your sack" },
 }
 Shop.Items = table.freeze(items)
 

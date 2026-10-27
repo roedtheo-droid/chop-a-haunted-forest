@@ -36,4 +36,13 @@ export type ShopItem = {
 	Description: string,
 }
 
+-- One tutorial quest (see Config.Quests).
+-- Event is what the player has to do; the server reports these events:
+--   "FellTree", "PickUpLog", "SellLogs", "BuyAxe", "BuyUpgrade"
+export type QuestConfig = {
+	Event: string,
+	Goal: number, -- how many times
+	Text: string, -- what the quest box says
+}
+
 return {}

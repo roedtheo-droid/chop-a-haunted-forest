@@ -10,6 +10,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local CoinManager = require(script.Parent.CoinManager)
 local LogManager = require(script.Parent.LogManager)
+local QuestManager = require(script.Parent.QuestManager)
 
 local BUILDING_COLOR = Color3.fromRGB(120, 85, 60)
 local ROOF_COLOR = Color3.fromRGB(70, 50, 40)
@@ -70,6 +71,7 @@ local function onPadTouched(hit: BasePart)
 	local coins = logs * Config.Coins.PerLog
 	CoinManager.add(player, coins)
 	notifyRemote:FireClient(player, `Sold {logs} log(s) for {coins} coins!`)
+	QuestManager.report(player, "SellLogs")
 end
 
 local function build(): BasePart

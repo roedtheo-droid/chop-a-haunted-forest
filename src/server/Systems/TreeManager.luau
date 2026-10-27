@@ -12,6 +12,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Tags = require(ReplicatedStorage.Shared.Tags)
 local LogManager = require(script.Parent.LogManager)
+local QuestManager = require(script.Parent.QuestManager)
 local ToolManager = require(script.Parent.ToolManager)
 local UpgradeManager = require(script.Parent.UpgradeManager)
 
@@ -173,6 +174,7 @@ local function onSwing(player: Player, target: unknown)
 
 	if hp <= 0 then
 		fellTree(tree, root.Position)
+		QuestManager.report(player, "FellTree")
 	end
 end
 

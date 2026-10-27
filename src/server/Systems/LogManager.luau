@@ -14,6 +14,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Tags = require(ReplicatedStorage.Shared.Tags)
+local QuestManager = require(script.Parent.QuestManager)
 
 local LOG_COLOR = Color3.fromRGB(130, 90, 55)
 
@@ -43,21 +44,33 @@ function LogManager.takeAll(player: Player): number
 	return carry
 end
 
-local function onPickUp(log: BasePart, player: Player)
-	-- Two players could press E on the same log at the same moment; only the first one gets it.
-	if log.Parent == nil then
-		return
-	end
+function LogManager.hasRoom(player: Player): boolean
+	return LogManager.getCarry(player) < getNumberAttribute(player, "CarryLimit")
+end
 
-	local carry = LogManager.getCarry(player)
-	local limit = getNumberAttribute(player, "CarryLimit")
-	if carry >= limit then
-		notifyRemote:FireClient(player, "Your backpack is full!")
-		return
+-- All logs lying on the ground right now.
+function LogManager.getLogs(): { Instance }
+	return logsFolder:GetChildren()
+end
+
+-- Put a log in the player's backpack. Returns false if the backpack is full
+-- or the log is already gone. Used by the "Pick up" prompt and the Log Vacuum.
+function LogManager.tryPickUp(player: Player, log: BasePart): boolean
+	-- Two players could grab the same log at the same moment; only the first one gets it.
+	if log.Parent == nil or not LogManager.hasRoom(player) then
+		return false
 	end
 
 	log:Destroy()
-	LogManager.setCarry(player, carry + 1)
+	LogManager.setCarry(player, LogManager.getCarry(player) + 1)
+	QuestManager.report(player, "PickUpLog")
+	return true
+end
+
+local function onPickUp(log: BasePart, player: Player)
+	if log.Parent ~= nil and not LogManager.tryPickUp(player, log) then
+		notifyRemote:FireClient(player, "Your backpack is full!")
+	end
 end
 
 local function createLog(position: Vector3, yaw: number): BasePart

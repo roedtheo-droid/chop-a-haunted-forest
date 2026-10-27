@@ -18,22 +18,24 @@ The full design is in [GAME_DESIGN.md](GAME_DESIGN.md). Rules for working on it 
 You only do this once per PC.
 
 1. **Install Git:** download it from https://git-scm.com/download/win and click through the installer with the default options.
-2. **Install Aftman** (it installs Rojo at the exact version this project uses):
-   1. Go to https://github.com/LPGhatguy/aftman/releases and download the `windows-x86_64` zip from the latest release.
-   2. Unzip it. Open a terminal (PowerShell) in that folder and run: `.\aftman.exe self-install`
-   3. Close the terminal and open a new one.
-3. **Get the project:** in a new terminal, go to where you want the project and clone it:
+2. **Get the project:** open PowerShell and run:
    ```
    cd Documents
-   git clone https://github.com/<your-name>/chop-a-haunted-forest.git
+   git clone https://github.com/roedtheo-droid/chop-a-haunted-forest.git
    cd chop-a-haunted-forest
    ```
-4. **Install Rojo:** in the project folder run `aftman install`. Type `y` if it asks whether to trust `rojo`.
-5. **Install the Rojo plugin in Studio:** close Roblox Studio, then run `rojo plugin install`.
+3. **Download Rojo into the project folder** (paste one line at a time):
+   ```
+   $u = "https://github.com/rojo-rbx/rojo/releases/download/v7.4.4/rojo-7.4.4-windows-x86_64.zip"
+   Invoke-WebRequest $u -OutFile rojo.zip
+   Expand-Archive rojo.zip . -Force
+   ```
+   This puts `rojo.exe` next to the code. Git ignores it, so it never gets uploaded.
+4. **Install the Rojo plugin in Studio:** close Roblox Studio, then run `.\rojo.exe plugin install`.
 
 ## Every time you work on the game
 
-1. Open a terminal in the project folder and run: `rojo serve`
+1. Open PowerShell in the project folder (`cd Documents\chop-a-haunted-forest`) and run: `.\rojo.exe serve`
    Leave this window open. It says `Rojo server listening` when it's ready.
 2. Open Roblox Studio and open your place (or make a new **Baseplate**).
 3. Go to the **Plugins** tab and click **Rojo**. A small Rojo window opens.

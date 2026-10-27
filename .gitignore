@@ -10,3 +10,7 @@ sourcemap.json
 # OS junk
 .DS_Store
 Thumbs.db
+
+# Rojo downloaded straight into the project folder
+rojo.exe
+rojo.zip

@@ -16,7 +16,7 @@ local Config = {
 	Forest = {
 		TreeCount = 30,
 		AreaSize = 160, -- trees spawn in a square this many studs wide, centered on the map
-		ClearRadius = 25, -- no trees this close to the center (keeps the spawn point clear)
+		ClearRadius = 30, -- no trees this close to the center (keeps spawn and sawmill clear)
 		MinSpacing = 10, -- minimum distance between two trees
 	},
 
@@ -46,6 +46,20 @@ local Config = {
 		PickupDistance = 8, -- how close you must be to see "Pick up"
 		Length = 4,
 		Thickness = 1.2,
+	},
+
+	-- Coins (per player, reset every run, not saved)
+	Coins = {
+		Starting = 0,
+		PerLog = 5, -- coins for each log sold
+	},
+
+	-- Sawmill (placeholder building near spawn)
+	Sawmill = {
+		Position = Vector3.new(0, 0, -20), -- center of the building (height is found automatically)
+		BuildingSize = Vector3.new(14, 10, 8),
+		PadSize = 8, -- the "DROP LOGS" pad is this many studs wide and deep
+		SellCooldown = 1, -- seconds between sells for one player (stops double-selling)
 	},
 
 	-- UI

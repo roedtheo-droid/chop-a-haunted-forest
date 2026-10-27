@@ -35,6 +35,14 @@ function LogManager.setCarry(player: Player, amount: number)
 	player:SetAttribute("Carry", amount)
 end
 
+-- Empty the player's backpack and return how many logs were in it.
+-- Used by the sawmill when the player sells.
+function LogManager.takeAll(player: Player): number
+	local carry = LogManager.getCarry(player)
+	LogManager.setCarry(player, 0)
+	return carry
+end
+
 local function onPickUp(log: BasePart, player: Player)
 	-- Two players could press E on the same log at the same moment; only the first one gets it.
 	if log.Parent == nil then

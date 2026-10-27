@@ -19,6 +19,16 @@ function CoinManager.add(player: Player, amount: number)
 	player:SetAttribute("Coins", CoinManager.get(player) + amount)
 end
 
+-- Take coins if the player has enough. Returns false (and takes nothing) if not.
+function CoinManager.spend(player: Player, amount: number): boolean
+	local coins = CoinManager.get(player)
+	if amount < 0 or coins < amount then
+		return false
+	end
+	player:SetAttribute("Coins", coins - amount)
+	return true
+end
+
 local function onPlayerAdded(player: Player)
 	player:SetAttribute("Coins", Config.Coins.Starting)
 end

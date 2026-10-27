@@ -5,6 +5,7 @@
 local Tags = {
 	Tree = "Tree", -- a standing tree that can be chopped
 	Log = "Log", -- a log lying on the ground
+	ShopPrompt = "ShopPrompt", -- the "Open shop" prompt at the Tool Shed
 }
 
 return table.freeze(Tags)

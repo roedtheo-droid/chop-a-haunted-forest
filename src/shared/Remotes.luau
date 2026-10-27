@@ -21,6 +21,10 @@ local list: { [string]: Types.RemoteKind } = {
 
 	-- Client -> server: "I swung at this tree". The server decides damage.
 	SwingAtTree = "Event",
+
+	-- Client -> server: "I want to buy this item" (an item Id from Shared/Shop).
+	-- The server checks the price, your coins and that you're at the Tool Shed.
+	BuyItem = "Event",
 }
 Remotes.List = table.freeze(list)
 

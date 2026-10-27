@@ -18,7 +18,10 @@ local systems: { Types.Module } = {
 	require(Systems.ForestSpawner),
 	require(Systems.LogManager),
 	require(Systems.CoinManager),
+	require(Systems.ToolManager),
+	require(Systems.UpgradeManager),
 	require(Systems.SawmillManager),
+	require(Systems.ShopManager),
 	require(Systems.TreeManager),
 }
 

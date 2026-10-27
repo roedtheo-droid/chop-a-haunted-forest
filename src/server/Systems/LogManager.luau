@@ -3,7 +3,7 @@
 --
 -- Each player has two attributes the client can read (but not change):
 --   Carry       how many logs they carry now
---   CarryLimit  how many logs fit in their backpack
+--   CarryLimit  how many logs fit in their backpack (set by UpgradeManager)
 -- Logs get a ProximityPrompt ("Pick up"). Prompts are triggered on the server,
 -- so the server always decides whether a pickup is allowed.
 
@@ -108,7 +108,6 @@ end
 
 local function onPlayerAdded(player: Player)
 	player:SetAttribute("Carry", 0)
-	player:SetAttribute("CarryLimit", Config.Logs.CarryLimit)
 end
 
 function LogManager.init()

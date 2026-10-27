@@ -24,6 +24,7 @@ local systems: { Types.Module } = {
 	require(Systems.LogManager),
 	require(Systems.CoinManager),
 	require(Systems.EmberManager),
+	require(Systems.RunManager),
 	require(Systems.ToolManager),
 	require(Systems.MovementManager),
 	require(Systems.UpgradeManager),
@@ -33,6 +34,7 @@ local systems: { Types.Module } = {
 	require(Systems.SawmillManager),
 	require(Systems.ShopManager),
 	require(Systems.TreeManager),
+	require(Systems.DebugManager), -- Studio-only test shortcuts
 }
 
 -- Step 1: set up every system.

@@ -7,7 +7,8 @@
 --            lands, anyone still inside is knocked down (KnockdownManager).
 --   Roots    Its trunk is too hard to chop. Its glowing roots are its weak points, and
 --            its HP (the bar on everyone's screen) is all its roots' HP added up.
--- When the last root breaks, it topples over and its zone (the whole forest) is clear.
+-- When the last root breaks, it topples over and its zone (the whole forest) is clear,
+-- and RunManager shows everyone the FOREST CLEARED! screen.
 --
 -- Players hit it through the normal SwingAtTree remote: TreeManager checks reach and
 -- cooldown like for any tree, then calls BossManager.hit.
@@ -24,6 +25,7 @@ local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Tags = require(ReplicatedStorage.Shared.Tags)
 local Zones = require(ReplicatedStorage.Shared.Zones)
 local KnockdownManager = require(script.Parent.KnockdownManager)
+local RunManager = require(script.Parent.RunManager)
 local ZoneManager = require(script.Parent.ZoneManager)
 
 local BARK_COLOR = Color3.fromRGB(45, 36, 34)
@@ -421,6 +423,7 @@ local function defeat(player: Player)
 		alpha:Destroy()
 		-- It lies there for good, and the last zone (so the whole forest) is clear.
 		ZoneManager.treeCleared(Boss.ZoneId)
+		RunManager.forestCleared()
 	end)
 	tween:Play()
 end

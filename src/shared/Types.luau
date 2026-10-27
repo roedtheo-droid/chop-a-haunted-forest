@@ -63,6 +63,16 @@ export type ZoneConfig = {
 -- It decides how long they're down and what their screen says.
 export type KnockdownCause = "Mimic" | "Slam"
 
+-- The party's totals for one run, shown on the FOREST CLEARED! screen
+-- (sent by Server/Systems/RunManager).
+export type RunSummary = {
+	TreesFelled: number,
+	MimicsBurned: number,
+	CoinsEarned: number,
+	Seconds: number, -- how long the run took
+	Embers: number, -- Embers everyone got for clearing the forest
+}
+
 -- What gets saved for each player (see Server/Systems/SaveManager).
 -- Only plain numbers, strings and tables: DataStores store everything as JSON text.
 export type SaveData = {

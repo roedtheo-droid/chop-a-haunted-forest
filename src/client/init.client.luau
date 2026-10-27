@@ -28,6 +28,8 @@ local controllers: { Types.Module } = {
 	require(Controllers.KnockdownController),
 	require(Controllers.LanternController),
 	require(Controllers.BossController),
+	require(Controllers.ForestClearedController),
+	require(Controllers.DebugController), -- Studio-only test buttons
 }
 
 -- Step 1: set up every controller.

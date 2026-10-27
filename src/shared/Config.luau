@@ -124,6 +124,9 @@ local Config = {
 	-- Debug
 	-- When true, the server and client print startup info to the Output window.
 	DebugPrints = true,
+	-- When true, Studio playtests show test shortcuts like the "Skip to boss" button.
+	-- They never work in the real game (see Server/Systems/DebugManager).
+	StudioShortcuts = true,
 
 	-- The forest: zones in a row with walls around them (see Shared/Zones.luau)
 	Forest = {
@@ -197,6 +200,7 @@ local Config = {
 	-- Embers: the permanent currency (saved, see Save below)
 	Embers = {
 		PerMimic = 5, -- Embers for the player who burns a mimic
+		PerForestCleared = 25, -- Embers for everyone in the server when the Elder Hollow falls
 	},
 
 	-- Saving Embers, lifetime stats and unlocks (see Server/Systems/SaveManager)

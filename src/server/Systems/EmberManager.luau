@@ -1,34 +1,28 @@
 --!strict
 -- Keeps track of each player's Embers, the permanent currency you get from burning mimics.
--- Embers are stored in an "Embers" attribute on the Player. Only the server changes it;
--- the client just reads it to show the HUD.
--- Not saved yet: Phase 8 adds DataStore saving and loads the amount when you join.
+-- Embers live in the player's save (SaveManager), so they're kept between visits.
+-- The "Embers" attribute on the Player is a copy for the HUD to show; only the server sets it.
 
-local Players = game:GetService("Players")
+local SaveManager = require(script.Parent.SaveManager)
 
 local EmberManager = {}
 
 function EmberManager.get(player: Player): number
-	local value = player:GetAttribute("Embers")
-	return if typeof(value) == "number" then value else 0
+	local data = SaveManager.getData(player)
+	return if data then data.Embers else 0
 end
 
 function EmberManager.add(player: Player, amount: number)
-	player:SetAttribute("Embers", EmberManager.get(player) + amount)
-end
-
-local function onPlayerAdded(player: Player)
-	player:SetAttribute("Embers", 0)
+	local data = SaveManager.getData(player)
+	if not data then
+		return -- the player already left
+	end
+	data.Embers += amount
+	player:SetAttribute("Embers", data.Embers)
 end
 
 function EmberManager.init() end
 
-function EmberManager.start()
-	Players.PlayerAdded:Connect(onPlayerAdded)
-	-- Players who joined before this ran (can happen in Studio).
-	for _, player in Players:GetPlayers() do
-		onPlayerAdded(player)
-	end
-end
+function EmberManager.start() end
 
 return EmberManager

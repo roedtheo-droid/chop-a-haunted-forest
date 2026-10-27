@@ -194,9 +194,21 @@ local Config = {
 		BurnTime = 2, -- seconds the mimic burns before it crumbles away
 	},
 
-	-- Embers: the permanent currency (saved from Phase 8 on)
+	-- Embers: the permanent currency (saved, see Save below)
 	Embers = {
 		PerMimic = 5, -- Embers for the player who burns a mimic
+	},
+
+	-- Saving Embers, lifetime stats and unlocks (see Server/Systems/SaveManager)
+	Save = {
+		StoreName = "PlayerData", -- the DataStore's name. Changing it starts everyone from scratch!
+		AutosaveInterval = 120, -- seconds between autosaves for each player
+		Retries = 5, -- tries for each load or save before giving up
+		RetryWait = 1, -- seconds before the first retry; doubles each time (1, 2, 4, 8)
+		LockTimeout = 300, -- a lock older than this is left over from a crashed server (keep it above AutosaveInterval)
+		LockedRetries = 5, -- how many times to wait for another server to finish saving your data
+		LockedWait = 3, -- seconds between those tries
+		ShutdownWait = 25, -- max seconds to wait for everyone's save when a server shuts down
 	},
 
 	-- Getting caught by a mimic

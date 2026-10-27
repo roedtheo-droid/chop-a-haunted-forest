@@ -20,6 +20,7 @@ local KnockdownManager = require(script.Parent.KnockdownManager)
 local LogManager = require(script.Parent.LogManager)
 local MimicManager = require(script.Parent.MimicManager)
 local QuestManager = require(script.Parent.QuestManager)
+local SaveManager = require(script.Parent.SaveManager)
 local ToolManager = require(script.Parent.ToolManager)
 local UpgradeManager = require(script.Parent.UpgradeManager)
 local ZoneManager = require(script.Parent.ZoneManager)
@@ -181,6 +182,7 @@ local function burnMimic(player: Player, tree: Model, trunk: BasePart)
 
 	local embers = Config.Embers.PerMimic
 	EmberManager.add(player, embers)
+	SaveManager.addStat(player, "MimicsBurned", 1)
 	notifyRemote:FireAllClients(`{player.DisplayName} burned a mimic and got {embers} Embers!`)
 
 	local fire = Instance.new("Fire")
@@ -283,7 +285,9 @@ local function onSwing(player: Player, target: unknown)
 		MimicManager.forget(tree)
 		fellTree(tree, trunk, root.Position, not wasMimic)
 		QuestManager.report(player, "FellTree")
+		SaveManager.addStat(player, "TreesFelled", 1) -- counts for whoever landed the last hit
 		if wasMimic then
+			SaveManager.addStat(player, "MimicsChopped", 1)
 			notifyRemote:FireAllClients(`{player.DisplayName} chopped down a mimic!`)
 		end
 	elseif MimicManager.isMimic(tree) then

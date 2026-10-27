@@ -59,6 +59,15 @@ export type ZoneConfig = {
 	MimicPercent: number, -- this % of the zone's trees are secretly mimics
 }
 
+-- What gets saved for each player (see Server/Systems/SaveManager).
+-- Only plain numbers, strings and tables: DataStores store everything as JSON text.
+export type SaveData = {
+	Version: number, -- which shape this save has, so old saves can be upgraded later
+	Embers: number,
+	Stats: { [string]: number }, -- lifetime stats, like Stats.TreesFelled
+	Unlocks: { string }, -- permanent unlocks bought with Embers (none yet)
+}
+
 -- One tutorial quest (see Config.Quests).
 -- Event is what the player has to do; the server reports these events:
 --   "FellTree", "PickUpLog", "SellLogs", "BuyAxe", "BuyUpgrade"

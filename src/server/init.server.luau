@@ -15,6 +15,7 @@ local Systems = script.Systems
 -- Order matters: systems higher in the list are set up first.
 local systems: { Types.Module } = {
 	require(Systems.RemoteService), -- first, so every other system can use remotes
+	require(Systems.SaveManager), -- early, so players' saves start loading as soon as possible
 	require(Systems.QuestManager),
 	require(Systems.ZoneManager), -- before anything that looks for the ground (it builds the zone floors)
 	require(Systems.ForestSpawner),

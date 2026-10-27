@@ -24,6 +24,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Tags = require(ReplicatedStorage.Shared.Tags)
 local Zones = require(ReplicatedStorage.Shared.Zones)
+local EffectsManager = require(script.Parent.EffectsManager)
 local KnockdownManager = require(script.Parent.KnockdownManager)
 local RunManager = require(script.Parent.RunManager)
 local ZoneManager = require(script.Parent.ZoneManager)
@@ -268,6 +269,8 @@ local function slam(at: Vector3)
 			KnockdownManager.knockDown(player, "Slam")
 		end
 	end
+	EffectsManager.playSound("BossSlam", center)
+	EffectsManager.burst("SlamDust", center + Vector3.new(0, 1, 0))
 
 	-- A white flash that spreads out and fades.
 	circle.Color = Color3.new(1, 1, 1)
@@ -326,6 +329,7 @@ local function wake()
 		light.Parent = root.Part
 	end
 	addEyes()
+	EffectsManager.playSound("BossWake", bossModel:GetPivot().Position)
 	shake(WAKE_SHAKE_TIME, math.rad(1.5))
 	task.spawn(slamLoop)
 end
@@ -373,6 +377,7 @@ local function breakRoot(root: Root, player: Player)
 		root.Model:Destroy()
 	end)
 	sink:Play()
+	EffectsManager.playSound("RootSnap", part.Position)
 
 	local left = 0
 	for _, other in roots do
@@ -421,6 +426,10 @@ local function defeat(player: Player)
 	)
 	tween.Completed:Connect(function()
 		alpha:Destroy()
+		-- A huge crash and a cloud of dust where it lands.
+		local landing = base + away * Config.Boss.TrunkHeight * 0.6
+		EffectsManager.playSound("BossFall", landing)
+		EffectsManager.burst("SlamDust", landing)
 		-- It lies there for good, and the last zone (so the whole forest) is clear.
 		ZoneManager.treeCleared(Boss.ZoneId)
 		RunManager.forestCleared()

@@ -9,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local CoinManager = require(script.Parent.CoinManager)
+local EffectsManager = require(script.Parent.EffectsManager)
 local LogManager = require(script.Parent.LogManager)
 local QuestManager = require(script.Parent.QuestManager)
 local RunManager = require(script.Parent.RunManager)
@@ -71,6 +72,12 @@ local function onPadTouched(hit: BasePart)
 
 	CoinManager.add(player, coins)
 	RunManager.record(player, "CoinsEarned", coins)
+	-- Coins burst out around the player standing on the pad (the cha-ching is played on
+	-- their own computer by SoundController, since only they need to hear it).
+	local root = character:FindFirstChild("HumanoidRootPart")
+	if root and root:IsA("BasePart") then
+		EffectsManager.burst("Coins", root.Position)
+	end
 	notifyRemote:FireClient(player, `Sold {logs} log(s) for {coins} coins!`)
 	QuestManager.report(player, "SellLogs")
 end

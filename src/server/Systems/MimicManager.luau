@@ -34,6 +34,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Tags = require(ReplicatedStorage.Shared.Tags)
 local Zones = require(ReplicatedStorage.Shared.Zones)
+local EffectsManager = require(script.Parent.EffectsManager)
 local ForestSpawner = require(script.Parent.ForestSpawner)
 local KnockdownManager = require(script.Parent.KnockdownManager)
 
@@ -653,6 +654,7 @@ function MimicManager.wake(tree: Model, hitBy: Player)
 	end
 	tree:PivotTo(CFrame.lookAt(base, base + facing.Unit))
 	addEyes(mimic)
+	EffectsManager.playSound("MimicWake", base)
 
 	notifyZone(mimic.ZoneId, "A mimic woke up! Run!")
 	task.spawn(runAwake, mimic, mimic.Gen)

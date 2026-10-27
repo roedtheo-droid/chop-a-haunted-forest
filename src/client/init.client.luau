@@ -21,6 +21,7 @@ local controllers: { Types.Module } = {
 	require(Controllers.HudController),
 	require(Controllers.ZoneController),
 	require(Controllers.AtmosphereController),
+	require(Controllers.SoundController),
 	require(Controllers.QuestController),
 	require(Controllers.BackpackController),
 	require(Controllers.ChopController),

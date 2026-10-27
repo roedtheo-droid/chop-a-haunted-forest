@@ -140,7 +140,11 @@ local function onBuy(player: Player, itemId: unknown)
 	local level = if item.Kind == "Upgrade" then UpgradeManager.getLevel(player, item.Id) else 0
 	local price = Shop.priceOf(item, level)
 	if not price then
-		notifyRemote:FireClient(player, `{item.Name} is already max level!`)
+		if Shop.maxLevel(item.Id) == 1 then
+			notifyRemote:FireClient(player, `You already have the {item.Name}.`)
+		else
+			notifyRemote:FireClient(player, `{item.Name} is already max level!`)
+		end
 		return
 	end
 

@@ -256,7 +256,7 @@ local Config = {
 
 	-- The cartoony look (see STYLE_GUIDE.md): colours and fonts for buildings, signs and the UI.
 	Style = {
-		TitleFont = Enum.Font.LuckiestGuy, -- big words: signs, "TIMBER!", "FOREST CLEARED!"
+		TitleFont = Enum.Font.LuckiestGuy, -- big words: signs, "FOREST CLEARED!"
 		BodyFont = Enum.Font.FredokaOne, -- everything else
 		TextStroke = 3, -- the black outline around text, in pixels
 		Wood = Color3.fromRGB(168, 105, 58), -- cabin walls and signs
@@ -313,8 +313,6 @@ local Config = {
 		HpBarFull = Color3.fromRGB(110, 220, 70),
 		HpBarLow = Color3.fromRGB(235, 70, 50),
 		EffectsDistance = 150, -- you only see effects on trees this close
-		TimberTime = 1.4, -- seconds "TIMBER!" stays up
-		TimberSize = 9, -- studs wide
 		ShakeDistance = 45, -- your camera shakes when a tree lands this close to you
 		ShakeStrength = 0.5, -- studs the camera moves at most
 		ShakeTime = 0.4,

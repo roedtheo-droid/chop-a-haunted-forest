@@ -3,8 +3,7 @@
 -- player about each hit (the TreeHit remote), and each player draws the effects on their own screen:
 --   * little wood cubes fly out of the notch, and the crown of leaves wobbles
 --   * an HP bar over the tree, for a few seconds after the last hit
---   * "TIMBER!" over a tree that starts to fall, then a puff of dust and a camera shake
---     where it lands
+--   * a puff of dust and a camera shake where a falling tree lands
 -- None of this changes the game, so it's fine that it runs on the client.
 -- (The notch itself is built by the server, so every player sees the same one.)
 
@@ -248,49 +247,8 @@ local function updateBars(deltaTime: number)
 end
 
 ---------------------------------------------------------------------------
--- TIMBER!, dust and camera shake (when a tree falls)
+-- Dust and camera shake (when a tree falls)
 ---------------------------------------------------------------------------
-
--- An invisible part that a BillboardGui can float above. It stays put while the tree falls.
-local function anchorAt(position: Vector3): Part
-	local anchor = plainPart("EffectAnchor", Vector3.one * 0.2, CFrame.new(position), Color3.new(1, 1, 1))
-	anchor.Anchored = true
-	anchor.CanCollide = false
-	anchor.Transparency = 1
-	anchor.Parent = folder
-	return anchor
-end
-
-local function showTimber(position: Vector3)
-	local anchor = anchorAt(position)
-	local gui = Instance.new("BillboardGui")
-	gui.Adornee = anchor
-	gui.Size = UDim2.fromScale(cfg.TimberSize, cfg.TimberSize / 3.5)
-	gui.AlwaysOnTop = true
-	gui.LightInfluence = 0
-	gui.Parent = anchor
-
-	local label = outlinedText(gui, "TIMBER!", Style.TitleFont, Style.HazardYellow)
-	label.Rotation = -6
-	local scale = Instance.new("UIScale")
-	scale.Scale = 0
-	scale.Parent = label
-
-	-- Pop in, float up a little, then fade out.
-	TweenService:Create(scale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
-	TweenService:Create(gui, TweenInfo.new(cfg.TimberTime), { StudsOffsetWorldSpace = Vector3.new(0, 3, 0) }):Play()
-	task.delay(cfg.TimberTime * 0.7, function()
-		local fadeInfo = TweenInfo.new(cfg.TimberTime * 0.3)
-		TweenService:Create(label, fadeInfo, { TextTransparency = 1 }):Play()
-		local stroke = label:FindFirstChildOfClass("UIStroke")
-		if stroke then
-			TweenService:Create(stroke, fadeInfo, { Transparency = 1 }):Play()
-		end
-	end)
-	task.delay(cfg.TimberTime, function()
-		anchor:Destroy()
-	end)
-end
 
 -- A puff of grey-brown cubes that grow, drift out and fade where the tree lands.
 local function dustPuff(position: Vector3)
@@ -352,7 +310,6 @@ end
 local function onTreeFalling(tree: Model, trunk: BasePart, away: Vector3)
 	local base = tree:GetPivot().Position
 	local height = trunk.Size.Y -- the trunk is a block: Size.Y is its height
-	showTimber(base + Vector3.new(0, height + 2, 0))
 	-- The same spot the server uses for the crash sound.
 	local landing = base + away * height * 0.6
 	task.delay(Config.Tree.FallTime, function()

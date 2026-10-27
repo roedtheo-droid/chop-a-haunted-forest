@@ -1,5 +1,6 @@
 --!strict
--- Builds a placeholder sawmill in every zone, each with a glowing "DROP LOGS" pad.
+-- Builds a placeholder sawmill (a log cabin with a saw blade) in every zone, each with a
+-- striped "DROP LOGS" pad and a big "SELL LOGS" sign.
 -- When a player steps on a pad, the SERVER takes all their logs and pays them coins.
 -- The client never says how many logs it has or what they're worth, so it can't fake the amount.
 
@@ -13,11 +14,12 @@ local EffectsManager = require(script.Parent.EffectsManager)
 local LogManager = require(script.Parent.LogManager)
 local QuestManager = require(script.Parent.QuestManager)
 local RunManager = require(script.Parent.RunManager)
+local Blocky = require(script.Parent.Parent.Build.Blocky)
 
-local BUILDING_COLOR = Color3.fromRGB(120, 85, 60)
-local ROOF_COLOR = Color3.fromRGB(70, 50, 40)
-local PAD_COLOR = Color3.fromRGB(255, 200, 60)
+local PAD_COLOR = Color3.fromRGB(196, 138, 85) -- light wooden planks
 local PAD_THICKNESS = 0.4
+local STRIPE_WIDTH = 0.8 -- the yellow and black edge around the pad
+local SAW_SIZE = 5
 
 local SawmillManager = {}
 
@@ -29,18 +31,6 @@ local lastSell: { [Player]: number } = {}
 local function groundHeightAt(x: number, z: number): number
 	local result = workspace:Raycast(Vector3.new(x, 200, z), Vector3.new(0, -400, 0))
 	return if result then result.Position.Y else 0
-end
-
-local function makeLabel(parent: Instance, text: string)
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.fromScale(1, 1)
-	label.BackgroundTransparency = 1
-	label.Text = text
-	label.TextColor3 = Color3.fromRGB(255, 255, 255)
-	label.TextStrokeTransparency = 0.3
-	label.Font = Enum.Font.GothamBlack
-	label.TextScaled = true
-	label.Parent = parent
 end
 
 local function onPadTouched(hit: BasePart)
@@ -85,53 +75,50 @@ end
 local function build(center: Vector3): BasePart
 	local cfg = Config.Sawmill
 	local groundY = groundHeightAt(center.X, center.Z)
+	local ground = Vector3.new(center.X, groundY, center.Z)
 	local size = cfg.BuildingSize
 
 	local model = Instance.new("Model")
 	model.Name = "Sawmill"
 
-	local building = Instance.new("Part")
-	building.Name = "Building"
-	building.Size = size
-	building.Position = Vector3.new(center.X, groundY + size.Y / 2, center.Z)
-	building.Color = BUILDING_COLOR
-	building.Material = Enum.Material.WoodPlanks
-	building.Anchored = true
-	building.Parent = model
+	local building = Blocky.cabin("Building", ground, size, 1, model)
 
-	local roof = Instance.new("Part")
-	roof.Name = "Roof"
-	roof.Size = Vector3.new(size.X + 2, 1, size.Z + 2)
-	roof.Position = building.Position + Vector3.new(0, size.Y / 2 + 0.5, 0)
-	roof.Color = ROOF_COLOR
-	roof.Anchored = true
-	roof.Parent = model
+	-- A big saw blade on the side wall, so you can tell it's a sawmill.
+	local saw = Blocky.part(
+		"Saw",
+		Vector3.new(0.4, SAW_SIZE, SAW_SIZE),
+		CFrame.new(building.Position + Vector3.new(size.X / 2 + 0.2, 0, 0)),
+		Config.Style.Metal,
+		Enum.Material.Metal,
+		model
+	)
+	saw.Shape = Enum.PartType.Cylinder -- a cylinder's flat sides face along X
 
-	-- A sign floating above the roof.
-	local sign = Instance.new("BillboardGui")
-	sign.Name = "Sign"
-	sign.Size = UDim2.fromOffset(220, 50)
-	sign.StudsOffset = Vector3.new(0, size.Y / 2 + 4, 0)
-	sign.AlwaysOnTop = false
-	sign.MaxDistance = 150
-	sign.Parent = building
-	makeLabel(sign, "SAWMILL")
+	-- A "SELL LOGS" sign on the front wall, above the door.
+	Blocky.sign(
+		"SELL LOGS",
+		CFrame.new(ground + Vector3.new(0, size.Y * 0.84, size.Z / 2 + 0.3)),
+		size.X * 0.75,
+		size.Y * 0.24,
+		nil,
+		model
+	)
 
 	-- The pad sits in front of the building, on the side facing spawn and the zone's gate (+Z).
 	local dropPad = Instance.new("Part")
 	dropPad.Name = "DropPad"
 	dropPad.Size = Vector3.new(cfg.PadSize, PAD_THICKNESS, cfg.PadSize)
-	dropPad.Position = Vector3.new(center.X, groundY + PAD_THICKNESS / 2, center.Z + size.Z / 2 + cfg.PadSize / 2)
+	dropPad.Position = Vector3.new(center.X, groundY + PAD_THICKNESS / 2, center.Z + size.Z / 2 + cfg.PadSize / 2 + STRIPE_WIDTH)
 	dropPad.Color = PAD_COLOR
-	dropPad.Material = Enum.Material.Neon
+	dropPad.Material = Enum.Material.WoodPlanks
 	dropPad.Anchored = true
 	dropPad.Parent = model
+	Blocky.hazardEdge(dropPad, STRIPE_WIDTH, model)
 
-	local padText = Instance.new("SurfaceGui")
+	local padText = Blocky.face(dropPad, Enum.NormalId.Top)
 	padText.Name = "Text"
-	padText.Face = Enum.NormalId.Top
-	padText.Parent = dropPad
-	makeLabel(padText, "DROP LOGS")
+	local label = Blocky.label(padText, "DROP LOGS", Config.Style.TitleFont)
+	label.Rotation = 90 -- so it reads the right way up when you walk onto the pad from the front
 
 	model.Parent = workspace
 	return dropPad

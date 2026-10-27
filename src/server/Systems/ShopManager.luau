@@ -19,9 +19,8 @@ local CoinManager = require(script.Parent.CoinManager)
 local QuestManager = require(script.Parent.QuestManager)
 local ToolManager = require(script.Parent.ToolManager)
 local UpgradeManager = require(script.Parent.UpgradeManager)
+local Blocky = require(script.Parent.Parent.Build.Blocky)
 
-local WALL_COLOR = Color3.fromRGB(70, 95, 70)
-local ROOF_COLOR = Color3.fromRGB(45, 55, 45)
 local COUNTER_COLOR = Color3.fromRGB(150, 110, 70)
 
 local ShopManager = {}
@@ -44,39 +43,17 @@ local function buildShed(): BasePart
 	local model = Instance.new("Model")
 	model.Name = "ToolShed"
 
-	local building = Instance.new("Part")
-	building.Name = "Building"
-	building.Size = size
-	building.Position = Vector3.new(center.X, groundY + size.Y / 2, center.Z)
-	building.Color = WALL_COLOR
-	building.Material = Enum.Material.WoodPlanks
-	building.Anchored = true
-	building.Parent = model
-
-	local roof = Instance.new("Part")
-	roof.Name = "Roof"
-	roof.Size = Vector3.new(size.X + 2, 1, size.Z + 2)
-	roof.Position = building.Position + Vector3.new(0, size.Y / 2 + 0.5, 0)
-	roof.Color = ROOF_COLOR
-	roof.Anchored = true
-	roof.Parent = model
-
-	local sign = Instance.new("BillboardGui")
-	sign.Name = "Sign"
-	sign.Size = UDim2.fromOffset(220, 50)
-	sign.StudsOffset = Vector3.new(0, size.Y / 2 + 4, 0)
-	sign.MaxDistance = 150
-	sign.Parent = building
-
-	local signText = Instance.new("TextLabel")
-	signText.Size = UDim2.fromScale(1, 1)
-	signText.BackgroundTransparency = 1
-	signText.Text = "TOOL SHED"
-	signText.TextColor3 = Color3.fromRGB(255, 255, 255)
-	signText.TextStrokeTransparency = 0.3
-	signText.Font = Enum.Font.GothamBlack
-	signText.TextScaled = true
-	signText.Parent = sign
+	-- A log cabin with a big yellow "TOOL SHED" sign over the door.
+	local ground = Vector3.new(center.X, groundY, center.Z)
+	Blocky.cabin("Building", ground, size, 2, model)
+	Blocky.sign(
+		"TOOL SHED",
+		CFrame.new(ground + Vector3.new(0, size.Y * 0.84, size.Z / 2 + 0.3)),
+		size.X * 0.8,
+		size.Y * 0.26,
+		Config.Style.HazardYellow,
+		model
+	)
 
 	-- A counter in front of the shed (facing spawn) holds the "Open shop" prompt.
 	local shopCounter = Instance.new("Part")

@@ -27,6 +27,7 @@ local RunManager = require(script.Parent.RunManager)
 local ToolManager = require(script.Parent.ToolManager)
 local UpgradeManager = require(script.Parent.UpgradeManager)
 local ZoneManager = require(script.Parent.ZoneManager)
+local Blocky = require(script.Parent.Parent.Build.Blocky)
 
 local CHIP_COLOR = Color3.fromRGB(200, 160, 110)
 -- Which sound (in Config.Sounds) each chopping tool makes when it hits.
@@ -98,25 +99,37 @@ local function updateTrunkWidth(tree: Model, trunk: BasePart)
 	local scale = cfg.MinTrunkScale + (1 - cfg.MinTrunkScale) * hpFraction
 	local width = getNumberAttribute(tree, "TrunkWidth") * scale
 	-- Changing Size keeps the part's center, so the trunk shrinks evenly.
-	trunk.Size = Vector3.new(trunk.Size.X, width, width)
+	-- (The trunk is a block: Size.Y is its height.)
+	trunk.Size = Vector3.new(width, trunk.Size.Y, width)
 end
 
--- A short stump stays where the tree stood, so cleared areas are easy to spot.
--- A burned mimic leaves a charred black stump.
+-- A short square stump with a light, ringed top stays where the tree stood, so cleared
+-- areas are easy to spot. The tree's roots stay with it. A burned mimic leaves a charred black stump.
 local function leaveStump(tree: Model, trunk: BasePart, charred: boolean)
 	local width = getNumberAttribute(tree, "TrunkWidth")
 	local height = Config.Tree.StumpHeight
-	local stump = Instance.new("Part")
-	stump.Name = "Stump"
-	stump.Shape = Enum.PartType.Cylinder
-	stump.Size = Vector3.new(height, width, width)
-	stump.CFrame = CFrame.new(tree:GetPivot().Position + Vector3.new(0, height / 2, 0)) * CFrame.Angles(0, 0, math.rad(90))
 	-- Normal stumps are a bit darker than the bark.
-	stump.Color = if charred then CHAR_COLOR else trunk.Color:Lerp(Color3.new(0, 0, 0), 0.25)
-	stump.Material = Enum.Material.Wood
-	stump.Anchored = true
+	local color = if charred then CHAR_COLOR else trunk.Color:Lerp(Color3.new(0, 0, 0), 0.25)
+	local stump = Blocky.part(
+		"Stump",
+		Vector3.new(width, height, width),
+		CFrame.new(tree:GetPivot().Position + Vector3.new(0, height / 2, 0)) * trunk.CFrame.Rotation,
+		color,
+		Enum.Material.Wood,
+		stumpsFolder
+	)
 	stump.CanCollide = false -- so nobody gets stuck on stumps
-	stump.Parent = stumpsFolder
+	if not charred then
+		Blocky.rings(stump, Enum.NormalId.Top)
+	end
+	for _, part in tree:GetChildren() do
+		if part.Name == "Root" and part:IsA("BasePart") then
+			part.Parent = stumpsFolder
+			if charred then
+				part.Color = CHAR_COLOR
+			end
+		end
+	end
 end
 
 -- Tip the tree over, away from the player, then drop logs and remove it.
@@ -167,7 +180,7 @@ local function fellTree(tree: Model, trunk: BasePart, fromPosition: Vector3, wit
 	tween.Completed:Connect(function()
 		alpha:Destroy()
 		-- A crash and a puff of dust where the tree hits the ground.
-		local landing = base + away * trunk.Size.X * 0.6 -- Size.X is the trunk's length
+		local landing = base + away * trunk.Size.Y * 0.6 -- Size.Y is the trunk's height
 		EffectsManager.playSound("TreeFall", landing)
 		EffectsManager.burst("Dust", landing)
 		LogManager.spawnLogs(
@@ -227,6 +240,12 @@ local function burnMimic(player: Player, tree: Model, trunk: BasePart)
 		end
 		for _, part in parts do
 			TweenService:Create(part, TweenInfo.new(CRUMBLE_TIME), { Transparency = 1 }):Play()
+		end
+		-- Pictures on parts (like birch marks) don't fade with the part, so hide them.
+		for _, descendant in tree:GetDescendants() do
+			if descendant:IsA("SurfaceGui") then
+				descendant.Enabled = false
+			end
 		end
 		task.delay(CRUMBLE_TIME, function()
 			tree:Destroy()

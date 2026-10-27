@@ -21,6 +21,7 @@ local AtmosphereController = {}
 
 local player = Players.LocalPlayer
 local atmosphere: Atmosphere
+local colorCorrection: ColorCorrectionEffect -- makes colours stronger and tints the screen per zone
 local ambience: { Sound } = {} -- ambience[i] is zone i's background sound
 local currentZone: number? = nil
 local playing: { Tween } = {}
@@ -45,6 +46,10 @@ local function fadeTo(zone: number, seconds: number)
 			Brightness = look.Brightness,
 			Ambient = look.Ambient,
 			OutdoorAmbient = look.Ambient,
+		}),
+		TweenService:Create(colorCorrection, info, {
+			Saturation = look.Saturation,
+			TintColor = look.Tint,
 		}),
 		TweenService:Create(atmosphere, info, {
 			Density = look.FogDensity,
@@ -86,6 +91,20 @@ function AtmosphereController.init()
 		atmosphere = Instance.new("Atmosphere")
 		atmosphere.Parent = Lighting
 	end
+
+	-- The cartoony look (see STYLE_GUIDE.md): soft shadows, a gentle glow on bright things,
+	-- and a colour filter that each zone's Look fades.
+	local cfg = Config.ZoneLook
+	Lighting.ShadowSoftness = cfg.ShadowSoftness
+	colorCorrection = Instance.new("ColorCorrectionEffect")
+	colorCorrection.Name = "ZoneColor"
+	colorCorrection.Parent = Lighting
+	local bloom = Instance.new("BloomEffect")
+	bloom.Name = "ZoneBloom"
+	bloom.Intensity = cfg.BloomIntensity
+	bloom.Size = cfg.BloomSize
+	bloom.Threshold = cfg.BloomThreshold
+	bloom.Parent = Lighting
 
 	-- One looping background sound per zone, all silent until you walk into that zone.
 	local folder = Instance.new("Folder")

@@ -28,9 +28,16 @@ local EffectsManager = require(script.Parent.EffectsManager)
 local KnockdownManager = require(script.Parent.KnockdownManager)
 local RunManager = require(script.Parent.RunManager)
 local ZoneManager = require(script.Parent.ZoneManager)
+local Blocky = require(script.Parent.Parent.Build.Blocky)
 
 local BARK_COLOR = Color3.fromRGB(45, 36, 34)
 local CROWN_COLOR = Color3.fromRGB(50, 38, 58)
+-- Where the extra leaf blocks sit around the crown's middle (times CrownSize).
+local CROWN_BLOCKS = {
+	Vector3.new(0.45, -0.1, 0.2),
+	Vector3.new(-0.4, 0.05, -0.3),
+	Vector3.new(0.1, 0.35, -0.35),
+}
 local ROOT_GLOW = Color3.fromRGB(255, 110, 40)
 local BROKEN_ROOT_COLOR = Color3.fromRGB(70, 65, 60)
 local EYE_COLOR = Color3.fromRGB(255, 50, 30)
@@ -121,7 +128,7 @@ local function buildRoot(index: number, base: Vector3): Root
 
 	local model = Instance.new("Model")
 	model.Name = `Root{index}`
-	-- A cylinder's length runs along its X axis: turn it to point outwards, then tip
+	-- A root is a long block lying along its X axis: turn it to point outwards, then tip
 	-- its far end down into the ground.
 	local cframe = CFrame.lookAt(middle, middle + outward)
 		* CFrame.Angles(0, math.rad(90), 0)
@@ -129,7 +136,7 @@ local function buildRoot(index: number, base: Vector3): Root
 		+ Vector3.new(0, cfg.RootThickness * 0.3, 0)
 	local part = makePart(
 		"Root",
-		Enum.PartType.Cylinder,
+		Enum.PartType.Block,
 		Vector3.new(cfg.RootLength, cfg.RootThickness, cfg.RootThickness),
 		cframe,
 		BARK_COLOR,
@@ -157,23 +164,37 @@ local function build()
 
 	bossModel = Instance.new("Model")
 	bossModel.Name = "ElderHollow"
+	-- A huge blocky tree, like the forest's trees (see Build/Blocky.luau).
 	makePart(
 		"Trunk",
-		Enum.PartType.Cylinder,
-		Vector3.new(cfg.TrunkHeight, cfg.TrunkWidth, cfg.TrunkWidth),
-		CFrame.new(base + Vector3.new(0, cfg.TrunkHeight / 2, 0)) * CFrame.Angles(0, 0, math.rad(90)),
+		Enum.PartType.Block,
+		Vector3.new(cfg.TrunkWidth, cfg.TrunkHeight, cfg.TrunkWidth),
+		CFrame.new(base + Vector3.new(0, cfg.TrunkHeight / 2, 0)),
 		BARK_COLOR,
 		bossModel
 	)
+	local crownCenter = base + Vector3.new(0, cfg.TrunkHeight, 0)
 	local crown = makePart(
 		"Crown",
-		Enum.PartType.Ball,
+		Enum.PartType.Block,
 		Vector3.one * cfg.CrownSize,
-		CFrame.new(base + Vector3.new(0, cfg.TrunkHeight, 0)),
+		CFrame.new(crownCenter) * CFrame.Angles(0, math.rad(20), 0),
 		CROWN_COLOR,
 		bossModel
 	)
-	crown.Material = Enum.Material.Grass
+	crown.Material = Config.Tree.LeafMaterial
+	-- More leaf blocks around the main one, a bit lighter and darker.
+	for index, offset in CROWN_BLOCKS do
+		local block = makePart(
+			"Crown",
+			Enum.PartType.Block,
+			Vector3.one * cfg.CrownSize * 0.65,
+			CFrame.new(crownCenter + offset * cfg.CrownSize) * CFrame.Angles(0, math.rad(index * 25), 0),
+			Blocky.shade(CROWN_COLOR, if index % 2 == 0 then 0.1 else -0.15),
+			bossModel
+		)
+		block.Material = Config.Tree.LeafMaterial
+	end
 
 	-- Its pivot is the bottom of the trunk, so it topples over from its base.
 	bossModel.WorldPivot = CFrame.new(base)

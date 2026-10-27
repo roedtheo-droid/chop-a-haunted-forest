@@ -16,9 +16,8 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Zones = require(ReplicatedStorage.Shared.Zones)
 local EffectsManager = require(script.Parent.EffectsManager)
+local Blocky = require(script.Parent.Parent.Build.Blocky)
 
-local WALL_COLOR = Color3.fromRGB(45, 40, 38)
-local GATE_COLOR = Color3.fromRGB(30, 30, 34)
 local FLOOR_THICKNESS = 1
 local FLOOR_TOP = 0.05 -- a hair above the baseplate, so the two surfaces don't flicker
 
@@ -39,7 +38,7 @@ local function makePart(name: string, size: Vector3, position: Vector3, parent: 
 	part.Name = name
 	part.Size = size
 	part.Position = position
-	part.Color = WALL_COLOR
+	part.Color = Config.Scenery.FenceColor
 	part.Material = Enum.Material.WoodPlanks
 	part.Anchored = true
 	part.Parent = parent
@@ -47,15 +46,7 @@ local function makePart(name: string, size: Vector3, position: Vector3, parent: 
 end
 
 local function makeSignText(parent: Instance, text: string)
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.fromScale(1, 1)
-	label.BackgroundTransparency = 1
-	label.Text = text
-	label.TextColor3 = Color3.fromRGB(255, 255, 255)
-	label.TextStrokeTransparency = 0.3
-	label.Font = Enum.Font.GothamBlack
-	label.TextScaled = true
-	label.Parent = parent
+	Blocky.label(parent, text, Config.Style.BodyFont)
 end
 
 -- One flat floor per zone, so each zone has its own ground colour.
@@ -82,8 +73,7 @@ local function buildGate(index: number, z: number, parent: Instance): BasePart
 	local height = cfg.WallHeight
 	local gate =
 		makePart(`Gate{index}`, Vector3.new(Config.Gates.Width, height, cfg.WallThickness), Vector3.new(0, height / 2, z), parent)
-	gate.Color = GATE_COLOR
-	gate.Material = Enum.Material.Metal
+	gate.Color = Config.Scenery.GateColor
 
 	-- A sign on both sides of the gate.
 	local thisZone = Config.Zones[index].Name
@@ -110,11 +100,18 @@ local function buildWalls(parent: Instance)
 	local middleZ = (nearZ + farZ) / 2
 	local y = height / 2
 
-	-- Left, right, back (behind spawn) and far end.
-	makePart("LeftWall", Vector3.new(thick, height, length), Vector3.new(-halfWidth - thick / 2, y, middleZ), parent)
-	makePart("RightWall", Vector3.new(thick, height, length), Vector3.new(halfWidth + thick / 2, y, middleZ), parent)
-	makePart("BackWall", Vector3.new(cfg.Width + thick * 2, height, thick), Vector3.new(0, y, nearZ + thick / 2), parent)
-	makePart("FarWall", Vector3.new(cfg.Width + thick * 2, height, thick), Vector3.new(0, y, farZ - thick / 2), parent)
+	-- Left, right, back (behind spawn) and far end: a thick green hedge, so the forest's edge
+	-- looks like more forest (SceneryManager puts big trees just behind it).
+	local outer = {
+		makePart("LeftWall", Vector3.new(thick, height, length), Vector3.new(-halfWidth - thick / 2, y, middleZ), parent),
+		makePart("RightWall", Vector3.new(thick, height, length), Vector3.new(halfWidth + thick / 2, y, middleZ), parent),
+		makePart("BackWall", Vector3.new(cfg.Width + thick * 2, height, thick), Vector3.new(0, y, nearZ + thick / 2), parent),
+		makePart("FarWall", Vector3.new(cfg.Width + thick * 2, height, thick), Vector3.new(0, y, farZ - thick / 2), parent),
+	}
+	for _, wall in outer do
+		wall.Color = Config.Scenery.HedgeColor
+		wall.Material = Enum.Material.Grass
+	end
 
 	-- Between zones: two wall pieces with the gate in the middle.
 	local gateWidth = Config.Gates.Width

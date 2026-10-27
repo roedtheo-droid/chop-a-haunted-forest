@@ -1,5 +1,5 @@
 --!strict
--- Spawns placeholder trees (a trunk with a ball of leaves on top) in every zone.
+-- Spawns blocky placeholder trees (see Build/Blocky.tree) in every zone.
 -- Each tree is a Model tagged "Tree" with these attributes:
 --   HP, MaxHP     how much chopping it takes
 --   ZoneId        which zone it's in (1, 2, 3...)
@@ -17,6 +17,7 @@ local Tags = require(ReplicatedStorage.Shared.Tags)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Zones = require(ReplicatedStorage.Shared.Zones)
 local ZoneManager = require(script.Parent.ZoneManager)
+local Blocky = require(script.Parent.Parent.Build.Blocky)
 
 local MAX_ATTEMPTS_PER_TREE = 50
 local KNOT_COLOR = Color3.fromRGB(60, 40, 28)
@@ -35,59 +36,32 @@ local function groundHeightAt(x: number, z: number): number
 	return if result then result.Position.Y else 0
 end
 
-local function pickFrom(colors: { Color3 }): Color3
-	return colors[random:NextInteger(1, #colors)]
-end
-
 local function createTree(basePosition: Vector3, treeType: Types.TreeTypeConfig, cursed: boolean): Model
-	local cfg = Config.Tree
-	local trunkHeight = cfg.TrunkHeight * treeType.Scale
-	local trunkWidth = cfg.TrunkWidth * treeType.Scale
-	local leavesSize = cfg.LeavesSize * treeType.Scale
-
-	local model = Instance.new("Model")
+	local model = Blocky.tree(basePosition, treeType, random)
 	model.Name = if cursed then "CursedTree" else "Tree"
-
-	-- A cylinder's length runs along its X axis, so we turn it 90 degrees to stand it up.
-	local trunk = Instance.new("Part")
-	trunk.Name = "Trunk"
-	trunk.Shape = Enum.PartType.Cylinder
-	trunk.Size = Vector3.new(trunkHeight, trunkWidth, trunkWidth)
-	trunk.CFrame = CFrame.new(basePosition + Vector3.new(0, trunkHeight / 2, 0)) * CFrame.Angles(0, 0, math.rad(90))
-	trunk.Color = pickFrom(treeType.TrunkColors)
-	trunk.Material = Enum.Material.Wood
-	trunk.Anchored = true
-	trunk.Parent = model
-
-	local leaves = Instance.new("Part")
-	leaves.Name = "Leaves"
-	leaves.Shape = Enum.PartType.Ball
-	leaves.Size = Vector3.new(leavesSize, leavesSize, leavesSize)
-	leaves.Position = basePosition + Vector3.new(0, trunkHeight, 0)
-	leaves.Color = pickFrom(treeType.LeafColors)
-	leaves.Material = Enum.Material.Grass
-	leaves.Anchored = true
-	leaves.Parent = model
+	local trunk = model:FindFirstChild("Trunk") :: BasePart
 
 	-- Cursed trees glow purple so players can spot them from far away.
 	if cursed then
-		leaves.Color = Config.Cursed.Color
-		leaves.Material = Enum.Material.Neon
-		local glow = Instance.new("PointLight")
-		glow.Color = Config.Cursed.Color
-		glow.Range = leavesSize * 1.5
-		glow.Brightness = 2
-		glow.Parent = leaves
+		for _, part in model:GetChildren() do
+			if part:IsA("BasePart") and (part.Name == "Leaves" or part.Name == "LeafBlock") then
+				part.Color = Config.Cursed.Color
+				part.Material = Enum.Material.Neon
+			end
+		end
+		local leaves = model:FindFirstChild("Leaves")
+		if leaves then
+			local glow = Instance.new("PointLight")
+			glow.Color = Config.Cursed.Color
+			glow.Range = Config.Tree.LeavesSize * treeType.Scale * 1.5
+			glow.Brightness = 2
+			glow.Parent = leaves
+		end
 	end
-
-	-- The pivot is the bottom of the trunk, so the tree falls over from its base.
-	-- (No PrimaryPart on purpose: with a PrimaryPart, Roblox ignores WorldPivot
-	-- and uses the middle of the trunk instead.)
-	model.WorldPivot = CFrame.new(basePosition)
 
 	model:SetAttribute("MaxHP", treeType.MaxHP)
 	model:SetAttribute("HP", treeType.MaxHP)
-	model:SetAttribute("TrunkWidth", trunkWidth)
+	model:SetAttribute("TrunkWidth", trunk.Size.X) -- birches are thinner than other trees
 	model:SetAttribute("LogValue", treeType.LogValue * (if cursed then Config.Cursed.LogMultiplier else 1))
 	if cursed then
 		model:SetAttribute("Cursed", true)
@@ -108,16 +82,15 @@ function ForestSpawner.addKnot(tree: Model): BasePart?
 		return nil
 	end
 
-	-- The trunk cylinder lies along its X axis, so Size.X is its height and Size.Y its width.
-	local height = trunk.Size.X
-	local width = trunk.Size.Y
-	local angle = random:NextNumber(0, math.pi * 2)
-	local outward = Vector3.new(math.cos(angle), 0, math.sin(angle))
+	-- The trunk is a square block that isn't turned: Size.Y is its height, Size.X its width.
+	local height = trunk.Size.Y
+	local width = trunk.Size.X
+	local sides = { Vector3.xAxis, -Vector3.xAxis, Vector3.zAxis, -Vector3.zAxis }
+	local outward = sides[random:NextInteger(1, #sides)]
 
 	local knot = Instance.new("Part")
 	knot.Name = "Knot"
-	knot.Shape = Enum.PartType.Ball
-	knot.Size = Vector3.one * (width * 0.4)
+	knot.Size = Vector3.one * (width * 0.35)
 	knot.Position = tree:GetPivot().Position + Vector3.new(0, height * 0.45, 0) + outward * (width * 0.45)
 	knot.Color = KNOT_COLOR
 	knot.Material = Enum.Material.Wood

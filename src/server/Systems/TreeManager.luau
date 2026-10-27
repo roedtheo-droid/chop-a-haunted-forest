@@ -17,6 +17,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Tags = require(ReplicatedStorage.Shared.Tags)
 local BossManager = require(script.Parent.BossManager)
+local EffectsManager = require(script.Parent.EffectsManager)
 local EmberManager = require(script.Parent.EmberManager)
 local KnockdownManager = require(script.Parent.KnockdownManager)
 local LogManager = require(script.Parent.LogManager)
@@ -28,6 +29,13 @@ local UpgradeManager = require(script.Parent.UpgradeManager)
 local ZoneManager = require(script.Parent.ZoneManager)
 
 local CHIP_COLOR = Color3.fromRGB(200, 160, 110)
+-- Which sound (in Config.Sounds) each chopping tool makes when it hits.
+local CHOP_SOUNDS: { [string]: string } = {
+	Fists = "ChopFists",
+	Axe = "ChopAxe",
+	SteelAxe = "ChopSteelAxe",
+	Chainsaw = "ChopChainsaw",
+}
 local CHAR_COLOR = Color3.fromRGB(30, 25, 22) -- a burned mimic turns this colour
 local CRUMBLE_TIME = 0.8 -- seconds a burned mimic takes to fade away
 
@@ -158,6 +166,10 @@ local function fellTree(tree: Model, trunk: BasePart, fromPosition: Vector3, wit
 	)
 	tween.Completed:Connect(function()
 		alpha:Destroy()
+		-- A crash and a puff of dust where the tree hits the ground.
+		local landing = base + away * trunk.Size.X * 0.6 -- Size.X is the trunk's length
+		EffectsManager.playSound("TreeFall", landing)
+		EffectsManager.burst("Dust", landing)
 		LogManager.spawnLogs(
 			base,
 			away,
@@ -191,6 +203,8 @@ local function burnMimic(player: Player, tree: Model, trunk: BasePart)
 	fire.Size = math.clamp(getNumberAttribute(tree, "TrunkWidth") * 3, 2, 30) -- Fire can't be bigger than 30
 	fire.Heat = 15
 	fire.Parent = trunk
+	EffectsManager.playSound("Burn", trunk.Position)
+	local embers = EffectsManager.stream("Embers", trunk)
 
 	local parts: { BasePart } = {}
 	for _, descendant in tree:GetDescendants() do
@@ -208,6 +222,9 @@ local function burnMimic(player: Player, tree: Model, trunk: BasePart)
 	-- ...then fade away.
 	task.delay(burnTime, function()
 		fire.Enabled = false
+		if embers then
+			embers.Enabled = false
+		end
 		for _, part in parts do
 			TweenService:Create(part, TweenInfo.new(CRUMBLE_TIME), { Transparency = 1 }):Play()
 		end
@@ -267,8 +284,14 @@ local function onSwing(player: Player, target: unknown)
 	-- The SERVER decides the damage, from the held tool and upgrades.
 	local damage = stats.Damage * UpgradeManager.damageMultiplier(player)
 
+	-- Each chopping tool has its own hit sound (the Torch and Lantern don't chop).
+	local chopSound = CHOP_SOUNDS[toolId]
+
 	-- 4. The Elder Hollow and its roots: BossManager decides what a hit does.
 	if isBoss then
+		if chopSound then
+			EffectsManager.playSound(chopSound, tree:GetPivot().Position, player)
+		end
 		BossManager.hit(player, tree, damage)
 		return
 	end
@@ -294,6 +317,9 @@ local function onSwing(player: Player, target: unknown)
 	tree:SetAttribute("HP", hp)
 	emitChips(trunk)
 	updateTrunkWidth(tree, trunk)
+	if chopSound then
+		EffectsManager.playSound(chopSound, trunk.Position, player)
+	end
 
 	if hp <= 0 then
 		local wasMimic = MimicManager.isMimic(tree)

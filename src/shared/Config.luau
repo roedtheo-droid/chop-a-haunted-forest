@@ -25,6 +25,41 @@ local upgrades: { [string]: Types.UpgradeConfig } = {
 	LanternRadius = { PerLevel = 5, Prices = { 60, 120, 240 } }, -- the Lantern sees 5 studs further per level
 }
 
+-- Sounds. Swap any Id to change a sound (no code changes needed).
+-- "rbxassetid://..." sounds are free sounds from the Roblox Creator Store (most are from the
+-- Pro Sound Effects library); "rbxasset://sounds/..." ones are built into Roblox itself.
+local sounds: { [string]: Types.SoundConfig } = {
+	-- World sounds: everyone near the spot hears them (made by the server, see EffectsManager).
+	ChopFists = { Id = "rbxassetid://9113568548", Volume = 0.5 }, -- boxing glove thud
+	ChopAxe = { Id = "rbxassetid://9113974103", Volume = 0.6 }, -- slam into a wooden box
+	ChopSteelAxe = { Id = "rbxassetid://9120965080", Volume = 0.6 }, -- wood splintering
+	ChopChainsaw = { Id = "rbxassetid://133850299035625", Volume = 0.45, MinGap = 0.3 }, -- chainsaw bite
+	TreeFall = { Id = "rbxassetid://9120957463", Volume = 0.7, Range = 120 }, -- heavy wooden crash
+	MimicWake = { Id = "rbxassetid://9125475729", Volume = 0.9, Range = 120 }, -- creature growl and hiss
+	Burn = { Id = "rbxassetid://9114446277", Volume = 0.7 }, -- fire whoosh
+	GateOpen = { Id = "rbxassetid://9118644695", Volume = 1, Range = 300 }, -- heavy blocks scraping
+	BossWake = { Id = "rbxassetid://9113980319", Volume = 1, Range = 300 }, -- giant monster roar
+	BossSlam = { Id = "rbxassetid://9114036511", Volume = 1, Range = 200 }, -- deep impact
+	RootSnap = { Id = "rbxassetid://9120801590", Volume = 0.9, Range = 150 }, -- wood breaking
+	BossFall = { Id = "rbxassetid://9120957463", Volume = 1, Speed = 0.6, Range = 300 }, -- the tree crash, slower and deeper
+
+	-- Your own sounds: only you hear them (played on your computer, see SoundController).
+	LogPickup = { Id = "rbxasset://sounds/clickfast.wav", Volume = 0.5 },
+	Sell = { Id = "rbxassetid://1319346243", Volume = 0.6 }, -- coins into a cash register
+	Buy = { Id = "rbxassetid://9121189379", Volume = 0.6 }, -- bag of coins
+	QuestDone = { Id = "rbxasset://sounds/electronicpingshort.wav", Volume = 0.5 },
+	KnockedDown = { Id = "rbxassetid://9113525487", Volume = 0.7 }, -- body slam
+	ForestCleared = { Id = "rbxassetid://9042409054", Volume = 0.6 }, -- fanfare (APM Music)
+}
+
+-- Particle bursts (see Server/Systems/EffectsManager).
+local particles: { [string]: Types.ParticleConfig } = {
+	Dust = { Color = Color3.fromRGB(150, 130, 105), Amount = 30, Size = 1.6, Speed = 8, Lifetime = 1.2 }, -- trees landing, gates
+	Coins = { Color = Color3.fromRGB(255, 215, 60), Amount = 25, Size = 0.6, Speed = 16, Lifetime = 1 }, -- selling logs
+	Embers = { Color = Color3.fromRGB(255, 140, 40), Amount = 30, Size = 0.3, Speed = 6, Lifetime = 1.6 }, -- per second, while a mimic burns
+	SlamDust = { Color = Color3.fromRGB(120, 100, 90), Amount = 60, Size = 2.2, Speed = 22, Lifetime = 0.9 }, -- the boss's slam
+}
+
 -- Kinds of trees. Each zone uses one kind (see zones below).
 -- Trees further from spawn are bigger and tougher, but their logs are worth more.
 -- Mixed colours make the "bark colour slightly off" mimic tell (Phase 6) harder to spot.
@@ -90,6 +125,7 @@ local zones: { Types.ZoneConfig } = {
 			FogColor = Color3.fromRGB(199, 199, 199),
 			FogDecay = Color3.fromRGB(106, 112, 125),
 			Haze = 0,
+			Ambience = { Id = "rbxassetid://9112832288", Volume = 0.25 }, -- light birds, mountain air
 		},
 	},
 	{
@@ -112,6 +148,7 @@ local zones: { Types.ZoneConfig } = {
 			FogColor = Color3.fromRGB(170, 178, 175),
 			FogDecay = Color3.fromRGB(140, 145, 145),
 			Haze = 3,
+			Ambience = { Id = "rbxassetid://9120505513", Volume = 0.35 }, -- thin trickles and drips, echoing
 		},
 	},
 	{
@@ -134,6 +171,7 @@ local zones: { Types.ZoneConfig } = {
 			FogColor = Color3.fromRGB(70, 60, 85),
 			FogDecay = Color3.fromRGB(40, 35, 50),
 			Haze = 1.5,
+			Ambience = { Id = "rbxassetid://9114625552", Volume = 0.3 }, -- spooky, eerie wind
 		},
 	},
 }
@@ -181,10 +219,19 @@ local Config = {
 		MessageCooldown = 3, -- seconds between "Clear every tree first" messages for one player
 	},
 
-	-- Each zone's light and fog (the Look in each zone above) fades in when you walk in.
+	-- Each zone's light, fog and background sound (the Look in each zone above) fade in when you walk in.
 	ZoneLook = {
 		FadeTime = 3, -- seconds the change takes
 		Refresh = 0.5, -- seconds between checks of which zone you're in
+	},
+
+	Sounds = sounds,
+	Particles = particles,
+
+	-- World sounds and particles (see Server/Systems/EffectsManager)
+	Effects = {
+		SoundRange = 80, -- world sounds are heard up to this many studs away (unless a sound sets its own Range)
+		SoundFullVolume = 10, -- ...and are at full volume within this many studs
 	},
 
 	-- The glowing line to the nearest tree when a zone is almost cleared

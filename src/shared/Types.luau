@@ -46,6 +46,24 @@ export type TreeTypeConfig = {
 	LeafColors: { Color3 }, -- each tree picks one at random
 }
 
+-- One sound (see Config.Sounds).
+export type SoundConfig = {
+	Id: string, -- "rbxassetid://123" from the Creator Store, or "rbxasset://sounds/..." built into Roblox
+	Volume: number, -- 0 to 1 (0.5 is a good start)
+	Speed: number?, -- 1 if not set. Lower is slower and deeper.
+	Range: number?, -- world sounds: heard up to this many studs away (Config.Effects.SoundRange if not set)
+	MinGap: number?, -- seconds before the same player can make this sound again (stops chainsaw spam)
+}
+
+-- One kind of particle burst (see Config.Particles).
+export type ParticleConfig = {
+	Color: Color3,
+	Amount: number, -- particles per burst (or per second for a stream, like burning embers)
+	Size: number,
+	Speed: number,
+	Lifetime: number, -- seconds each particle lives
+}
+
 -- How a zone looks: its light and fog (see Client/Controllers/AtmosphereController).
 -- It only changes YOUR screen, while you're in that zone.
 export type ZoneLookConfig = {
@@ -57,6 +75,7 @@ export type ZoneLookConfig = {
 	FogColor: Color3,
 	FogDecay: Color3, -- the colour of the fog far away
 	Haze: number, -- 0 to 10, how washed out the distance looks
+	Ambience: SoundConfig, -- a quiet background sound that loops while you're in the zone
 }
 
 -- One zone (see Config.Zones). Zones sit in a row, starting at spawn.

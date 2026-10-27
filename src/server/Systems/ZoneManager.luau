@@ -15,6 +15,7 @@ local TweenService = game:GetService("TweenService")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Zones = require(ReplicatedStorage.Shared.Zones)
+local EffectsManager = require(script.Parent.EffectsManager)
 
 local WALL_COLOR = Color3.fromRGB(45, 40, 38)
 local GATE_COLOR = Color3.fromRGB(30, 30, 34)
@@ -133,6 +134,10 @@ local function openGate(index: number)
 		return
 	end
 	gate.CanTouch = false
+	-- A grinding rumble and dust where the gate sinks into the ground.
+	local bottom = gate.Position - Vector3.new(0, gate.Size.Y / 2, 0)
+	EffectsManager.playSound("GateOpen", gate.Position)
+	EffectsManager.burst("Dust", bottom)
 	local tween = TweenService:Create(
 		gate,
 		TweenInfo.new(Config.Gates.OpenTime, Enum.EasingStyle.Quad, Enum.EasingDirection.In),

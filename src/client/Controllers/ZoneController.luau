@@ -209,9 +209,8 @@ local function buildHelper()
 	beam.Parent = marker
 
 	markerSign = Instance.new("BillboardGui")
-	markerSign.Size = UDim2.fromOffset(50, 50)
-	markerSign.StudsOffsetWorldSpace = Vector3.new(0, 22, 0) -- above the treetop
-	markerSign.AlwaysOnTop = true -- visible through other trees
+	markerSign.Size = UDim2.fromOffset(70, 70)
+	markerSign.StudsOffsetWorldSpace = Vector3.new(0, 26, 0) -- above even the tallest treetops
 	markerSign.Enabled = false
 	markerSign.Parent = marker
 

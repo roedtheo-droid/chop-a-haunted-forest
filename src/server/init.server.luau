@@ -18,11 +18,14 @@ local systems: { Types.Module } = {
 	require(Systems.QuestManager),
 	require(Systems.ZoneManager), -- before anything that looks for the ground (it builds the zone floors)
 	require(Systems.ForestSpawner),
+	require(Systems.MimicManager), -- after ForestSpawner (it picks mimics from the spawned trees)
 	require(Systems.LogManager),
 	require(Systems.CoinManager),
 	require(Systems.ToolManager),
+	require(Systems.MovementManager),
 	require(Systems.UpgradeManager),
 	require(Systems.LogVacuumManager),
+	require(Systems.KnockdownManager),
 	require(Systems.SawmillManager),
 	require(Systems.ShopManager),
 	require(Systems.TreeManager),

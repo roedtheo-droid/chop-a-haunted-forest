@@ -2,7 +2,7 @@
 -- Keeps each player's upgrade levels and applies what they do:
 --   ChopDamage  more damage per hit (read by TreeManager)
 --   CarryLimit  a bigger backpack (sets the "CarryLimit" attribute)
---   WalkSpeed   faster walking (sets the Humanoid's WalkSpeed)
+--   WalkSpeed   faster walking (MovementManager reads the level and sets the speed)
 -- Levels are player attributes like "Upgrade_WalkSpeed" that only the server sets.
 
 local Players = game:GetService("Players")
@@ -10,6 +10,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Shop = require(ReplicatedStorage.Shared.Shop)
+local MovementManager = require(script.Parent.MovementManager)
 
 local UpgradeManager = {}
 
@@ -27,17 +28,9 @@ function UpgradeManager.damageMultiplier(player: Player): number
 	return 1 + bonus(player, "ChopDamage")
 end
 
-local function applyWalkSpeed(player: Player)
-	local character = player.Character
-	local humanoid = if character then character:FindFirstChildOfClass("Humanoid") else nil
-	if humanoid then
-		humanoid.WalkSpeed = Config.Player.BaseWalkSpeed + bonus(player, "WalkSpeed")
-	end
-end
-
 local function apply(player: Player)
 	player:SetAttribute("CarryLimit", Config.Logs.CarryLimit + bonus(player, "CarryLimit"))
-	applyWalkSpeed(player)
+	MovementManager.refresh(player)
 end
 
 function UpgradeManager.setLevel(player: Player, upgradeId: string, level: number)
@@ -50,12 +43,6 @@ local function onPlayerAdded(player: Player)
 		player:SetAttribute(Shop.levelAttribute(upgradeId), 0)
 	end
 	apply(player)
-
-	-- A new character gets Roblox's default speed, so set ours again.
-	player.CharacterAdded:Connect(function(character: Model)
-		character:WaitForChild("Humanoid")
-		applyWalkSpeed(player)
-	end)
 end
 
 function UpgradeManager.init() end

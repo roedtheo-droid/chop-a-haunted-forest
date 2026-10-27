@@ -15,8 +15,7 @@ local Remotes = {}
 Remotes.FolderName = "Remotes"
 
 local list: { [string]: Types.RemoteKind } = {
-	-- Server -> client: show a short message to one player
-	-- (later used for things like "Clear every tree first (N left)").
+	-- Server -> client: show a short message (like "Clear every tree first (N left)").
 	Notify = "Event",
 
 	-- Client -> server: "I swung at this tree". The server decides damage.
@@ -25,6 +24,10 @@ local list: { [string]: Types.RemoteKind } = {
 	-- Client -> server: "I want to buy this item" (an item Id from Shared/Shop).
 	-- The server checks the price, your coins and that you're at the Tool Shed.
 	BuyItem = "Event",
+
+	-- Client -> server: "I'm holding sprint" (true) or "I let go" (false).
+	-- The server decides the actual speed.
+	SetSprint = "Event",
 }
 Remotes.List = table.freeze(list)
 

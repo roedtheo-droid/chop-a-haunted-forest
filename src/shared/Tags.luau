@@ -6,6 +6,8 @@ local Tags = {
 	Tree = "Tree", -- a standing tree that can be chopped
 	Log = "Log", -- a log lying on the ground
 	ShopPrompt = "ShopPrompt", -- the "Open shop" prompt at the Tool Shed
+	AwakeMimic = "AwakeMimic", -- a mimic that woke up and is chasing players (it can still be chopped)
+	RevivePrompt = "RevivePrompt", -- the "Revive" prompt on a knocked-down player
 }
 
 return table.freeze(Tags)

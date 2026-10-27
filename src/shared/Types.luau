@@ -55,6 +55,7 @@ export type ZoneConfig = {
 	GroundMaterial: Enum.Material,
 	Sawmill: Vector3, -- where this zone's sawmill stands (height is found automatically)
 	ClearRadius: number, -- no trees this close to the sawmill
+	MimicPercent: number, -- this % of the zone's trees are secretly mimics
 }
 
 -- One tutorial quest (see Config.Quests).

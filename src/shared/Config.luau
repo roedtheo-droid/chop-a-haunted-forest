@@ -21,6 +21,83 @@ local upgrades: { [string]: Types.UpgradeConfig } = {
 	LogVacuum = { PerLevel = 1, Prices = { 300 } }, -- one level: you have it or you don't
 }
 
+-- Kinds of trees. Each zone uses one kind (see zones below).
+-- Trees further from spawn are bigger and tougher, but their logs are worth more.
+-- Mixed colours make the "bark colour slightly off" mimic tell (Phase 6) harder to spot.
+local treeTypes: { [string]: Types.TreeTypeConfig } = {
+	Birch = {
+		MaxHP = 30,
+		LogValue = 5,
+		Scale = 1,
+		TrunkColors = { Color3.fromRGB(105, 70, 45), Color3.fromRGB(225, 220, 205), Color3.fromRGB(150, 120, 90) },
+		LeafColors = {
+			Color3.fromRGB(140, 180, 110),
+			Color3.fromRGB(190, 60, 45),
+			Color3.fromRGB(225, 130, 50),
+			Color3.fromRGB(230, 150, 180),
+		},
+	},
+	Willow = {
+		MaxHP = 60,
+		LogValue = 8,
+		Scale = 1.15,
+		TrunkColors = { Color3.fromRGB(95, 85, 75), Color3.fromRGB(70, 70, 68), Color3.fromRGB(85, 95, 70) },
+		LeafColors = {
+			Color3.fromRGB(110, 130, 110),
+			Color3.fromRGB(80, 120, 115),
+			Color3.fromRGB(170, 120, 80),
+			Color3.fromRGB(170, 175, 160),
+		},
+	},
+	DeadOak = {
+		MaxHP = 100,
+		LogValue = 12,
+		Scale = 1.3,
+		TrunkColors = { Color3.fromRGB(50, 42, 38), Color3.fromRGB(40, 40, 42), Color3.fromRGB(70, 40, 35) },
+		LeafColors = {
+			Color3.fromRGB(110, 30, 30),
+			Color3.fromRGB(60, 65, 40),
+			Color3.fromRGB(45, 45, 50),
+			Color3.fromRGB(120, 60, 30),
+		},
+	},
+}
+
+-- The zones, in order from spawn. Clearing every tree in a zone opens the gate to the next one.
+-- Zone 1 starts behind spawn (Forest.StartZ) and each next zone is further along -Z.
+local zones: { Types.ZoneConfig } = {
+	{
+		Name = "Pale Pines",
+		Length = 160,
+		TreeCount = 30,
+		TreeType = "Birch",
+		GroundColor = Color3.fromRGB(95, 130, 75),
+		GroundMaterial = Enum.Material.Grass,
+		Sawmill = Vector3.new(0, 0, -20), -- next to spawn and the Tool Shed
+		ClearRadius = 40, -- keeps spawn, the sawmill and the Tool Shed free of trees
+	},
+	{
+		Name = "Fog Hollow",
+		Length = 180,
+		TreeCount = 40,
+		TreeType = "Willow",
+		GroundColor = Color3.fromRGB(85, 95, 85),
+		GroundMaterial = Enum.Material.Ground,
+		Sawmill = Vector3.new(-40, 0, -110), -- just inside the gate, off to the left
+		ClearRadius = 30,
+	},
+	{
+		Name = "Graveyard Grove",
+		Length = 200,
+		TreeCount = 50,
+		TreeType = "DeadOak",
+		GroundColor = Color3.fromRGB(55, 45, 45),
+		GroundMaterial = Enum.Material.Mud,
+		Sawmill = Vector3.new(-40, 0, -290),
+		ClearRadius = 30,
+	},
+}
+
 -- Tutorial quests, in order. They teach new players the core loop.
 local quests: { Types.QuestConfig } = {
 	{ Event = "FellTree", Goal = 1, Text = "Chop down a tree" },
@@ -41,17 +118,41 @@ local Config = {
 	-- When true, the server and client print startup info to the Output window.
 	DebugPrints = true,
 
-	-- Where placeholder trees are spawned
+	-- The forest: zones in a row with walls around them (see Shared/Zones.luau)
 	Forest = {
-		TreeCount = 30,
-		AreaSize = 160, -- trees spawn in a square this many studs wide, centered on the map
-		ClearRadius = 40, -- no trees this close to the center (keeps spawn, sawmill and shed clear)
+		Width = 160, -- every zone is this wide (X axis)
+		StartZ = 80, -- the edge of zone 1 behind spawn (spawn is at Z = 0)
 		MinSpacing = 10, -- minimum distance between two trees
+		EdgeMargin = 8, -- no trees closer than this to a wall
+		WallHeight = 20, -- too high to jump over
+		WallThickness = 2,
 	},
 
-	-- Trees
+	Zones = zones,
+	TreeTypes = treeTypes,
+
+	-- Gates between zones
+	Gates = {
+		Width = 16,
+		OpenTime = 2, -- seconds the gate takes to sink into the ground
+		MessageCooldown = 3, -- seconds between "Clear every tree first" messages for one player
+	},
+
+	-- The glowing line to the nearest tree when a zone is almost cleared
+	NearestTree = {
+		ShowAtPercent = 95, -- show it when the zone you're in is at least this % cleared
+		Refresh = 0.25, -- seconds between updates
+	},
+
+	-- Rare purple Cursed trees
+	Cursed = {
+		Chance = 0.03, -- 3% of trees
+		LogMultiplier = 3, -- their logs are worth 3x
+		Color = Color3.fromRGB(170, 70, 255),
+	},
+
+	-- Trees (sizes are for Scale 1; see TreeTypes for HP and log value)
 	Tree = {
-		MaxHP = 30,
 		TrunkHeight = 14,
 		TrunkWidth = 3,
 		LeavesSize = 10,
@@ -60,6 +161,7 @@ local Config = {
 		FallTime = 1.2, -- seconds the fall animation takes
 		RemoveDelay = 1.5, -- seconds a fallen tree lies there before it disappears
 		LogsPerTree = 3,
+		StumpHeight = 1.2, -- the stump a felled tree leaves behind
 	},
 
 	Tools = tools,
@@ -94,14 +196,13 @@ local Config = {
 	},
 
 	-- Coins (per player, reset every run, not saved)
+	-- How much a log is worth depends on its tree (see TreeTypes and Cursed).
 	Coins = {
 		Starting = 0,
-		PerLog = 5, -- coins for each log sold
 	},
 
-	-- Sawmill (placeholder building near spawn)
+	-- Sawmills (one placeholder building per zone; positions are in Zones above)
 	Sawmill = {
-		Position = Vector3.new(0, 0, -20), -- center of the building (height is found automatically)
 		BuildingSize = Vector3.new(14, 10, 8),
 		PadSize = 8, -- the "DROP LOGS" pad is this many studs wide and deep
 		SellCooldown = 1, -- seconds between sells for one player (stops double-selling)

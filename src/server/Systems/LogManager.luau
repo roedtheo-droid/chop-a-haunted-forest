@@ -1,9 +1,11 @@
 --!strict
 -- Handles logs on the ground and how many logs each player carries.
 --
--- Each player has two attributes the client can read (but not change):
+-- Each player has attributes the client can read (but not change):
 --   Carry       how many logs they carry now
+--   CarryValue  how many coins those logs are worth at a sawmill
 --   CarryLimit  how many logs fit in their backpack (set by UpgradeManager)
+-- Each log on the ground has a Value attribute: coins it's worth (depends on its tree).
 -- Logs get a ProximityPrompt ("Pick up"). Prompts are triggered on the server,
 -- so the server always decides whether a pickup is allowed.
 
@@ -17,6 +19,7 @@ local Tags = require(ReplicatedStorage.Shared.Tags)
 local QuestManager = require(script.Parent.QuestManager)
 
 local LOG_COLOR = Color3.fromRGB(130, 90, 55)
+local CURSED_LOG_COLOR = Color3.fromRGB(120, 60, 150)
 
 local LogManager = {}
 
@@ -36,12 +39,14 @@ function LogManager.setCarry(player: Player, amount: number)
 	player:SetAttribute("Carry", amount)
 end
 
--- Empty the player's backpack and return how many logs were in it.
+-- Empty the player's backpack. Returns how many logs were in it and what they're worth.
 -- Used by the sawmill when the player sells.
-function LogManager.takeAll(player: Player): number
+function LogManager.takeAll(player: Player): (number, number)
 	local carry = LogManager.getCarry(player)
+	local value = getNumberAttribute(player, "CarryValue")
 	LogManager.setCarry(player, 0)
-	return carry
+	player:SetAttribute("CarryValue", 0)
+	return carry, value
 end
 
 function LogManager.hasRoom(player: Player): boolean
@@ -61,8 +66,10 @@ function LogManager.tryPickUp(player: Player, log: BasePart): boolean
 		return false
 	end
 
+	local value = getNumberAttribute(log, "Value")
 	log:Destroy()
 	LogManager.setCarry(player, LogManager.getCarry(player) + 1)
+	player:SetAttribute("CarryValue", getNumberAttribute(player, "CarryValue") + value)
 	QuestManager.report(player, "PickUpLog")
 	return true
 end
@@ -73,7 +80,7 @@ local function onPickUp(log: BasePart, player: Player)
 	end
 end
 
-local function createLog(position: Vector3, yaw: number): BasePart
+local function createLog(position: Vector3, yaw: number, value: number, cursed: boolean): BasePart
 	local cfg = Config.Logs
 
 	-- A cylinder lies along its X axis, which is exactly how a log lies on the ground.
@@ -82,14 +89,15 @@ local function createLog(position: Vector3, yaw: number): BasePart
 	log.Shape = Enum.PartType.Cylinder
 	log.Size = Vector3.new(cfg.Length, cfg.Thickness, cfg.Thickness)
 	log.CFrame = CFrame.new(position) * CFrame.Angles(0, yaw, 0)
-	log.Color = LOG_COLOR
+	log.Color = if cursed then CURSED_LOG_COLOR else LOG_COLOR
 	log.Material = Enum.Material.Wood
+	log:SetAttribute("Value", value)
 	log.Anchored = true
 	log.CanCollide = false -- so players don't trip over logs
 
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = "Pick up"
-	prompt.ObjectText = "Log"
+	prompt.ObjectText = if cursed then "Cursed Log" else "Log"
 	prompt.KeyboardKeyCode = Enum.KeyCode.E
 	prompt.HoldDuration = 0
 	prompt.MaxActivationDistance = cfg.PickupDistance
@@ -104,8 +112,8 @@ local function createLog(position: Vector3, yaw: number): BasePart
 end
 
 -- Drop logs on the ground in a line, starting at `origin` and going along `direction`.
--- Called by TreeManager when a tree falls.
-function LogManager.spawnLogs(origin: Vector3, direction: Vector3, count: number)
+-- Each log is worth `value` coins. Called by TreeManager when a tree falls.
+function LogManager.spawnLogs(origin: Vector3, direction: Vector3, count: number, value: number, cursed: boolean)
 	local random = Random.new()
 	local spacing = Config.Tree.TrunkHeight / (count + 1)
 	local side = Vector3.yAxis:Cross(direction)
@@ -113,7 +121,7 @@ function LogManager.spawnLogs(origin: Vector3, direction: Vector3, count: number
 	for i = 1, count do
 		local offset = direction * (spacing * i) + side * random:NextNumber(-1.5, 1.5)
 		local position = origin + offset + Vector3.new(0, Config.Logs.Thickness / 2, 0)
-		local log = createLog(position, random:NextNumber(0, math.pi * 2))
+		local log = createLog(position, random:NextNumber(0, math.pi * 2), value, cursed)
 		log.Parent = logsFolder
 		CollectionService:AddTag(log, Tags.Log)
 	end
@@ -121,6 +129,7 @@ end
 
 local function onPlayerAdded(player: Player)
 	player:SetAttribute("Carry", 0)
+	player:SetAttribute("CarryValue", 0)
 end
 
 function LogManager.init()

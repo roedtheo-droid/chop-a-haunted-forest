@@ -1,7 +1,7 @@
 --!strict
--- Builds a placeholder sawmill near spawn with a glowing "DROP LOGS" pad.
--- When a player steps on the pad, the SERVER takes all their logs and pays them coins.
--- The client never says how many logs it has, so it can't fake the amount.
+-- Builds a placeholder sawmill in every zone, each with a glowing "DROP LOGS" pad.
+-- When a player steps on a pad, the SERVER takes all their logs and pays them coins.
+-- The client never says how many logs it has or what they're worth, so it can't fake the amount.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -20,7 +20,7 @@ local PAD_THICKNESS = 0.4
 local SawmillManager = {}
 
 local notifyRemote: RemoteEvent
-local pad: BasePart
+local pads: { BasePart } = {}
 -- When each player last sold, so standing on the pad doesn't sell over and over.
 local lastSell: { [Player]: number } = {}
 
@@ -62,21 +62,19 @@ local function onPadTouched(hit: BasePart)
 		return
 	end
 
-	local logs = LogManager.takeAll(player)
+	local logs, coins = LogManager.takeAll(player)
 	if logs <= 0 then
 		return
 	end
 	lastSell[player] = now
 
-	local coins = logs * Config.Coins.PerLog
 	CoinManager.add(player, coins)
 	notifyRemote:FireClient(player, `Sold {logs} log(s) for {coins} coins!`)
 	QuestManager.report(player, "SellLogs")
 end
 
-local function build(): BasePart
+local function build(center: Vector3): BasePart
 	local cfg = Config.Sawmill
-	local center = cfg.Position
 	local groundY = groundHeightAt(center.X, center.Z)
 	local size = cfg.BuildingSize
 
@@ -110,7 +108,7 @@ local function build(): BasePart
 	sign.Parent = building
 	makeLabel(sign, "SAWMILL")
 
-	-- The pad sits in front of the building, on the side facing spawn (+Z).
+	-- The pad sits in front of the building, on the side facing spawn and the zone's gate (+Z).
 	local dropPad = Instance.new("Part")
 	dropPad.Name = "DropPad"
 	dropPad.Size = Vector3.new(cfg.PadSize, PAD_THICKNESS, cfg.PadSize)
@@ -131,12 +129,16 @@ local function build(): BasePart
 end
 
 function SawmillManager.init()
-	pad = build()
+	for _, zone in Config.Zones do
+		table.insert(pads, build(zone.Sawmill))
+	end
 end
 
 function SawmillManager.start()
 	notifyRemote = Remotes.getEvent("Notify")
-	pad.Touched:Connect(onPadTouched)
+	for _, pad in pads do
+		pad.Touched:Connect(onPadTouched)
+	end
 
 	Players.PlayerRemoving:Connect(function(player: Player)
 		lastSell[player] = nil

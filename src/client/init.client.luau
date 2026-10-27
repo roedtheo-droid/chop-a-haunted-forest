@@ -19,6 +19,7 @@ local Controllers = script.Controllers
 local controllers: { Types.Module } = {
 	require(Controllers.NotifyController),
 	require(Controllers.HudController),
+	require(Controllers.ZoneController),
 	require(Controllers.QuestController),
 	require(Controllers.BackpackController),
 	require(Controllers.ChopController),

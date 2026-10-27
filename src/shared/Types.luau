@@ -36,6 +36,27 @@ export type ShopItem = {
 	Description: string,
 }
 
+-- One kind of tree (see Config.TreeTypes). Each zone has its own kind.
+export type TreeTypeConfig = {
+	MaxHP: number,
+	LogValue: number, -- coins for each log from this tree
+	Scale: number, -- size compared to Config.Tree (1 = normal, 1.3 = 30% bigger)
+	TrunkColors: { Color3 }, -- each tree picks one at random
+	LeafColors: { Color3 }, -- each tree picks one at random
+}
+
+-- One zone (see Config.Zones). Zones sit in a row, starting at spawn.
+export type ZoneConfig = {
+	Name: string,
+	Length: number, -- how deep the zone is, in studs (along the Z axis)
+	TreeCount: number,
+	TreeType: string, -- a key in Config.TreeTypes
+	GroundColor: Color3,
+	GroundMaterial: Enum.Material,
+	Sawmill: Vector3, -- where this zone's sawmill stands (height is found automatically)
+	ClearRadius: number, -- no trees this close to the sawmill
+}
+
 -- One tutorial quest (see Config.Quests).
 -- Event is what the player has to do; the server reports these events:
 --   "FellTree", "PickUpLog", "SellLogs", "BuyAxe", "BuyUpgrade"

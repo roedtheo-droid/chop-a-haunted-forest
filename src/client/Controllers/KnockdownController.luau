@@ -84,7 +84,7 @@ function KnockdownController.init()
 	tint.Name = "Tint"
 	tint.Size = UDim2.fromScale(1, 1)
 	tint.BackgroundColor3 = Color3.fromRGB(120, 0, 0)
-	tint.BackgroundTransparency = 0.6
+	tint.BackgroundTransparency = 0.8 -- light enough to still see what's going on
 	tint.BorderSizePixel = 0
 	tint.Parent = gui
 

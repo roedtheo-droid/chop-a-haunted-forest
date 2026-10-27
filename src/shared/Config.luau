@@ -178,7 +178,7 @@ local Config = {
 		Duration = 20, -- seconds you're down if nobody revives you
 		ReviveHoldTime = 3, -- seconds a friend holds E on you to revive you
 		ReviveDistance = 8, -- how close the friend must be
-		SafeTime = 3, -- seconds after getting up when mimics can't catch you again
+		SafeTime = 5, -- seconds after getting up when mimics can't catch you again (time to run)
 	},
 
 	-- Rare purple Cursed trees

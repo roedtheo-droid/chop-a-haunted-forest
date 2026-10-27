@@ -118,8 +118,10 @@ function KnockdownManager.knockDown(player: Player)
 	end
 
 	task.delay(Config.Knockdown.Duration, function()
-		if knockCount[player] == count then
+		-- Still down from THIS knockdown? (Not revived, reset or caught again since.)
+		if knockCount[player] == count and KnockdownManager.isDown(player) then
 			KnockdownManager.standUp(player)
+			notifyRemote:FireClient(player, "You're back up. Run!")
 		end
 	end)
 end

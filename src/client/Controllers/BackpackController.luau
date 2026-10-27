@@ -32,7 +32,8 @@ function BackpackController.init()
 	label = Instance.new("TextLabel")
 	label.Name = "Counter"
 	label.AnchorPoint = Vector2.new(0.5, 1)
-	label.Position = UDim2.new(0.5, 0, 1, -16)
+	-- Bottom middle, just above Roblox's tool bar (about 64 pixels tall), so tools don't cover it.
+	label.Position = UDim2.new(0.5, 0, 1, -72)
 	label.Size = UDim2.fromOffset(170, 44)
 	label.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 	label.BackgroundTransparency = 0.3

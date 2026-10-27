@@ -93,8 +93,10 @@ function KnockdownController.init()
 
 	message = Instance.new("TextLabel")
 	message.Name = "Message"
-	message.AnchorPoint = Vector2.new(0.5, 0.5)
-	message.Position = UDim2.fromScale(0.5, 0.4)
+	-- A fixed distance from the top, just under the boss HP bar (which ends 168 pixels down),
+	-- so it never covers the bar, even on short screens.
+	message.AnchorPoint = Vector2.new(0.5, 0)
+	message.Position = UDim2.new(0.5, 0, 0, 176)
 	message.Size = UDim2.new(0.8, 0, 0, 90)
 	message.BackgroundTransparency = 1
 	message.TextColor3 = Color3.fromRGB(255, 255, 255)

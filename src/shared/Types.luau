@@ -46,6 +46,19 @@ export type TreeTypeConfig = {
 	LeafColors: { Color3 }, -- each tree picks one at random
 }
 
+-- How a zone looks: its light and fog (see Client/Controllers/AtmosphereController).
+-- It only changes YOUR screen, while you're in that zone.
+export type ZoneLookConfig = {
+	ClockTime: number, -- time of day, 0 to 24 (14.5 = afternoon, 17.7 = dusk)
+	Brightness: number, -- how strong the sunlight is
+	Ambient: Color3, -- the light in shadows (darker = gloomier)
+	FogDensity: number, -- 0 = clear, 1 = you can't see a thing
+	FogOffset: number, -- how far away the fog starts (0 = right in front of you)
+	FogColor: Color3,
+	FogDecay: Color3, -- the colour of the fog far away
+	Haze: number, -- 0 to 10, how washed out the distance looks
+}
+
 -- One zone (see Config.Zones). Zones sit in a row, starting at spawn.
 export type ZoneConfig = {
 	Name: string,
@@ -57,6 +70,7 @@ export type ZoneConfig = {
 	Sawmill: Vector3, -- where this zone's sawmill stands (height is found automatically)
 	ClearRadius: number, -- no trees this close to the sawmill
 	MimicPercent: number, -- this % of the zone's trees are secretly mimics
+	Look: ZoneLookConfig, -- its light and fog
 }
 
 -- What knocked a player down (see Server/Systems/KnockdownManager).

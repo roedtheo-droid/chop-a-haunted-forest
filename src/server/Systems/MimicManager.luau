@@ -65,7 +65,7 @@ type Mimic = {
 	NextTell: number, -- when it creaks or blinks next (os.clock)
 	Lean: CFrame?, -- a leaning "Tilt" mimic's lean, put back every time it roots itself
 	SwayTween: Tween?,
-	SwayCenter: Vector3?,
+	SwayCenter: CFrame?,
 	Knot: BasePart?,
 	KnotColor: Color3?,
 	Creak: Sound?,
@@ -128,14 +128,15 @@ local function startSway(mimic: Mimic)
 	local cfg = Config.Mimics
 	local angle = random:NextNumber(0, math.pi * 2)
 	local offset = Vector3.new(math.cos(angle), 0, math.sin(angle)) * (cfg.SwayDistance / 2)
-	local center = leaves.Position
+	-- Move Leaves by its CFrame (not Position), so the leaf blocks welded to it come along.
+	local center = leaves.CFrame
 	mimic.SwayCenter = center
-	leaves.Position = center - offset
+	leaves.CFrame = center - offset
 	-- -1 repeats forever, and `true` swings back again each time.
 	local tween = TweenService:Create(
 		leaves,
 		TweenInfo.new(cfg.SwayTime, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
-		{ Position = center + offset }
+		{ CFrame = center + offset }
 	)
 	tween:Play()
 	mimic.SwayTween = tween
@@ -151,7 +152,7 @@ local function stopSway(mimic: Mimic)
 	local leaves = mimic.Leaves
 	local center = mimic.SwayCenter
 	if leaves and center then
-		leaves.Position = center
+		leaves.CFrame = center
 	end
 end
 
@@ -177,13 +178,14 @@ local function setUpTell(mimic: Mimic)
 			mimic.Lean = CFrame.fromAxisAngle(axis, math.rad(cfg.TiltAngle))
 			applyLean(mimic)
 		else
-			-- A bit too tall: a longer trunk (Size.X is the cylinder's length), leaves moved up.
-			local extra = trunk.Size.X * cfg.TallExtra
-			trunk.Size = Vector3.new(trunk.Size.X + extra, trunk.Size.Y, trunk.Size.Z)
-			trunk.Position += Vector3.new(0, extra / 2, 0)
+			-- A bit too tall: a longer trunk (Size.Y is the block's height), leaves moved up.
+			-- (Moving Leaves by its CFrame brings the welded leaf blocks along.)
+			local extra = trunk.Size.Y * cfg.TallExtra
+			trunk.Size = Vector3.new(trunk.Size.X, trunk.Size.Y + extra, trunk.Size.Z)
+			trunk.CFrame += Vector3.new(0, extra / 2, 0)
 			local leaves = mimic.Leaves
 			if leaves then
-				leaves.Position += Vector3.new(0, extra, 0)
+				leaves.CFrame += Vector3.new(0, extra, 0)
 			end
 		end
 	elseif mimic.Tell == "Sway" then
@@ -322,8 +324,8 @@ end
 local function addEyes(mimic: Mimic)
 	local trunk = mimic.Trunk
 	local pivot = mimic.Tree:GetPivot()
-	local height = trunk.Size.X * 0.65
-	local radius = trunk.Size.Y / 2
+	local height = trunk.Size.Y * 0.65
+	local radius = trunk.Size.X / 2
 	for _, side in { -1, 1 } do
 		local eye = Instance.new("Part")
 		eye.Name = "Eye"

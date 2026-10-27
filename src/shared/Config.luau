@@ -63,42 +63,58 @@ local particles: { [string]: Types.ParticleConfig } = {
 -- Kinds of trees. Each zone uses one kind (see zones below).
 -- Trees further from spawn are bigger and tougher, but their logs are worth more.
 -- Mixed colours make the "bark colour slightly off" mimic tell (Phase 6) harder to spot.
+-- The look follows STYLE_GUIDE.md: blocky trunks with roots, crowns made of leaf blocks.
 local treeTypes: { [string]: Types.TreeTypeConfig } = {
+	-- Pale Pines: bright, happy and green, with white birches and a few autumn trees.
 	Birch = {
 		MaxHP = 30,
 		LogValue = 5,
 		Scale = 1,
-		TrunkColors = { Color3.fromRGB(105, 70, 45), Color3.fromRGB(225, 220, 205), Color3.fromRGB(150, 120, 90) },
+		TrunkColors = { Color3.fromRGB(120, 75, 45), Color3.fromRGB(135, 85, 50), Color3.fromRGB(110, 68, 40) },
 		LeafColors = {
-			Color3.fromRGB(140, 180, 110),
-			Color3.fromRGB(190, 60, 45),
-			Color3.fromRGB(225, 130, 50),
-			Color3.fromRGB(230, 150, 180),
+			Color3.fromRGB(60, 130, 45),
+			Color3.fromRGB(75, 150, 55),
+			Color3.fromRGB(95, 165, 60),
+			Color3.fromRGB(60, 130, 45),
+			Color3.fromRGB(75, 150, 55),
+			Color3.fromRGB(95, 165, 60),
+			Color3.fromRGB(200, 60, 45), -- red autumn tree
+			Color3.fromRGB(230, 140, 50), -- orange autumn tree
+			Color3.fromRGB(235, 150, 185), -- pink blossom tree
 		},
+		LeafBlocks = 4,
+		BirchChance = 0.3,
+		BirchColor = Color3.fromRGB(235, 232, 222),
 	},
+	-- Fog Hollow: the same trees, but greyer and gloomier.
 	Willow = {
 		MaxHP = 60,
 		LogValue = 8,
 		Scale = 1.15,
-		TrunkColors = { Color3.fromRGB(95, 85, 75), Color3.fromRGB(70, 70, 68), Color3.fromRGB(85, 95, 70) },
+		TrunkColors = { Color3.fromRGB(95, 80, 68), Color3.fromRGB(80, 72, 66), Color3.fromRGB(88, 84, 70) },
 		LeafColors = {
-			Color3.fromRGB(110, 130, 110),
-			Color3.fromRGB(80, 120, 115),
-			Color3.fromRGB(170, 120, 80),
-			Color3.fromRGB(170, 175, 160),
+			Color3.fromRGB(85, 120, 85),
+			Color3.fromRGB(100, 135, 95),
+			Color3.fromRGB(75, 105, 80),
+			Color3.fromRGB(140, 150, 120),
 		},
+		LeafBlocks = 4,
+		BirchChance = 0.2,
+		BirchColor = Color3.fromRGB(205, 208, 200),
 	},
+	-- Graveyard Grove: dead, crooked trees with a few dark leaves and bare branches.
 	DeadOak = {
 		MaxHP = 100,
 		LogValue = 12,
 		Scale = 1.3,
-		TrunkColors = { Color3.fromRGB(50, 42, 38), Color3.fromRGB(40, 40, 42), Color3.fromRGB(70, 40, 35) },
+		TrunkColors = { Color3.fromRGB(55, 44, 40), Color3.fromRGB(45, 40, 44), Color3.fromRGB(70, 45, 38) },
 		LeafColors = {
-			Color3.fromRGB(110, 30, 30),
-			Color3.fromRGB(60, 65, 40),
-			Color3.fromRGB(45, 45, 50),
+			Color3.fromRGB(110, 30, 35),
+			Color3.fromRGB(75, 70, 40),
 			Color3.fromRGB(120, 60, 30),
 		},
+		LeafBlocks = 2,
+		Branches = 2,
 	},
 }
 
@@ -110,21 +126,23 @@ local zones: { Types.ZoneConfig } = {
 		Length = 160,
 		TreeCount = 30,
 		TreeType = "Birch",
-		GroundColor = Color3.fromRGB(95, 130, 75),
+		GroundColor = Color3.fromRGB(90, 170, 60),
 		GroundMaterial = Enum.Material.Grass,
 		Sawmill = Vector3.new(0, 0, -20), -- next to spawn and the Tool Shed
 		ClearRadius = 40, -- keeps spawn, the sawmill and the Tool Shed free of trees
 		MimicPercent = 5, -- this % of the zone's trees are secretly mimics
-		-- A clear afternoon (the place's normal lighting).
+		-- A sunny, cartoony midday: bright colours, soft shadows, almost no fog.
 		Look = {
-			ClockTime = 14.5,
+			ClockTime = 13,
 			Brightness = 3,
-			Ambient = Color3.fromRGB(70, 70, 70),
-			FogDensity = 0.3,
-			FogOffset = 0.25,
-			FogColor = Color3.fromRGB(199, 199, 199),
-			FogDecay = Color3.fromRGB(106, 112, 125),
+			Ambient = Color3.fromRGB(110, 110, 115),
+			FogDensity = 0.25,
+			FogOffset = 0.3,
+			FogColor = Color3.fromRGB(200, 225, 240),
+			FogDecay = Color3.fromRGB(150, 180, 210),
 			Haze = 0,
+			Saturation = 0.2,
+			Tint = Color3.fromRGB(255, 250, 240),
 			Ambience = { Id = "rbxassetid://9112832288", Volume = 0.25 }, -- light birds, mountain air
 		},
 	},
@@ -133,8 +151,8 @@ local zones: { Types.ZoneConfig } = {
 		Length = 180,
 		TreeCount = 40,
 		TreeType = "Willow",
-		GroundColor = Color3.fromRGB(85, 95, 85),
-		GroundMaterial = Enum.Material.Ground,
+		GroundColor = Color3.fromRGB(95, 125, 80),
+		GroundMaterial = Enum.Material.Grass,
 		Sawmill = Vector3.new(-40, 0, -110), -- just inside the gate, off to the left
 		ClearRadius = 30,
 		MimicPercent = 10,
@@ -148,6 +166,8 @@ local zones: { Types.ZoneConfig } = {
 			FogColor = Color3.fromRGB(170, 178, 175),
 			FogDecay = Color3.fromRGB(140, 145, 145),
 			Haze = 3,
+			Saturation = -0.1,
+			Tint = Color3.fromRGB(235, 242, 242),
 			Ambience = { Id = "rbxassetid://9120505513", Volume = 0.35 }, -- thin trickles and drips, echoing
 		},
 	},
@@ -156,7 +176,7 @@ local zones: { Types.ZoneConfig } = {
 		Length = 200,
 		TreeCount = 50,
 		TreeType = "DeadOak",
-		GroundColor = Color3.fromRGB(55, 45, 45),
+		GroundColor = Color3.fromRGB(60, 48, 52),
 		GroundMaterial = Enum.Material.Mud,
 		Sawmill = Vector3.new(-40, 0, -290),
 		ClearRadius = 30,
@@ -171,6 +191,8 @@ local zones: { Types.ZoneConfig } = {
 			FogColor = Color3.fromRGB(70, 60, 85),
 			FogDecay = Color3.fromRGB(40, 35, 50),
 			Haze = 1.5,
+			Saturation = 0,
+			Tint = Color3.fromRGB(240, 220, 255),
 			Ambience = { Id = "rbxassetid://9114625552", Volume = 0.3 }, -- spooky, eerie wind
 		},
 	},
@@ -223,6 +245,45 @@ local Config = {
 	ZoneLook = {
 		FadeTime = 3, -- seconds the change takes
 		Refresh = 0.5, -- seconds between checks of which zone you're in
+		ShadowSoftness = 0.3, -- 0 = sharp shadows, 1 = very soft
+		BloomIntensity = 0.4, -- a soft glow around bright things
+		BloomSize = 24,
+		BloomThreshold = 0.95,
+	},
+
+	-- The cartoony look (see STYLE_GUIDE.md): colours and fonts for buildings, signs and the UI.
+	Style = {
+		TitleFont = Enum.Font.LuckiestGuy, -- big words: signs, "TIMBER!", "FOREST CLEARED!"
+		BodyFont = Enum.Font.FredokaOne, -- everything else
+		TextStroke = 3, -- the black outline around text, in pixels
+		Wood = Color3.fromRGB(168, 105, 58), -- cabin walls and signs
+		DarkWood = Color3.fromRGB(95, 60, 30), -- borders and the lines between logs
+		Roof = Color3.fromRGB(125, 55, 35),
+		InnerWood = Color3.fromRGB(235, 200, 150), -- the inside of a tree: stump tops and log ends
+		Rings = Color3.fromRGB(205, 160, 105), -- growth rings on stump tops and log ends
+		BirchMark = Color3.fromRGB(45, 42, 40), -- the dark marks on birch bark
+		HazardYellow = Color3.fromRGB(250, 210, 30), -- the striped edge around sell pads
+		HazardBlack = Color3.fromRGB(30, 30, 30),
+		Window = Color3.fromRGB(190, 230, 255),
+		Metal = Color3.fromRGB(175, 182, 195), -- saw blades
+	},
+
+	-- Scenery around the forest, only for looks: you can't chop it (see Server/Systems/SceneryManager).
+	Scenery = {
+		HedgeColor = Color3.fromRGB(55, 110, 45), -- the outer walls look like a thick hedge
+		FenceColor = Color3.fromRGB(120, 78, 45), -- the walls between zones are wooden
+		GateColor = Color3.fromRGB(95, 60, 35),
+		OutsideGround = Color3.fromRGB(85, 160, 55), -- the baseplate around the forest
+		BorderTreeSpacing = 14, -- studs between the big trees just outside the walls
+		BorderTreeDistance = 10, -- studs from the wall to those trees
+		BorderTreeScale = 1.7, -- they're bigger than forest trees, so they show above the walls
+		MountainCount = 20,
+		MountainDistance = 220, -- studs from the forest's edge to the nearest mountains
+		MountainMinSize = 120,
+		MountainMaxSize = 240,
+		MountainColor = Color3.fromRGB(135, 145, 160),
+		SnowColor = Color3.fromRGB(245, 248, 252),
+		SnowCap = 0.3, -- the top 30% of each mountain is snow
 	},
 
 	Sounds = sounds,
@@ -340,7 +401,12 @@ local Config = {
 	Tree = {
 		TrunkHeight = 14,
 		TrunkWidth = 3,
-		LeavesSize = 10,
+		LeavesSize = 10, -- the biggest leaf block (the others are a bit smaller)
+		LeafMaterial = Enum.Material.SmoothPlastic,
+		RootCount = 4, -- little blocks that flare out at the bottom of the trunk
+		RootLength = 1.6, -- how far a root sticks out past the trunk
+		RootHeight = 1.6,
+		BirchMarks = 6, -- dark marks on each side of a birch trunk
 		MinTrunkScale = 0.4, -- trunk width at 0 HP, compared to full width (shows damage)
 		ChipsPerHit = 10, -- wood chip particles per hit
 		FallTime = 1.2, -- seconds the fall animation takes

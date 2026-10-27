@@ -43,7 +43,11 @@ export type TreeTypeConfig = {
 	LogValue: number, -- coins for each log from this tree
 	Scale: number, -- size compared to Config.Tree (1 = normal, 1.3 = 30% bigger)
 	TrunkColors: { Color3 }, -- each tree picks one at random
-	LeafColors: { Color3 }, -- each tree picks one at random
+	LeafColors: { Color3 }, -- each tree picks one at random (list a colour twice to make it more common)
+	LeafBlocks: number, -- how many leaf blocks make up its crown (0 = a bare, dead tree)
+	Branches: number?, -- bare branches sticking out of the trunk (for dead trees)
+	BirchChance: number?, -- 0 to 1: share of trees that are white birches with dark marks
+	BirchColor: Color3?, -- a birch's bark colour
 }
 
 -- One sound (see Config.Sounds).
@@ -75,6 +79,8 @@ export type ZoneLookConfig = {
 	FogColor: Color3,
 	FogDecay: Color3, -- the colour of the fog far away
 	Haze: number, -- 0 to 10, how washed out the distance looks
+	Saturation: number, -- -1 to 1: how strong the colours are (0 = normal, above 0 = more cartoony)
+	Tint: Color3, -- the whole screen is tinted a little towards this colour (white = no tint)
 	Ambience: SoundConfig, -- a quiet background sound that loops while you're in the zone
 }
 

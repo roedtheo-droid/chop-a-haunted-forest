@@ -2,6 +2,8 @@
 -- One manager for EVERY tree (no scripts inside trees).
 -- The client only says "I swung at tree X". This module checks that the swing is
 -- allowed (real tree, close enough, not too fast) and then decides the damage.
+-- Mimics are trees too: hitting a sleeping one wakes it (MimicManager), and an awake
+-- one can still be chopped down.
 
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
@@ -11,7 +13,9 @@ local TweenService = game:GetService("TweenService")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Tags = require(ReplicatedStorage.Shared.Tags)
+local KnockdownManager = require(script.Parent.KnockdownManager)
 local LogManager = require(script.Parent.LogManager)
+local MimicManager = require(script.Parent.MimicManager)
 local QuestManager = require(script.Parent.QuestManager)
 local ToolManager = require(script.Parent.ToolManager)
 local UpgradeManager = require(script.Parent.UpgradeManager)
@@ -22,6 +26,7 @@ local CHIP_COLOR = Color3.fromRGB(200, 160, 110)
 local TreeManager = {}
 
 local stumpsFolder: Folder
+local notifyRemote: RemoteEvent
 
 -- When each player last swung, to stop them swinging faster than the cooldown.
 local lastSwing: { [Player]: number } = {}
@@ -97,11 +102,14 @@ local function leaveStump(tree: Model, trunk: BasePart)
 end
 
 -- Tip the tree over, away from the player, then drop logs and remove it.
-local function fellTree(tree: Model, trunk: BasePart, fromPosition: Vector3)
+-- Mimics don't leave a stump: they pulled their roots out when they woke up.
+local function fellTree(tree: Model, trunk: BasePart, fromPosition: Vector3, withStump: boolean)
 	-- Remove the tag first, so nobody can hit it while it falls.
 	CollectionService:RemoveTag(tree, Tags.Tree)
 	tree:SetAttribute("Felled", true)
-	leaveStump(tree, trunk)
+	if withStump then
+		leaveStump(tree, trunk)
+	end
 	ZoneManager.treeCleared(getNumberAttribute(tree, "ZoneId"))
 
 	for _, part in tree:GetDescendants() do
@@ -155,7 +163,7 @@ local function fellTree(tree: Model, trunk: BasePart, fromPosition: Vector3)
 end
 
 local function onSwing(player: Player, target: unknown)
-	-- 1. Is the target a real, standing tree? (The client could send anything.)
+	-- 1. Is the target a real, standing tree or an awake mimic? (The client could send anything.)
 	if typeof(target) ~= "Instance" then
 		return
 	end
@@ -164,7 +172,8 @@ local function onSwing(player: Player, target: unknown)
 		return
 	end
 	local tree = instance :: Model
-	if not CollectionService:HasTag(tree, Tags.Tree) or not tree:IsDescendantOf(workspace) then
+	local choppable = CollectionService:HasTag(tree, Tags.Tree) or CollectionService:HasTag(tree, Tags.AwakeMimic)
+	if not choppable or not tree:IsDescendantOf(workspace) then
 		return
 	end
 	local trunk = getTrunk(tree)
@@ -176,9 +185,9 @@ local function onSwing(player: Player, target: unknown)
 		return
 	end
 
-	-- 2. Is the player alive and close enough? (Reach depends on the tool they hold.)
+	-- 2. Is the player alive, standing up and close enough? (Reach depends on the tool they hold.)
 	local root = getRootPart(player)
-	if not root then
+	if not root or KnockdownManager.isDown(player) then
 		return
 	end
 	local stats = ToolManager.getStats(player)
@@ -204,8 +213,15 @@ local function onSwing(player: Player, target: unknown)
 	updateTrunkWidth(tree, trunk)
 
 	if hp <= 0 then
-		fellTree(tree, trunk, root.Position)
+		local wasMimic = MimicManager.isMimic(tree)
+		MimicManager.forget(tree)
+		fellTree(tree, trunk, root.Position, not wasMimic)
 		QuestManager.report(player, "FellTree")
+		if wasMimic then
+			notifyRemote:FireAllClients(`{player.DisplayName} chopped down a mimic!`)
+		end
+	elseif MimicManager.isMimic(tree) then
+		MimicManager.wake(tree, player) -- does nothing if it's already awake
 	end
 end
 
@@ -216,6 +232,7 @@ function TreeManager.init()
 end
 
 function TreeManager.start()
+	notifyRemote = Remotes.getEvent("Notify")
 	Remotes.getEvent("SwingAtTree").OnServerEvent:Connect(onSwing)
 
 	Players.PlayerRemoving:Connect(function(player: Player)

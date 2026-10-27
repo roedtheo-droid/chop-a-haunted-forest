@@ -75,6 +75,7 @@ local zones: { Types.ZoneConfig } = {
 		GroundMaterial = Enum.Material.Grass,
 		Sawmill = Vector3.new(0, 0, -20), -- next to spawn and the Tool Shed
 		ClearRadius = 40, -- keeps spawn, the sawmill and the Tool Shed free of trees
+		MimicPercent = 5, -- this % of the zone's trees are secretly mimics
 	},
 	{
 		Name = "Fog Hollow",
@@ -85,6 +86,7 @@ local zones: { Types.ZoneConfig } = {
 		GroundMaterial = Enum.Material.Ground,
 		Sawmill = Vector3.new(-40, 0, -110), -- just inside the gate, off to the left
 		ClearRadius = 30,
+		MimicPercent = 10,
 	},
 	{
 		Name = "Graveyard Grove",
@@ -95,6 +97,7 @@ local zones: { Types.ZoneConfig } = {
 		GroundMaterial = Enum.Material.Mud,
 		Sawmill = Vector3.new(-40, 0, -290),
 		ClearRadius = 30,
+		MimicPercent = 15,
 	},
 }
 
@@ -144,6 +147,40 @@ local Config = {
 		Refresh = 0.25, -- seconds between updates
 	},
 
+	-- Mimics: trees that wake up and chase you when you chop them.
+	-- How many there are is set per zone (MimicPercent in the zones list above).
+	Mimics = {
+		HPMultiplier = 2, -- when it wakes up, a mimic gets this many times its tree's HP
+		WakeTime = 1.5, -- seconds it shakes loose before chasing (your head start)
+		ChaseSpeed = 20, -- faster than walking (16), slower than sprinting (16 + SprintBonus)
+		CatchDistance = 4.5, -- it catches you when your middle is this close to its trunk's middle
+		CatchHeight = 8, -- ...and you're no more than this many studs above or below its roots
+		SleepAfter = 45, -- seconds without catching anyone before it roots itself again
+		RepathInterval = 0.5, -- seconds between working out a new path to its target
+		SleepSearchRadius = 20, -- it roots itself again within this many studs
+		-- Tells (each mimic gets one at random)
+		TintColor = Color3.fromRGB(120, 150, 80), -- "Tint": bark is pulled a little towards this colour
+		TintAmount = 0.3, -- 0 = no change, 1 = fully TintColor
+		SwayDistance = 0.8, -- "Sway": studs the leaves move side to side
+		SwayTime = 1.4, -- seconds for one sway
+		TiltAngle = 8, -- "Tilt": degrees a leaning mimic leans
+		TallExtra = 0.2, -- "Tilt": a too-tall mimic's trunk is this much longer (0.2 = 20%)
+		CreakDistance = 15, -- "Creak": you hear it within this many studs
+		CreakSoundId = "rbxassetid://9126263691", -- a free wood creak sound from the Creator Store
+		BlinkTime = 0.25, -- "Blink": seconds the knot stays open like an eye
+		TellMinGap = 4, -- seconds between creaks or blinks (random between min and max)
+		TellMaxGap = 8,
+		DecoyKnotChance = 0.3, -- share of trees with a plain knot, so a knot alone isn't a tell
+	},
+
+	-- Getting caught by a mimic
+	Knockdown = {
+		Duration = 20, -- seconds you're down if nobody revives you
+		ReviveHoldTime = 3, -- seconds a friend holds E on you to revive you
+		ReviveDistance = 8, -- how close the friend must be
+		SafeTime = 3, -- seconds after getting up when mimics can't catch you again
+	},
+
 	-- Rare purple Cursed trees
 	Cursed = {
 		Chance = 0.03, -- 3% of trees
@@ -178,6 +215,7 @@ local Config = {
 	-- Player
 	Player = {
 		BaseWalkSpeed = 16, -- Roblox's normal walk speed
+		SprintBonus = 8, -- holding Shift (or the Sprint button) adds this to your walk speed
 	},
 
 	-- Server checks

@@ -6,6 +6,7 @@
 --   LogValue      coins for each of its logs
 --   TrunkWidth    its full trunk width (TreeManager shrinks the trunk as HP goes down)
 --   Cursed        true for the rare purple trees with extra valuable logs
+-- Some trees also get a small knot on the trunk (see addKnot).
 
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -17,6 +18,7 @@ local Zones = require(ReplicatedStorage.Shared.Zones)
 local ZoneManager = require(script.Parent.ZoneManager)
 
 local MAX_ATTEMPTS_PER_TREE = 50
+local KNOT_COLOR = Color3.fromRGB(60, 40, 28)
 
 local ForestSpawner = {}
 
@@ -92,6 +94,38 @@ local function createTree(basePosition: Vector3, treeType: Types.TreeTypeConfig,
 	return model
 end
 
+-- Put a small dark knot on the side of the trunk (or return the one it already has).
+-- MimicManager uses this for mimics whose knot "blinks". Plenty of normal trees get
+-- a plain knot too, so having a knot doesn't give a mimic away.
+function ForestSpawner.addKnot(tree: Model): BasePart?
+	local existing = tree:FindFirstChild("Knot")
+	if existing and existing:IsA("BasePart") then
+		return existing
+	end
+	local trunk = tree:FindFirstChild("Trunk")
+	if not (trunk and trunk:IsA("BasePart")) then
+		return nil
+	end
+
+	-- The trunk cylinder lies along its X axis, so Size.X is its height and Size.Y its width.
+	local height = trunk.Size.X
+	local width = trunk.Size.Y
+	local angle = random:NextNumber(0, math.pi * 2)
+	local outward = Vector3.new(math.cos(angle), 0, math.sin(angle))
+
+	local knot = Instance.new("Part")
+	knot.Name = "Knot"
+	knot.Shape = Enum.PartType.Ball
+	knot.Size = Vector3.one * (width * 0.4)
+	knot.Position = tree:GetPivot().Position + Vector3.new(0, height * 0.45, 0) + outward * (width * 0.45)
+	knot.Color = KNOT_COLOR
+	knot.Material = Enum.Material.Wood
+	knot.Anchored = true
+	knot.CanCollide = false
+	knot.Parent = tree
+	return knot
+end
+
 -- Pick random spots inside the zone: away from the walls, the zone's sawmill and each other.
 local function pickPositions(index: number): { Vector2 }
 	local zone = Config.Zones[index]
@@ -136,6 +170,9 @@ function ForestSpawner.init()
 			local base = Vector3.new(spot.X, groundHeightAt(spot.X, spot.Y), spot.Y)
 			local cursed = random:NextNumber() < Config.Cursed.Chance
 			local tree = createTree(base, treeType, cursed)
+			if random:NextNumber() < Config.Mimics.DecoyKnotChance then
+				ForestSpawner.addKnot(tree)
+			end
 			tree:SetAttribute("ZoneId", index)
 			tree.Parent = treesFolder
 			CollectionService:AddTag(tree, Tags.Tree)

@@ -25,6 +25,7 @@ local controllers: { Types.Module } = {
 	require(Controllers.QuestController),
 	require(Controllers.BackpackController),
 	require(Controllers.ChopController),
+	require(Controllers.ChopEffectsController),
 	require(Controllers.ShopController),
 	require(Controllers.SprintController),
 	require(Controllers.KnockdownController),

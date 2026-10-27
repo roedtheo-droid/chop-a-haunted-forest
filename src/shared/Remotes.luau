@@ -21,6 +21,11 @@ local list: { [string]: Types.RemoteKind } = {
 	-- Client -> server: "I swung at this tree". The server decides damage.
 	SwingAtTree = "Event",
 
+	-- Server -> all clients: a tree was hit, so draw the chop effects (only for looks).
+	-- Carries the tree, where on the bark it was hit, which way that side faces, and the
+	-- way it falls if this hit felled it (nil otherwise).
+	TreeHit = "Event",
+
 	-- Client -> server: "I want to buy this item" (an item Id from Shared/Shop).
 	-- The server checks the price, your coins and that you're at the Tool Shed.
 	BuyItem = "Event",

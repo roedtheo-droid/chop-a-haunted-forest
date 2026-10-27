@@ -298,6 +298,32 @@ local Config = {
 		SoundFullVolume = 10, -- ...and are at full volume within this many studs
 	},
 
+	-- Chop effects, only for looks: every player draws them on their own screen
+	-- (see Client/Controllers/ChopEffectsController).
+	ChopEffects = {
+		ChipSize = 0.45, -- the little wood cubes that fly out of the notch
+		ChipSpeed = 16,
+		ChipLifetime = 1.2, -- seconds before a chip fades away
+		WobbleAngle = 4, -- degrees the crown sways when the tree is hit
+		WobbleTime = 0.35,
+		HpBarShowTime = 3, -- seconds the HP bar stays after the last hit
+		HpBarWidth = 4.5, -- studs
+		HpBarHeight = 0.7,
+		HpBarAboveGround = 7, -- studs
+		HpBarFull = Color3.fromRGB(110, 220, 70),
+		HpBarLow = Color3.fromRGB(235, 70, 50),
+		EffectsDistance = 150, -- you only see effects on trees this close
+		TimberTime = 1.4, -- seconds "TIMBER!" stays up
+		TimberSize = 9, -- studs wide
+		ShakeDistance = 45, -- your camera shakes when a tree lands this close to you
+		ShakeStrength = 0.5, -- studs the camera moves at most
+		ShakeTime = 0.4,
+		DustCubes = 14, -- grey cubes in the puff where a tree lands
+		DustSize = 1.4,
+		DustTime = 0.9,
+		DustColor = Color3.fromRGB(205, 190, 165),
+	},
+
 	-- The glowing line to the nearest tree when a zone is almost cleared
 	NearestTree = {
 		ShowAtPercent = 95, -- show it when the zone you're in is at least this % cleared
@@ -410,8 +436,13 @@ local Config = {
 		RootLength = 1.6, -- how far a root sticks out past the trunk
 		RootHeight = 1.6,
 		BirchMarks = 6, -- dark marks on each side of a birch trunk
-		MinTrunkScale = 0.4, -- trunk width at 0 HP, compared to full width (shows damage)
-		ChipsPerHit = 10, -- wood chip particles per hit
+		MinTrunkScale = 0.4, -- the boss's trunk width at 0 HP, compared to full width (shows damage)
+		ChipsPerHit = 10, -- wood chips that fly out on each hit
+		-- Hitting a tree cuts a notch on the side you chop from. It gets deeper as HP goes down.
+		NotchHeight = 2, -- studs from the ground to the middle of the notch
+		NotchFirstHit = 0.15, -- how deep the first hit cuts, as a part of the trunk's width
+		NotchMaxDepth = 0.6, -- how deep the notch is at 0 HP, as a part of the trunk's width
+		NotchOpening = 1.2, -- the notch's height at the bark, compared to how deep it is
 		FallTime = 1.2, -- seconds the fall animation takes
 		RemoveDelay = 1.5, -- seconds a fallen tree lies there before it disappears
 		LogsPerTree = 3,

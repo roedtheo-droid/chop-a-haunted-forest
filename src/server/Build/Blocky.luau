@@ -141,8 +141,7 @@ function Blocky.rings(part: BasePart, face: Enum.NormalId)
 	end
 end
 
--- Short dark marks on all four sides of a birch trunk. They're drawn with scale numbers,
--- so they shrink along with the trunk when it's chopped.
+-- Short dark marks on all four sides of a birch trunk, drawn with scale numbers.
 local function addBirchMarks(trunk: BasePart, random: Random)
 	for _, face in { Enum.NormalId.Front, Enum.NormalId.Back, Enum.NormalId.Left, Enum.NormalId.Right } do
 		local gui = Blocky.face(trunk, face)
@@ -184,7 +183,6 @@ function Blocky.tree(base: Vector3, treeType: Types.TreeTypeConfig, random: Rand
 	end
 
 	-- Roots: wedges from the middle of the trunk that slope down to the ground outside it.
-	-- They start in the middle, so they still touch the trunk when it gets thinner.
 	local rootLength = width / 2 + cfg.RootLength * scale
 	local rootHeight = cfg.RootHeight * scale
 	local rootColor = Blocky.shade(barkColor, -0.12)
@@ -262,6 +260,103 @@ function Blocky.tree(base: Vector3, treeType: Types.TreeTypeConfig, random: Rand
 	-- No PrimaryPart on purpose: with a PrimaryPart, Roblox ignores WorldPivot.
 	model.WorldPivot = origin
 	return model
+end
+
+-- One piece of a notched trunk: same colour and material as the trunk, never in the way.
+local function trunkPiece(name: string, trunk: BasePart, tree: Model, wedge: boolean): BasePart
+	local piece: BasePart = if wedge then Instance.new("WedgePart") else Instance.new("Part")
+	piece.Name = name
+	piece.Color = trunk.Color
+	piece.Material = trunk.Material
+	piece.Anchored = true
+	piece.CanCollide = false
+	piece.CanTouch = false
+	piece.TopSurface = Enum.SurfaceType.Smooth
+	piece.BottomSurface = Enum.SurfaceType.Smooth
+	piece.Parent = tree
+	return piece
+end
+
+local function getPiece(tree: Model, name: string): BasePart
+	local piece = tree:FindFirstChild(name)
+	assert(piece and piece:IsA("BasePart"), `notch piece {name} is missing`)
+	return piece
+end
+
+-- Cut a V-shaped notch into a tree's trunk, `cut` deep (a part of the trunk's width, 0 to 1).
+-- The first cut picks the side of the trunk that faces `outward`; later cuts deepen the same notch.
+-- A part can't have a hole in it, so the first cut hides the real Trunk (it stays as the
+-- tree's invisible body, which other code still uses) and draws the trunk again from five
+-- pieces: a block below the notch, a block above it, a thinner block behind it, and two
+-- wedges for the notch's light, freshly cut slopes.
+-- Returns where the notch opens on the bark, facing out (for the chop effects).
+function Blocky.notch(tree: Model, trunk: BasePart, outward: Vector3, cut: number): CFrame
+	local cfg = Config.Tree
+	local stored = tree:GetAttribute("NotchFace")
+	local face: Vector3
+	if typeof(stored) == "Vector3" then
+		face = stored
+	else
+		-- The trunk side closest to `outward`, in the trunk's own space.
+		local direction = trunk.CFrame:VectorToObjectSpace(outward)
+		if math.abs(direction.X) > math.abs(direction.Z) then
+			face = Vector3.new(math.sign(direction.X), 0, 0)
+		else
+			face = Vector3.new(0, 0, if direction.Z >= 0 then 1 else -1)
+		end
+		tree:SetAttribute("NotchFace", face)
+
+		trunkPiece("TrunkBelow", trunk, tree, false)
+		local above = trunkPiece("TrunkAbove", trunk, tree, false)
+		local core = trunkPiece("TrunkCore", trunk, tree, false)
+		Blocky.face(core, Enum.NormalId.Front, Config.Style.InnerWood)
+		for _, name in { "NotchLower", "NotchUpper" } do
+			local wedge = trunkPiece(name, trunk, tree, true)
+			Blocky.face(wedge, Enum.NormalId.Top, Config.Style.InnerWood) -- a wedge's Top is its slope
+		end
+		-- Pictures on the trunk (birch marks) move to the big piece above the notch.
+		for _, child in trunk:GetChildren() do
+			if child:IsA("SurfaceGui") then
+				child:Clone().Parent = above
+				child.Enabled = false
+			end
+		end
+		trunk.Transparency = 1
+	end
+
+	local width, height = trunk.Size.X, trunk.Size.Y
+	local depth = width * math.clamp(cut, 0.05, 0.95)
+	local opening = depth * cfg.NotchOpening
+	local maxOpening = width * cfg.NotchMaxDepth * cfg.NotchOpening
+	-- The middle of the notch, measured from the trunk's centre.
+	local middle = -height / 2 + math.min(math.max(cfg.NotchHeight, maxOpening / 2 + 0.3), height * 0.4)
+
+	-- The trunk's space turned so that -Z points out of the notched side.
+	local space = trunk.CFrame * CFrame.lookAt(Vector3.zero, face)
+
+	local belowHeight = middle - opening / 2 + height / 2
+	local below = getPiece(tree, "TrunkBelow")
+	below.Size = Vector3.new(width, belowHeight, width)
+	below.CFrame = space * CFrame.new(0, -height / 2 + belowHeight / 2, 0)
+
+	local aboveHeight = height / 2 - (middle + opening / 2)
+	local above = getPiece(tree, "TrunkAbove")
+	above.Size = Vector3.new(width, aboveHeight, width)
+	above.CFrame = space * CFrame.new(0, height / 2 - aboveHeight / 2, 0)
+
+	local core = getPiece(tree, "TrunkCore")
+	core.Size = Vector3.new(width, opening, width - depth)
+	core.CFrame = space * CFrame.new(0, middle, depth / 2)
+
+	-- The lower wedge's slope faces up and out. The upper one is the same, upside down.
+	local lower = getPiece(tree, "NotchLower")
+	lower.Size = Vector3.new(width, opening / 2, depth)
+	lower.CFrame = space * CFrame.new(0, middle - opening / 4, -width / 2 + depth / 2)
+	local upper = getPiece(tree, "NotchUpper")
+	upper.Size = lower.Size
+	upper.CFrame = space * CFrame.new(0, middle + opening / 4, -width / 2 + depth / 2) * CFrame.Angles(0, 0, math.pi)
+
+	return space * CFrame.new(0, middle, -width / 2)
 end
 
 -- A gable roof: two wedges meeting in a ridge that runs along X. `top` is the middle of

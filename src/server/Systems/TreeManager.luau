@@ -29,7 +29,6 @@ local UpgradeManager = require(script.Parent.UpgradeManager)
 local ZoneManager = require(script.Parent.ZoneManager)
 local Blocky = require(script.Parent.Parent.Build.Blocky)
 
-local CHIP_COLOR = Color3.fromRGB(200, 160, 110)
 -- Which sound (in Config.Sounds) each chopping tool makes when it hits.
 local CHOP_SOUNDS: { [string]: string } = {
 	Fists = "ChopFists",
@@ -44,6 +43,7 @@ local TreeManager = {}
 
 local stumpsFolder: Folder
 local notifyRemote: RemoteEvent
+local treeHitRemote: RemoteEvent
 
 -- When each player last swung, to stop them swinging faster than the cooldown.
 local lastSwing: { [Player]: number } = {}
@@ -71,36 +71,26 @@ local function getRootPart(player: Player): BasePart?
 	return if root and root:IsA("BasePart") then root else nil
 end
 
--- Wood chips burst out of the trunk on every hit.
-local function emitChips(trunk: BasePart)
-	local emitter = trunk:FindFirstChild("Chips") :: ParticleEmitter?
-	if not emitter then
-		local newEmitter = Instance.new("ParticleEmitter")
-		newEmitter.Name = "Chips"
-		newEmitter.Enabled = false
-		newEmitter.Color = ColorSequence.new(CHIP_COLOR)
-		newEmitter.Size = NumberSequence.new(0.35)
-		newEmitter.Lifetime = NumberRange.new(0.4, 0.7)
-		newEmitter.Speed = NumberRange.new(10, 18)
-		newEmitter.SpreadAngle = Vector2.new(70, 70)
-		newEmitter.Acceleration = Vector3.new(0, -50, 0)
-		newEmitter.Parent = trunk
-		emitter = newEmitter
-	end
-	if emitter then
-		emitter:Emit(Config.Tree.ChipsPerHit)
-	end
-end
-
--- Visible damage: the trunk gets thinner as HP goes down.
-local function updateTrunkWidth(tree: Model, trunk: BasePart)
+-- Visible damage: a notch on the side the player chops from, deeper as HP goes down.
+-- It never gets shallower, even when a waking mimic's HP goes up.
+-- Returns where the notch opens on the bark, facing out.
+local function cutNotch(tree: Model, trunk: BasePart, fromPosition: Vector3): CFrame
 	local cfg = Config.Tree
 	local hpFraction = getNumberAttribute(tree, "HP") / math.max(getNumberAttribute(tree, "MaxHP"), 1)
-	local scale = cfg.MinTrunkScale + (1 - cfg.MinTrunkScale) * hpFraction
-	local width = getNumberAttribute(tree, "TrunkWidth") * scale
-	-- Changing Size keeps the part's center, so the trunk shrinks evenly.
-	-- (The trunk is a block: Size.Y is its height.)
-	trunk.Size = Vector3.new(width, trunk.Size.Y, width)
+	local cut = cfg.NotchFirstHit + (cfg.NotchMaxDepth - cfg.NotchFirstHit) * (1 - hpFraction)
+	cut = math.max(cut, getNumberAttribute(tree, "NotchCut"))
+	tree:SetAttribute("NotchCut", cut)
+	return Blocky.notch(tree, trunk, fromPosition - trunk.Position, cut)
+end
+
+-- The way a tree falls: away from the player who felled it, flat on the ground.
+local function fallDirection(tree: Model, fromPosition: Vector3): Vector3
+	local base = tree:GetPivot().Position
+	local away = Vector3.new(base.X - fromPosition.X, 0, base.Z - fromPosition.Z)
+	if away.Magnitude < 0.01 then
+		return Vector3.xAxis
+	end
+	return away.Unit
 end
 
 -- A short square stump with a light, ringed top stays where the tree stood, so cleared
@@ -132,9 +122,9 @@ local function leaveStump(tree: Model, trunk: BasePart, charred: boolean)
 	end
 end
 
--- Tip the tree over, away from the player, then drop logs and remove it.
+-- Tip the tree over (`away` is the way it falls), then drop logs and remove it.
 -- Mimics don't leave a stump: they pulled their roots out when they woke up.
-local function fellTree(tree: Model, trunk: BasePart, fromPosition: Vector3, withStump: boolean)
+local function fellTree(tree: Model, trunk: BasePart, away: Vector3, withStump: boolean)
 	-- Remove the tag first, so nobody can hit it while it falls.
 	CollectionService:RemoveTag(tree, Tags.Tree)
 	tree:SetAttribute("Felled", true)
@@ -151,13 +141,6 @@ local function fellTree(tree: Model, trunk: BasePart, fromPosition: Vector3, wit
 
 	local startPivot = tree:GetPivot()
 	local base = startPivot.Position
-
-	-- Direction from the player to the tree, flat on the ground.
-	local away = Vector3.new(base.X - fromPosition.X, 0, base.Z - fromPosition.Z)
-	if away.Magnitude < 0.01 then
-		away = Vector3.xAxis
-	end
-	away = away.Unit
 
 	-- Rotating "up" around this axis by 90 degrees points the tree along `away`.
 	local axis = Vector3.yAxis:Cross(away)
@@ -179,10 +162,9 @@ local function fellTree(tree: Model, trunk: BasePart, fromPosition: Vector3, wit
 	)
 	tween.Completed:Connect(function()
 		alpha:Destroy()
-		-- A crash and a puff of dust where the tree hits the ground.
+		-- A crash where the tree hits the ground. (Each player draws the dust: Client/Controllers/ChopEffectsController.)
 		local landing = base + away * trunk.Size.Y * 0.6 -- Size.Y is the trunk's height
 		EffectsManager.playSound("TreeFall", landing)
-		EffectsManager.burst("Dust", landing)
 		LogManager.spawnLogs(
 			base,
 			away,
@@ -334,16 +316,18 @@ local function onSwing(player: Player, target: unknown)
 	-- 6. All good: chop it.
 	local hp = math.max(getNumberAttribute(tree, "HP") - damage, 0)
 	tree:SetAttribute("HP", hp)
-	emitChips(trunk)
-	updateTrunkWidth(tree, trunk)
+	local notch = cutNotch(tree, trunk, root.Position)
+	local falling = if hp <= 0 then fallDirection(tree, root.Position) else nil
+	-- Every player draws the chips and dust themselves (Client/Controllers/ChopEffectsController).
+	treeHitRemote:FireAllClients(tree, notch.Position, notch.LookVector, falling)
 	if chopSound then
 		EffectsManager.playSound(chopSound, trunk.Position, player)
 	end
 
-	if hp <= 0 then
+	if falling then
 		local wasMimic = MimicManager.isMimic(tree)
 		MimicManager.forget(tree)
-		fellTree(tree, trunk, root.Position, not wasMimic)
+		fellTree(tree, trunk, falling, not wasMimic)
 		QuestManager.report(player, "FellTree")
 		RunManager.record(player, "TreesFelled", 1) -- counts for whoever landed the last hit
 		if wasMimic then
@@ -363,6 +347,7 @@ end
 
 function TreeManager.start()
 	notifyRemote = Remotes.getEvent("Notify")
+	treeHitRemote = Remotes.getEvent("TreeHit")
 	Remotes.getEvent("SwingAtTree").OnServerEvent:Connect(onSwing)
 
 	Players.PlayerRemoving:Connect(function(player: Player)

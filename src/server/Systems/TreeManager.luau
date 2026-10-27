@@ -15,10 +15,13 @@ local LogManager = require(script.Parent.LogManager)
 local QuestManager = require(script.Parent.QuestManager)
 local ToolManager = require(script.Parent.ToolManager)
 local UpgradeManager = require(script.Parent.UpgradeManager)
+local ZoneManager = require(script.Parent.ZoneManager)
 
 local CHIP_COLOR = Color3.fromRGB(200, 160, 110)
 
 local TreeManager = {}
+
+local stumpsFolder: Folder
 
 -- When each player last swung, to stop them swinging faster than the cooldown.
 local lastSwing: { [Player]: number } = {}
@@ -72,16 +75,34 @@ local function updateTrunkWidth(tree: Model, trunk: BasePart)
 	local cfg = Config.Tree
 	local hpFraction = getNumberAttribute(tree, "HP") / math.max(getNumberAttribute(tree, "MaxHP"), 1)
 	local scale = cfg.MinTrunkScale + (1 - cfg.MinTrunkScale) * hpFraction
-	local width = cfg.TrunkWidth * scale
+	local width = getNumberAttribute(tree, "TrunkWidth") * scale
 	-- Changing Size keeps the part's center, so the trunk shrinks evenly.
 	trunk.Size = Vector3.new(trunk.Size.X, width, width)
 end
 
+-- A short stump stays where the tree stood, so cleared areas are easy to spot.
+local function leaveStump(tree: Model, trunk: BasePart)
+	local width = getNumberAttribute(tree, "TrunkWidth")
+	local height = Config.Tree.StumpHeight
+	local stump = Instance.new("Part")
+	stump.Name = "Stump"
+	stump.Shape = Enum.PartType.Cylinder
+	stump.Size = Vector3.new(height, width, width)
+	stump.CFrame = CFrame.new(tree:GetPivot().Position + Vector3.new(0, height / 2, 0)) * CFrame.Angles(0, 0, math.rad(90))
+	stump.Color = trunk.Color:Lerp(Color3.new(0, 0, 0), 0.25) -- a bit darker than the bark
+	stump.Material = Enum.Material.Wood
+	stump.Anchored = true
+	stump.CanCollide = false -- so nobody gets stuck on stumps
+	stump.Parent = stumpsFolder
+end
+
 -- Tip the tree over, away from the player, then drop logs and remove it.
-local function fellTree(tree: Model, fromPosition: Vector3)
+local function fellTree(tree: Model, trunk: BasePart, fromPosition: Vector3)
 	-- Remove the tag first, so nobody can hit it while it falls.
 	CollectionService:RemoveTag(tree, Tags.Tree)
 	tree:SetAttribute("Felled", true)
+	leaveStump(tree, trunk)
+	ZoneManager.treeCleared(getNumberAttribute(tree, "ZoneId"))
 
 	for _, part in tree:GetDescendants() do
 		if part:IsA("BasePart") then
@@ -119,7 +140,13 @@ local function fellTree(tree: Model, fromPosition: Vector3)
 	)
 	tween.Completed:Connect(function()
 		alpha:Destroy()
-		LogManager.spawnLogs(base, away, Config.Tree.LogsPerTree)
+		LogManager.spawnLogs(
+			base,
+			away,
+			Config.Tree.LogsPerTree,
+			getNumberAttribute(tree, "LogValue"),
+			tree:GetAttribute("Cursed") == true
+		)
 		task.delay(Config.Tree.RemoveDelay, function()
 			tree:Destroy()
 		end)
@@ -144,6 +171,10 @@ local function onSwing(player: Player, target: unknown)
 	if not trunk then
 		return
 	end
+	-- Trees behind a closed gate can't be chopped (stops players who teleport past it).
+	if not ZoneManager.isOpen(getNumberAttribute(tree, "ZoneId")) then
+		return
+	end
 
 	-- 2. Is the player alive and close enough? (Reach depends on the tool they hold.)
 	local root = getRootPart(player)
@@ -153,7 +184,7 @@ local function onSwing(player: Player, target: unknown)
 	local stats = ToolManager.getStats(player)
 	local base = tree:GetPivot().Position
 	local flatDistance = Vector2.new(root.Position.X - base.X, root.Position.Z - base.Z).Magnitude
-	if flatDistance > stats.Reach + Config.Tree.TrunkWidth / 2 then
+	if flatDistance > stats.Reach + getNumberAttribute(tree, "TrunkWidth") / 2 then
 		return
 	end
 
@@ -173,12 +204,16 @@ local function onSwing(player: Player, target: unknown)
 	updateTrunkWidth(tree, trunk)
 
 	if hp <= 0 then
-		fellTree(tree, root.Position)
+		fellTree(tree, trunk, root.Position)
 		QuestManager.report(player, "FellTree")
 	end
 end
 
-function TreeManager.init() end
+function TreeManager.init()
+	stumpsFolder = Instance.new("Folder")
+	stumpsFolder.Name = "Stumps"
+	stumpsFolder.Parent = workspace
+end
 
 function TreeManager.start()
 	Remotes.getEvent("SwingAtTree").OnServerEvent:Connect(onSwing)

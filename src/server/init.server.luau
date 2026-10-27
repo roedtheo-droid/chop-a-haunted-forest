@@ -16,6 +16,7 @@ local Systems = script.Systems
 local systems: { Types.Module } = {
 	require(Systems.RemoteService), -- first, so every other system can use remotes
 	require(Systems.QuestManager),
+	require(Systems.ZoneManager), -- before anything that looks for the ground (it builds the zone floors)
 	require(Systems.ForestSpawner),
 	require(Systems.LogManager),
 	require(Systems.CoinManager),

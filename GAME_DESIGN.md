@@ -84,7 +84,8 @@ mimics first and burn them safely with a torch.
   - If it touches a player, that player is "knocked down" (cannot move) for
     20 seconds or until a teammate holds E on them for 3 seconds (revive).
   - Awake mimics return to sleep (become a tree again somewhere nearby)
-    after 45 seconds of not catching anyone.
+    right after catching someone, so teammates can revive them, or after
+    45 seconds of not catching anyone.
 - Torch tool: hitting a SLEEPING mimic burns it safely (counts as cleared,
   drops Embers). Hitting a normal tree with the torch does nothing.
 - Burning or chopping a mimic both count toward zone %.

@@ -156,6 +156,7 @@ local Config = {
 		CatchDistance = 4.5, -- it catches you when your middle is this close to its trunk's middle
 		CatchHeight = 8, -- ...and you're no more than this many studs above or below its roots
 		SleepAfter = 45, -- seconds without catching anyone before it roots itself again
+		HideAfterCatch = true, -- after catching someone it roots itself again right away, so friends can revive them
 		RepathInterval = 0.5, -- seconds between working out a new path to its target
 		SleepSearchRadius = 20, -- it roots itself again within this many studs
 		-- Tells (each mimic gets one at random)

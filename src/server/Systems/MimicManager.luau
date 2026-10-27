@@ -13,8 +13,10 @@
 --
 -- Hitting a sleeping mimic wakes it (TreeManager calls MimicManager.wake). It shakes
 -- loose, then chases the nearest player in its zone, using PathfindingService to walk
--- around the other trees. If it catches someone, they're knocked down (KnockdownManager).
--- After a while without catching anyone, it roots itself again somewhere nearby.
+-- around the other trees. If it catches someone, they're knocked down (KnockdownManager)
+-- and the mimic roots itself again somewhere nearby, so friends can come and revive them
+-- (Config.Mimics.HideAfterCatch). It also roots itself again after a while without
+-- catching anyone.
 -- Chopping an awake mimic down counts toward the zone's % like any other tree.
 
 local CollectionService = game:GetService("CollectionService")
@@ -359,9 +361,11 @@ local function findTarget(mimic: Mimic): BasePart?
 	return best
 end
 
-local function catchPlayers(mimic: Mimic)
+-- Knock down everyone close enough. Returns true if it caught anyone.
+local function catchPlayers(mimic: Mimic): boolean
 	local position = mimic.Tree:GetPivot().Position
 	local cfg = Config.Mimics
+	local caught = false
 	for _, player in Players:GetPlayers() do
 		local root = getRoot(player)
 		if
@@ -372,8 +376,10 @@ local function catchPlayers(mimic: Mimic)
 		then
 			KnockdownManager.knockDown(player)
 			mimic.LastCatch = os.clock()
+			caught = true
 		end
 	end
+	return caught
 end
 
 -- Keep the mimic inside its own zone.
@@ -419,7 +425,8 @@ local function stepTowards(mimic: Mimic, waypoints: { Vector3 }, index: number, 
 end
 
 -- Work out a path to the target, then follow it until it's time to work out a new one.
-local function chaseStep(mimic: Mimic, gen: number, path: Path, target: BasePart, groundY: number)
+-- Returns true if it caught someone on the way.
+local function chaseStep(mimic: Mimic, gen: number, path: Path, target: BasePart, groundY: number): boolean
 	local from = mimic.Tree:GetPivot().Position
 	local goal = Vector3.new(target.Position.X, groundY, target.Position.Z)
 	local waypoints: { Vector3 } = { goal } -- if no path is found, walk straight at the target
@@ -428,7 +435,7 @@ local function chaseStep(mimic: Mimic, gen: number, path: Path, target: BasePart
 		path:ComputeAsync(from, goal)
 	end)
 	if not isCurrent(mimic, gen) then
-		return -- working out the path takes a moment, and the mimic may be gone by then
+		return false -- working out the path takes a moment, and the mimic may be gone by then
 	end
 	if ok and path.Status == Enum.PathStatus.Success then
 		local points: { Vector3 } = {}
@@ -447,13 +454,16 @@ local function chaseStep(mimic: Mimic, gen: number, path: Path, target: BasePart
 	while os.clock() < stopAt do
 		local dt = RunService.Heartbeat:Wait()
 		if not isCurrent(mimic, gen) then
-			return
+			return false
 		end
 		if index <= #waypoints then
 			index = stepTowards(mimic, waypoints, index, dt, groundY)
 		end
-		catchPlayers(mimic)
+		if catchPlayers(mimic) then
+			return true
+		end
 	end
+	return false
 end
 
 ---------------------------------------------------------------------------
@@ -553,7 +563,7 @@ local function runAwake(mimic: Mimic, gen: number)
 	end
 	tree:PivotTo(start)
 
-	-- 2. Chase players until it goes too long without catching anyone.
+	-- 2. Chase players until it catches someone or goes too long without catching anyone.
 	-- AgentHeight is small so the path can go under other trees' leaves.
 	local path = PathfindingService:CreatePath({
 		AgentRadius = 2,
@@ -570,7 +580,12 @@ local function runAwake(mimic: Mimic, gen: number)
 		end
 		local target = findTarget(mimic)
 		if target then
-			chaseStep(mimic, gen, path, target, groundY)
+			local caught = chaseStep(mimic, gen, path, target, groundY)
+			if caught and Config.Mimics.HideAfterCatch then
+				-- Otherwise it would go straight for whoever comes to revive them.
+				rootAgain(mimic, gen)
+				return
+			end
 		else
 			task.wait(0.5) -- nobody to chase in its zone right now
 		end

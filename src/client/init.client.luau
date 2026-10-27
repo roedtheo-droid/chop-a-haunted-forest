@@ -18,6 +18,7 @@ local Controllers = script.Controllers
 -- Order matters: controllers higher in the list are set up first.
 local controllers: { Types.Module } = {
 	require(Controllers.NotifyController),
+	require(Controllers.HudController),
 	require(Controllers.BackpackController),
 	require(Controllers.ChopController),
 }

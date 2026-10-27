@@ -53,8 +53,9 @@ local function createTree(basePosition: Vector3): Model
 	leaves.Anchored = true
 	leaves.Parent = model
 
-	model.PrimaryPart = trunk
 	-- The pivot is the bottom of the trunk, so the tree falls over from its base.
+	-- (No PrimaryPart on purpose: with a PrimaryPart, Roblox ignores WorldPivot
+	-- and uses the middle of the trunk instead.)
 	model.WorldPivot = CFrame.new(basePosition)
 
 	model:SetAttribute("MaxHP", cfg.MaxHP)

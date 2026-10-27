@@ -17,6 +17,8 @@ local systems: { Types.Module } = {
 	require(Systems.RemoteService), -- first, so every other system can use remotes
 	require(Systems.ForestSpawner),
 	require(Systems.LogManager),
+	require(Systems.CoinManager),
+	require(Systems.SawmillManager),
 	require(Systems.TreeManager),
 }
 

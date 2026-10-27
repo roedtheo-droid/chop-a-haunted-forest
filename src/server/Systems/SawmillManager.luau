@@ -117,7 +117,8 @@ local function build(center: Vector3): BasePart
 
 	local padText = Blocky.face(dropPad, Enum.NormalId.Top)
 	padText.Name = "Text"
-	Blocky.label(padText, "DROP LOGS", Config.Style.TitleFont)
+	local label = Blocky.label(padText, "DROP LOGS", Config.Style.TitleFont)
+	label.Rotation = 90 -- so it reads the right way up when you walk onto the pad from the front
 
 	model.Parent = workspace
 	return dropPad

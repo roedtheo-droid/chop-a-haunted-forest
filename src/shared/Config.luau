@@ -78,6 +78,9 @@ local treeTypes: { [string]: Types.TreeTypeConfig } = {
 			Color3.fromRGB(60, 130, 45),
 			Color3.fromRGB(75, 150, 55),
 			Color3.fromRGB(95, 165, 60),
+			Color3.fromRGB(60, 130, 45),
+			Color3.fromRGB(75, 150, 55),
+			Color3.fromRGB(95, 165, 60),
 			Color3.fromRGB(200, 60, 45), -- red autumn tree
 			Color3.fromRGB(230, 140, 50), -- orange autumn tree
 			Color3.fromRGB(235, 150, 185), -- pink blossom tree
@@ -278,10 +281,10 @@ local Config = {
 		BorderTreeDistance = 10, -- studs from the wall to those trees
 		BorderTreeScale = 1.7, -- they're bigger than forest trees, so they show above the walls
 		MountainCount = 20,
-		MountainDistance = 220, -- studs from the forest's edge to the nearest mountains
-		MountainMinSize = 120,
-		MountainMaxSize = 240,
-		MountainColor = Color3.fromRGB(135, 145, 160),
+		MountainDistance = 320, -- studs from the forest's edge to the nearest mountains
+		MountainMinSize = 100,
+		MountainMaxSize = 180,
+		MountainColor = Color3.fromRGB(110, 120, 138),
 		SnowColor = Color3.fromRGB(245, 248, 252),
 		SnowCap = 0.3, -- the top 30% of each mountain is snow
 	},

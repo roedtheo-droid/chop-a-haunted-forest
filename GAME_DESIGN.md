@@ -167,7 +167,7 @@ game builds the old parts version.
 4. The view outside: mountain ranges, hills with trees, clouds and sun rays; all models in
    one file (AllModels.fbx) so Studio needs one import. (done, tested)
 5a. Tree variety (two shapes of each, willows, dead oaks), groves and clearings, path
-    props in small groups.
+    props in small groups. (done, tested)
 5b. Ground details (grass tufts, flowers, ferns, mushrooms, dead leaves) and prop models.
 6. Buildings, landmarks, logs and the boss as models.
 

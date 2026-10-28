@@ -97,6 +97,50 @@ def cap(source, min_up=0.85, lift=0.05, thickness=0.14):
     return bm
 
 
+def blob(radius_x, radius_y, thickness, sides=12, jitter=0.15, waist=0.0, rng=None):
+    """A flat, irregular patch: a jagged oval `radius_x` by `radius_y`, `thickness` thick,
+    centred on the origin. `waist` pinches its middle (0.45 makes a peanut shape)."""
+    rng = rng or random.Random(7)
+    bm = bmesh.new()
+    ring = []
+    for i in range(sides):
+        a = (i + rng.uniform(-0.25, 0.25)) / sides * 2 * math.pi
+        r = 1 + rng.uniform(-jitter, jitter)
+        pinch = 1 - waist * (1 - abs(math.cos(a)))
+        ring.append(bm.verts.new((math.cos(a) * radius_x * r, math.sin(a) * radius_y * r * pinch, -thickness / 2)))
+    bottom = bm.faces.new(ring)
+    extruded = bmesh.ops.extrude_face_region(bm, geom=[bottom])
+    for item in extruded["geom"]:
+        if isinstance(item, bmesh.types.BMVert):
+            item.co.z += thickness
+    bmesh.ops.recalc_face_normals(bm, faces=list(bm.faces))
+    return bm
+
+
+def ridge(length, profile, sections=4, wobble=0.0, rise_jitter=0.0, rng=None):
+    """A long strip along X whose cross-section is `profile`: a closed list of (y, z) points
+    (z = 0 is the ground). Like a river bank. Each section is nudged and raised a little at
+    random, so it doesn't look machine-made."""
+    rng = rng or random.Random(9)
+    bm = bmesh.new()
+    rows = []
+    for i in range(sections + 1):
+        x = -length / 2 + length * i / sections
+        end = i in (0, sections)
+        dy = 0 if end else rng.uniform(-wobble, wobble)
+        lift = 1 + rng.uniform(-rise_jitter, rise_jitter)
+        rows.append([bm.verts.new((x, y + dy, z * lift)) for (y, z) in profile])
+    count = len(profile)
+    for i in range(sections):
+        for j in range(count):
+            k = (j + 1) % count
+            bm.faces.new((rows[i][j], rows[i][k], rows[i + 1][k], rows[i + 1][j]))
+    bm.faces.new(rows[0])
+    bm.faces.new(list(reversed(rows[-1])))
+    bmesh.ops.recalc_face_normals(bm, faces=list(bm.faces))
+    return bm
+
+
 def place(location=(0, 0, 0), turn_z=0.0, tilt_x=0.0, tilt_y=0.0, orbit_z=0.0):
     """A matrix that tilts (degrees around X and Y), turns (degrees around Z), moves to
     `location`, and then swings around the middle of the model (degrees around Z), like the

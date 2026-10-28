@@ -63,6 +63,40 @@ function Blocky.wedge(
 	return wedge
 end
 
+-- A roundish flat patch on the ground at `center` (its Y is ignored), made of a cross and a
+-- square turned 45 degrees, with its top at height `top`. You walk through it, and raycasts
+-- looking for the ground go through it too. The three pieces sit a hair apart in height,
+-- so where they overlap doesn't flicker.
+function Blocky.patch(
+	name: string,
+	center: Vector3,
+	radius: number,
+	top: number,
+	color: Color3,
+	material: Enum.Material,
+	parent: Instance
+): { Part }
+	local thickness = 0.2
+	local y = top - thickness / 2
+	local parts = {
+		Blocky.part(name, Vector3.new(radius * 2, thickness, radius * 1.2), CFrame.new(center.X, y, center.Z), color, material, parent),
+		Blocky.part(name, Vector3.new(radius * 1.2, thickness, radius * 2), CFrame.new(center.X, y + 0.01, center.Z), color, material, parent),
+		Blocky.part(
+			name,
+			Vector3.new(radius * 1.45, thickness, radius * 1.45),
+			CFrame.new(center.X, y + 0.02, center.Z) * CFrame.Angles(0, math.pi / 4, 0),
+			color,
+			material,
+			parent
+		),
+	}
+	for _, part in parts do
+		part.CanCollide = false
+		part.CanQuery = false
+	end
+	return parts
+end
+
 -- A colour a bit lighter (amount above 0) or darker (amount below 0). 0.2 = 20%.
 function Blocky.shade(color: Color3, amount: number): Color3
 	if amount >= 0 then

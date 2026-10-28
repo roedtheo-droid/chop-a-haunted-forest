@@ -65,19 +65,9 @@ local function spotOnCircle(center: Vector3, radius: number): Vector3
 	return center + Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
 end
 
--- A roundish flat patch (a cross and a square turned 45 degrees), `top` studs above the ground.
--- The three pieces sit a hair apart in height, so where they overlap doesn't flicker.
+-- A roundish flat patch, `top` studs above the ground (see Blocky.patch).
 local function patch(name: string, center: Vector3, radius: number, top: number, color: Color3, material: Enum.Material): { Part }
-	local thickness = 0.2
-	local parts = {
-		decor(name, Vector3.new(radius * 2, thickness, radius * 1.2), at(center, top - thickness / 2), color, material),
-		decor(name, Vector3.new(radius * 1.2, thickness, radius * 2), at(center, top - thickness / 2 + 0.01), color, material),
-		decor(name, Vector3.new(radius * 1.45, thickness, radius * 1.45), at(center, top - thickness / 2 + 0.02) * CFrame.Angles(0, math.pi / 4, 0), color, material),
-	}
-	for _, part in parts do
-		part.CanQuery = false -- so raycasts looking for the ground find the floor under it
-	end
-	return parts
+	return Blocky.patch(name, center, radius, GROUND + top, color, material, folder)
 end
 
 -- Water in a roundish pool, with a ring of sand or mud around it.

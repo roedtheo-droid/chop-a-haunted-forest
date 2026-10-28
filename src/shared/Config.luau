@@ -313,6 +313,26 @@ local Config = {
 		BarkBlock = "BarkBlock", -- stretched copies of it make up a chopped trunk (see Blocky.notch)
 		Rocks = { "Rock1", "Rock2" }, -- each rock picks one of these at random
 		Trees = treeShapes, -- which tree types use them: Shapes in TreeTypes above
+		Patches = { "Patch1", "Patch2", "Patch3" }, -- flat blobs on the ground (see Ground below)
+		Pebbles = "Pebbles", -- along the path's edges
+		RiverBank = "RiverBank", -- pieces of the river's banks
+	},
+
+	-- Soft patches of colour on the ground, so the floors aren't one flat colour, and where two
+	-- zones meet each one's colour frays into the other (see Server/Build/Ground).
+	Ground = {
+		CampPatches = 14,
+		ZonePatches = { 30, 34, 38 }, -- in zone 1, 2 and 3
+		PatchSize = { 8, 24 }, -- smallest and biggest, in studs
+		BlendPatches = 10, -- on each side of a border between two zones
+		BlendDepth = 24, -- how far (studs) into the next zone they reach
+		CampColors = { Color3.fromRGB(146, 212, 102), Color3.fromRGB(104, 173, 68) },
+		-- One list per zone. Each patch picks one colour at random.
+		ZoneColors = {
+			{ Color3.fromRGB(110, 190, 70), Color3.fromRGB(76, 146, 51), Color3.fromRGB(132, 176, 70) }, -- grass, dark grass, mossy
+			{ Color3.fromRGB(111, 138, 98), Color3.fromRGB(85, 72, 58), Color3.fromRGB(72, 98, 70) }, -- grey-green, mud, dark moss
+			{ Color3.fromRGB(77, 61, 68), Color3.fromRGB(92, 47, 43), Color3.fromRGB(46, 36, 40) }, -- dusty, dead leaves, dark mud
+		},
 	},
 
 	-- The camp: a safe area before zone 1 with spawn, the Tool Shed and the first sawmill.
@@ -324,6 +344,13 @@ local Config = {
 		RiverWidth = 14,
 		RiverGap = 3, -- studs between the river and zone 1
 		RiverColor = Color3.fromRGB(90, 169, 230),
+		RiverTransparency = 0.35, -- you see the darker riverbed through the water
+		RiverbedColor = Color3.fromRGB(52, 98, 118),
+		BankColor = Color3.fromRGB(226, 205, 150), -- the sandy banks along both sides
+		BankLength = 12, -- studs per piece of bank (each one a little longer or shorter)
+		RiverRocks = 6, -- small rocks sticking out of the water
+		RiverReeds = 12, -- clumps of reeds on the banks
+		RiverLilyPads = 10,
 		BridgeWidth = 16,
 		-- The things in the camp (see Server/Build/CampProps). Positions are (X, 0, Z).
 		PlazaSize = 24, -- the square of stone tiles around spawn
@@ -337,10 +364,15 @@ local Config = {
 
 	-- A dirt path from spawn through every gate to the boss. Trees don't grow on it.
 	-- Points are (X, Z) on the map, in order. The gates are at X = 0, so the path crosses there.
+	-- The path bends smoothly through the points (see Zones.getPathPoints).
 	Path = {
 		Width = 8,
 		TreeClearance = 7, -- no trees closer than this to the middle of the path
 		Color = Color3.fromRGB(210, 173, 115),
+		Smoothness = 6, -- pieces between two points: more = rounder bends (and more parts)
+		EdgeWidth = 1.2, -- a darker strip of dirt along each side
+		EdgeColor = Color3.fromRGB(168, 129, 79),
+		PebbleSpacing = 7, -- studs between little groups of pebbles along the edges
 		Points = {
 			Vector2.new(0, 480),
 			Vector2.new(0, 370),

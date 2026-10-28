@@ -17,6 +17,7 @@ local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Zones = require(ReplicatedStorage.Shared.Zones)
 local EffectsManager = require(script.Parent.EffectsManager)
 local Blocky = require(script.Parent.Parent.Build.Blocky)
+local Ground = require(script.Parent.Parent.Build.Ground)
 
 local FLOOR_THICKNESS = 1
 local FLOOR_TOP = 0.05 -- a hair above the baseplate, so the two surfaces don't flicker
@@ -225,6 +226,7 @@ function ZoneManager.init()
 	buildFloors(model)
 	buildWalls(model)
 	model.Parent = workspace
+	Ground.build(workspace) -- soft patches of colour on the floors
 end
 
 function ZoneManager.start()

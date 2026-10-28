@@ -231,13 +231,17 @@ local function buildLampPost()
 	light.Parent = lamp
 end
 
+-- How far to the right of the sawmill's middle (X) its water wheel and stream are.
+local function wheelOffset(): number
+	return Config.Sawmill.BuildingSize.X / 2 + WHEEL_WIDTH / 2 + 1.2
+end
+
 -- The water wheel on the right side, turning in a stream. In the camp the stream runs back
 -- into the river (riverZ is the river's middle); elsewhere it's a little pond.
 local function buildWaterWheel(riverZ: number?, wear: number)
 	local cfg = Config.Sawmill
-	local w = cfg.BuildingSize.X
 	local radius = cfg.WheelRadius
-	local wheelX = w / 2 + WHEEL_WIDTH / 2 + 1.2
+	local wheelX = wheelOffset()
 	local wheelY = radius + 0.1 -- the bottom paddles dip into the water
 
 	-- The stream (or pond) under the wheel, with wooden edges.
@@ -333,6 +337,12 @@ end
 
 -- Builds the sawmill facing +Z with the middle of its floor at `ground`, into `parent`.
 -- `wear` (0 to 1) makes it darker and more worn. Pass `riverZ` when it stands by the river.
+-- Where (X) the stream under the water wheel is, for a sawmill whose middle is at `centerX`.
+-- The camp's river banks leave a gap there (see CampManager).
+function SawmillBuilding.streamX(centerX: number): number
+	return centerX + wheelOffset()
+end
+
 function SawmillBuilding.build(ground: Vector3, wear: number, riverZ: number?, parent: Model)
 	local style = Config.Style
 	origin = CFrame.new(ground)

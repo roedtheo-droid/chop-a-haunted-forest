@@ -40,7 +40,7 @@ local function template(name: string): Instance?
 end
 
 -- The names the game looks for. Longer names first, so "BarkBlock" isn't mistaken for "Block".
-local ROLES = { "BarkBlock", "LeafBlock", "Leaves", "Trunk", "Branch", "Root", "Moss", "Rock" }
+local ROLES = { "BarkBlock", "LeafBlock", "Leaves", "Trunk", "Branch", "Root", "Moss", "Rock", "Patch", "Pebble", "Sand", "Stone" }
 
 -- Blender can't give two objects the same name, so they're numbered ("LeafBlock_2"), and
 -- Studio sometimes adds the file's name too ("Oak_LeafBlock_2"). The game wants the plain
@@ -57,6 +57,17 @@ end
 -- Is model `name` imported?
 function Assets.has(name: string): boolean
 	return template(name) ~= nil
+end
+
+-- One of `names` that is imported, picked at random, or nil if none of them is.
+function Assets.pick(names: { string }, random: Random): string?
+	local found: { string } = {}
+	for _, name in names do
+		if Assets.has(name) then
+			table.insert(found, name)
+		end
+	end
+	return if #found > 0 then found[random:NextInteger(1, #found)] else nil
 end
 
 -- A copy of model `name`: a Model holding its parts directly (however Studio nested them

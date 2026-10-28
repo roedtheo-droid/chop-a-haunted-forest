@@ -7,6 +7,7 @@ or with Blender itself:
 
 Kits (what to build):
     pilot   the first test models: Oak, Pine, Birch, BarkBlock, Rock1, Rock2
+    ground  ground patches, pebbles and river banks: Patch1-3, Pebbles, RiverBank
     all     every model
 You can also name single models: python blender/build.py Oak Rock2
 
@@ -22,7 +23,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import bpy  # noqa: E402
 from lib import output  # noqa: E402
 from mathutils import Vector  # noqa: E402
-from models import rocks, trees  # noqa: E402
+from models import ground, rocks, trees  # noqa: E402
 
 MODELS = {
     "Oak": trees.oak,
@@ -31,10 +32,16 @@ MODELS = {
     "BarkBlock": trees.bark_block,
     "Rock1": rocks.rock1,
     "Rock2": rocks.rock2,
+    "Patch1": ground.patch1,
+    "Patch2": ground.patch2,
+    "Patch3": ground.patch3,
+    "Pebbles": ground.pebbles,
+    "RiverBank": ground.river_bank,
 }
 
 KITS = {
     "pilot": ["Oak", "Pine", "Birch", "BarkBlock", "Rock1", "Rock2"],
+    "ground": ["Patch1", "Patch2", "Patch3", "Pebbles", "RiverBank"],
 }
 KITS["all"] = list(MODELS)
 

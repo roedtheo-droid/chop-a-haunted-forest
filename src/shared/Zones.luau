@@ -90,16 +90,48 @@ function Zones.isNearLandmark(x: number, z: number): boolean
 	return false
 end
 
--- How far (x, z) is from the middle of the dirt path (Config.Path), in studs.
+-- The dirt path as a smooth curve: Config.Path.Points with Config.Path.Smoothness extra
+-- points between each pair, on a curve that goes through every one of them (a Catmull-Rom
+-- curve). So the path still crosses each gate at X = 0 and ends at the boss, but it bends
+-- smoothly instead of in sharp corners. Worked out once, here.
+local pathPoints: { Vector2 } = {}
+do
+	local points = Config.Path.Points
+	local steps = math.max(Config.Path.Smoothness, 1)
+	for index = 1, #points - 1 do
+		-- The points before and after this piece shape the curve (the ends repeat themselves).
+		local p0 = points[math.max(index - 1, 1)]
+		local p1, p2 = points[index], points[index + 1]
+		local p3 = points[math.min(index + 2, #points)]
+		for step = 0, steps - 1 do
+			local t = step / steps
+			local t2, t3 = t * t, t * t * t
+			table.insert(
+				pathPoints,
+				(p1 * 2 + (p2 - p0) * t + (p0 * 2 - p1 * 5 + p2 * 4 - p3) * t2 + (p1 * 3 - p0 - p2 * 3 + p3) * t3) * 0.5
+			)
+		end
+	end
+	table.insert(pathPoints, points[#points])
+	table.freeze(pathPoints)
+end
+
+-- The smooth path's points, from spawn to the boss (don't change the list).
+function Zones.getPathPoints(): { Vector2 }
+	return pathPoints
+end
+
+-- How far (x, z) is from the middle of the smooth dirt path, in studs.
 function Zones.distanceToPath(x: number, z: number): number
 	local point = Vector2.new(x, z)
-	local points = Config.Path.Points
+	local points = pathPoints
 	local best = math.huge
 	for index = 1, #points - 1 do
 		local a, b = points[index], points[index + 1]
 		local along = b - a
 		-- How far along this piece of path the closest spot is, from 0 (at a) to 1 (at b).
-		local t = math.clamp((point - a):Dot(along) / along:Dot(along), 0, 1)
+		local length = along:Dot(along)
+		local t = if length > 0 then math.clamp((point - a):Dot(along) / length, 0, 1) else 0
 		best = math.min(best, (point - (a + along * t)).Magnitude)
 	end
 	return best

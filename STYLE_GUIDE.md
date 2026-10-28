@@ -76,6 +76,9 @@ Samme kantede stil hele vejen, bare mørkere.
 - **Navne spillet leder efter:** `Trunk`, `Root`, `Branch`, `Leaves` (den største blad-klump),
   `LeafBlock`, `Rock`, `Moss`. Nummerér med `_1`, `_2`...
 - **Stammen er altid en firkantet, lige blok** med bark-riller, så hakket kan skæres i den.
+- **Jorden:** bløde pletter (`Patch`) i lysere/mørkere græs, mos, mudder og visne blade, og ved
+  zone-grænserne fletter de to zoners farver ind i hinanden. Stien har en mørkere jordkant og småsten.
+  Floden har sandbanker med sten, en mørkere bund, siv og åkander.
 - Mangler en model i Studio, bygger spillet den gamle Parts-version i stedet.
 
 ## Hvad vi IKKE kopierer

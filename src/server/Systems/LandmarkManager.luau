@@ -102,20 +102,25 @@ local function addPathProp(zoneIndex: number, spot: Vector3, toPath: Vector3, al
 	end
 end
 
--- Walk along the path and put a prop every few studs, on alternating sides.
+-- Walk along the (smooth) path and put a prop every few studs, on alternating sides.
 local function decoratePath()
 	local cfg = Config.Props
-	local points = Config.Path.Points
+	local points = Zones.getPathPoints()
 	local count = 0
+	local travelled = 0 -- studs walked so far
+	local nextSpot = cfg.PathSpacing / 2 -- where the next prop goes, in studs along the path
 	for index = 1, #points - 1 do
 		local a, b = points[index], points[index + 1]
+		local length = (b - a).Magnitude
+		if length <= 0 then
+			continue
+		end
 		local direction = (b - a).Unit
 		local normal = Vector2.new(-direction.Y, direction.X)
-		local distance = cfg.PathSpacing / 2
-		while distance < (b - a).Magnitude do
+		while nextSpot <= travelled + length do
 			count += 1
 			local side = if count % 2 == 0 then 1 else -1
-			local flat = a + direction * distance + normal * side * cfg.PathOffset
+			local flat = a + direction * (nextSpot - travelled) + normal * side * cfg.PathOffset
 			local spot = Vector3.new(flat.X, 0, flat.Y)
 			local zoneIndex = Zones.indexAt(spot)
 			-- Near a bend the spot can end up on the next piece of path, so check it's beside it.
@@ -128,8 +133,9 @@ local function decoratePath()
 				local toPath = Vector3.new(-normal.X * side, 0, -normal.Y * side)
 				addPathProp(zoneIndex, spot, toPath, Vector3.new(direction.X, 0, direction.Y), count)
 			end
-			distance += cfg.PathSpacing
+			nextSpot += cfg.PathSpacing
 		end
+		travelled += length
 	end
 end
 

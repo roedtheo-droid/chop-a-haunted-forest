@@ -72,16 +72,8 @@ end
 -- A rock from one of the Blender rock models (Config.Models.Rocks), or nil if none is
 -- imported yet. Returns the stone part.
 local function meshRock(parent: Instance, base: Vector3, size: number, mossy: boolean, random: Random, stone: Color3): BasePart?
-	local names: { string } = {}
-	for _, name in Config.Models.Rocks do
-		if Assets.has(name) then
-			table.insert(names, name)
-		end
-	end
-	if #names == 0 then
-		return nil
-	end
-	local model = Assets.model(names[random:NextInteger(1, #names)])
+	local name = Assets.pick(Config.Models.Rocks, random)
+	local model = if name then Assets.model(name) else nil
 	if not model then
 		return nil
 	end
@@ -142,6 +134,36 @@ function Props.rock(parent: Instance, base: Vector3, size: number, mossy: boolea
 		decor(parent, "Moss", Vector3.new(size * 0.85, 0.2, size * 0.7), main.CFrame * CFrame.new(0, size * 0.35 + 0.05, 0), MOSS, Enum.Material.Grass)
 	end
 	return main
+end
+
+-- A few little pebbles about `size` studs across, for the edges of the path. You walk
+-- through them. Uses the Blender "Pebbles" model when it's imported.
+function Props.pebbles(parent: Instance, base: Vector3, size: number, random: Random)
+	local color = Blocky.shade(STONE, random:NextNumber(-0.1, 0.05))
+	local turn = CFrame.Angles(0, random:NextNumber(0, math.pi * 2), 0)
+	local model = Assets.part(Config.Models.Pebbles)
+	local pebbles: { BasePart } = {}
+	if model then
+		model.Size *= size / model.Size.X
+		model.CFrame = above(base, model.Size.Y / 2 - 0.05) * turn
+		table.insert(pebbles, model)
+	else
+		local big, small = size * 0.45, size * 0.3
+		table.insert(pebbles, Blocky.part("Pebble", Vector3.new(big, big * 0.6, big * 0.8), above(base, big * 0.25) * turn, color, Enum.Material.Slate, parent))
+		table.insert(
+			pebbles,
+			Blocky.part("Pebble", Vector3.new(small, small * 0.6, small), above(base, small * 0.25) * turn * CFrame.new(big * 0.8, 0, small), color, Enum.Material.Slate, parent)
+		)
+	end
+	for _, pebble in pebbles do
+		pebble.Name = "Pebble"
+		pebble.Color = color
+		pebble.Material = Enum.Material.Slate
+		pebble.CanCollide = false
+		pebble.CanQuery = false
+		pebble.CastShadow = false
+		pebble.Parent = parent
+	end
 end
 
 -- One mushroom standing on `bottom`. Red with white dots, or glowing green. Returns its cap.

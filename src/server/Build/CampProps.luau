@@ -9,13 +9,13 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Blocky = require(script.Parent.Blocky)
+local Props = require(script.Parent.Props)
 
 local GROUND = 0.05 -- the top of the camp's grass (see CampManager)
 local TILE_GAP = 0.25
 local TILE_THICKNESS = 0.3 -- the tiles sit just above the dirt path
 
 local STONE = Color3.fromRGB(143, 150, 163)
-local FIRE_COLOR = Color3.fromRGB(255, 138, 60)
 local WATER_COLOR = Color3.fromRGB(70, 140, 205)
 local SOIL = Color3.fromRGB(100, 70, 45)
 local STEM = Color3.fromRGB(60, 140, 50)
@@ -63,51 +63,6 @@ local function buildPlaza()
 			)
 			tile.CanQuery = false -- so raycasts looking for the ground find the grass under it
 		end
-	end
-end
-
--- A campfire in a ring of stones, with three logs around it to sit on.
-local function buildCampfire()
-	local center = Config.Camp.Campfire + Vector3.new(0, GROUND, 0)
-	for index = 1, 8 do
-		local angle = index * math.pi / 4
-		piece(
-			"FireStone",
-			Vector3.new(1.3, 0.9, 1.3),
-			CFrame.new(center + Vector3.new(math.cos(angle) * 2.4, 0.45, math.sin(angle) * 2.4)) * CFrame.Angles(0, angle, 0),
-			Blocky.shade(STONE, (index % 2) * 0.1),
-			Enum.Material.Slate
-		)
-	end
-	-- Logs leaning together over the fire.
-	for index = 1, 3 do
-		local log = decor(
-			"FireLog",
-			Vector3.new(0.7, 0.7, 3),
-			CFrame.new(center + Vector3.new(0, 0.9, 0)) * CFrame.Angles(0, index * 2 * math.pi / 3, 0) * CFrame.new(0, 0, 0.8) * CFrame.Angles(math.rad(35), 0, 0),
-			Config.Style.Wood,
-			Enum.Material.Wood
-		)
-		Blocky.rings(log, Enum.NormalId.Back)
-	end
-	local flame = decor("Flame", Vector3.new(1.2, 1.4, 1.2), CFrame.new(center + Vector3.new(0, 0.9, 0)), FIRE_COLOR, Enum.Material.Neon)
-	local fire = Instance.new("Fire")
-	fire.Size = 3
-	fire.Heat = 6
-	fire.Parent = flame
-	local light = Instance.new("PointLight")
-	light.Color = FIRE_COLOR
-	light.Range = 20
-	light.Brightness = 1.5
-	light.Parent = flame
-
-	-- Seats: logs lying around the fire, with ringed ends.
-	for index = 1, 3 do
-		local angle = index * 2 * math.pi / 3 + math.pi / 6
-		local spot = center + Vector3.new(math.cos(angle) * 6.5, 0.8, math.sin(angle) * 6.5)
-		local seat = piece("SeatLog", Vector3.new(5, 1.6, 1.6), facing(spot, center), Config.Style.Wood, Enum.Material.Wood)
-		Blocky.rings(seat, Enum.NormalId.Left)
-		Blocky.rings(seat, Enum.NormalId.Right)
 	end
 end
 
@@ -222,7 +177,7 @@ end
 function CampProps.build(parent: Instance)
 	folder = parent
 	buildPlaza()
-	buildCampfire()
+	Props.campfire(folder, Config.Camp.Campfire, true)
 	buildQuestBoard()
 	buildWell()
 	for _, bench in Config.Camp.Benches do

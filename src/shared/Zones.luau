@@ -79,6 +79,17 @@ function Zones.getRiverZ(): number
 	return campBounds.MinZ + Config.Camp.RiverGap + Config.Camp.RiverWidth / 2
 end
 
+-- Is this spot close to one of the zones' landmarks (Config.Landmarks)? No trees grow there.
+function Zones.isNearLandmark(x: number, z: number): boolean
+	for _, landmark in Config.Landmarks do
+		local center = landmark.Position
+		if Vector2.new(x - center.X, z - center.Z).Magnitude < landmark.ClearRadius then
+			return true
+		end
+	end
+	return false
+end
+
 -- How far (x, z) is from the middle of the dirt path (Config.Path), in studs.
 function Zones.distanceToPath(x: number, z: number): number
 	local point = Vector2.new(x, z)

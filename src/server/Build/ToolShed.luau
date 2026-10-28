@@ -1,6 +1,7 @@
 --!strict
 -- Builds the Tool Shed in the camp: a big log cabin you can walk into (see STYLE_GUIDE.md and
--- the map design). The door faces +Z, towards spawn. Its size comes from Config.Shop and
+-- the map design). Below, +Z is the side with the door; Config.Shop.Turn turns the whole shed
+-- (90: the door faces +X, the middle of the camp). Its size comes from Config.Shop and
 -- everything is placed relative to its walls, so it can be made bigger or smaller; the
 -- furniture stays player-sized. Inside:
 --   * every tool hangs on the back wall with a price tag above it
@@ -207,7 +208,7 @@ local function buildShell()
 	end
 	decor("DoorFrame", Vector3.new(doorWidth + 2, 1, WALL + 0.4), Vector3.new(0, doorHeight + 0.5, frontZ), style.DarkWood, Enum.Material.Wood)
 
-	Blocky.roof(origin.Position + Vector3.new(0, h, 0), w, d, cfg.RoofHeight, style.Roof, model)
+	Blocky.roof(origin.Position + Vector3.new(0, h, 0), w, d, cfg.RoofHeight, style.Roof, model, origin.Rotation)
 
 	-- Beams across the room, which the lamps hang from.
 	for _, z in { -d * 0.05, d * 0.27 } do
@@ -554,7 +555,7 @@ end
 -- Builds the shed with the middle of its floor plan at `ground` and returns the counter
 -- (the "Open shop" prompt goes on it). `makeDisplay` makes the look of a tool for the wall.
 function ToolShed.build(ground: Vector3, makeDisplay: (toolId: string) -> Model): Part
-	origin = CFrame.new(ground)
+	origin = CFrame.new(ground) * CFrame.Angles(0, math.rad(Config.Shop.Turn), 0)
 	dressed = false
 	shed = Instance.new("Model")
 	shed.Name = "ToolShed"

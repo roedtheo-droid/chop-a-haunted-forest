@@ -21,6 +21,10 @@ local Types = require(ReplicatedStorage.Shared.Types)
 
 local Assets = {}
 
+-- Studio brings our .fbx files in turned halfway round: the side the Blender scripts call the
+-- front ends up facing the other way. Models are turned back by this when they're placed.
+Assets.TURN_AROUND = CFrame.Angles(0, math.pi, 0)
+
 -- Which models we've already reported in the Output window (once each).
 local reported: { [string]: boolean } = {}
 
@@ -304,7 +308,7 @@ function Assets.prop(parent: Instance, prop: Types.PropModelConfig, scale: numbe
 		model:Destroy()
 		return nil
 	end
-	Assets.fit(model, part, prop.Width * scale, frame.Position, frame.Rotation)
+	Assets.fit(model, part, prop.Width * scale, frame.Position, frame.Rotation * Assets.TURN_AROUND)
 	model.Parent = parent
 	return model
 end

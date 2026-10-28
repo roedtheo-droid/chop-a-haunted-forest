@@ -61,7 +61,7 @@ function Blocky.block(
 	end
 	mesh.Name = name
 	mesh.Size = size
-	mesh.CFrame = cframe
+	mesh.CFrame = cframe * Assets.TURN_AROUND -- the same box, its model facing the right way
 	mesh.Color = color
 	mesh.Material = material
 	mesh.Parent = parent -- Assets.part already anchored it
@@ -598,17 +598,18 @@ function Blocky.notch(tree: Model, trunk: BasePart, outward: Vector3, cut: numbe
 	return space * CFrame.new(0, middle, -width / 2)
 end
 
--- A gable roof: two wedges meeting in a ridge that runs along X. `top` is the middle of
--- the walls' top.
-function Blocky.roof(top: Vector3, width: number, depth: number, height: number, color: Color3, parent: Instance)
+-- A gable roof: two wedges meeting in a ridge that runs along X (turned by `turn`, if given).
+-- `top` is the middle of the walls' top.
+function Blocky.roof(top: Vector3, width: number, depth: number, height: number, color: Color3, parent: Instance, turn: CFrame?)
+	local frame = CFrame.new(top) * (turn or CFrame.identity)
 	local half = Vector3.new(width + 2, height, depth / 2 + 1)
 	local offset = half.Z / 2
 	-- Each wedge's front (the low side) points away from the ridge.
-	Blocky.wedge("Roof", half, CFrame.new(top + Vector3.new(0, height / 2, -offset)), color, Enum.Material.WoodPlanks, parent)
+	Blocky.wedge("Roof", half, frame * CFrame.new(0, height / 2, -offset), color, Enum.Material.WoodPlanks, parent)
 	Blocky.wedge(
 		"Roof",
 		half,
-		CFrame.new(top + Vector3.new(0, height / 2, offset)) * CFrame.Angles(0, math.pi, 0),
+		frame * CFrame.new(0, height / 2, offset) * CFrame.Angles(0, math.pi, 0),
 		color,
 		Enum.Material.WoodPlanks,
 		parent

@@ -1020,6 +1020,7 @@ local Config = {
 	Shop = {
 		-- A big cabin that fills the camp's left side, between the river and spawn.
 		Position = Vector3.new(-62, 0, 430), -- center of the building (height is found automatically)
+		Turn = 90, -- degrees: 0 = the door faces spawn's side (+Z), 90 = the middle of the camp (+X)
 		-- Width, wall height, depth. The room inside is laid out to fit whatever size this is,
 		-- and the furniture stays player-sized (see Build/ToolShed).
 		BuildingSize = Vector3.new(56, 18, 38),

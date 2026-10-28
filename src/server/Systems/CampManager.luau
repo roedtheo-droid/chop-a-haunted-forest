@@ -56,12 +56,13 @@ local function addBank(x: number, length: number, edgeZ: number, toWater: number
 	local model = Assets.model(Config.Models.RiverBank)
 	local sand = if model then model:FindFirstChild("Sand") else nil
 	if model and sand and sand:IsA("BasePart") then
-		-- The model's water side is its -Z side, so the bank across the river is turned around.
+		-- The model's water side is its -Z side (once Assets.TURN_AROUND turns it the right
+		-- way), so the bank across the river is turned around.
 		-- Its foot reaches a little way into the water, so there's no gap at the edge.
 		local depth = sand.Size.Z * length / sand.Size.X
 		local middleZ = edgeZ - toWater * (depth / 2 - 0.6)
 		local turn = CFrame.Angles(0, (if toWater < 0 then 0 else math.pi) + random:NextNumber(-0.04, 0.04), 0)
-		Assets.fit(model, sand, length, Vector3.new(x, FLOOR_TOP, middleZ), turn)
+		Assets.fit(model, sand, length, Vector3.new(x, FLOOR_TOP, middleZ), turn * Assets.TURN_AROUND)
 		model.Name = "RiverBank"
 		for _, part in model:GetChildren() do
 			if part:IsA("BasePart") then

@@ -775,11 +775,14 @@ local Config = {
 
 	-- Tool Shed (in the camp, across the path from the sawmill)
 	Shop = {
-		Position = Vector3.new(-50, 0, 430), -- center of the building (height is found automatically)
-		BuildingSize = Vector3.new(32, 12, 22), -- big enough to walk around inside (see Build/ToolShed)
-		DoorWidth = 8,
-		DoorHeight = 10,
-		RoofHeight = 8,
+		-- A big cabin that fills the camp's left side, between the river and spawn.
+		Position = Vector3.new(-62, 0, 430), -- center of the building (height is found automatically)
+		-- Width, wall height, depth. The room inside is laid out to fit whatever size this is,
+		-- and the furniture stays player-sized (see Build/ToolShed).
+		BuildingSize = Vector3.new(56, 18, 38),
+		DoorWidth = 12,
+		DoorHeight = 13,
+		RoofHeight = 12,
 		PromptDistance = 10, -- how close to the counter (inside) you must be to see "Open shop"
 		MaxBuyDistance = 20, -- the server refuses purchases from further away than this
 		BuyCooldown = 0.25, -- seconds between purchases for one player

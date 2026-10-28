@@ -29,14 +29,6 @@ local LOG_BEAMS = { 14.8, 18.9 } -- heights of the two beams across the gate
 local STONE_PILLAR_HEIGHT = 17
 local IRON_BAR = 14.4 -- height of the iron bar across the stone gatehouse
 local IRON_ARCH = 19 -- ...and the top of its arch
-local FACES = {
-	Enum.NormalId.Front,
-	Enum.NormalId.Back,
-	Enum.NormalId.Left,
-	Enum.NormalId.Right,
-	Enum.NormalId.Top,
-	Enum.NormalId.Bottom,
-}
 
 local Edges = {}
 
@@ -233,34 +225,9 @@ local function buildHedges()
 	end
 end
 
--- Which face of `part` points most towards `direction`. (We ask, instead of assuming Back
--- is +Z, in case Studio turned a model's parts when it imported them.)
-local function faceToward(part: BasePart, direction: Vector3): Enum.NormalId
-	local best, bestDot = Enum.NormalId.Back, -math.huge
-	for _, face in FACES do
-		local dot = part.CFrame:VectorToWorldSpace(Vector3.FromNormalId(face)):Dot(direction)
-		if dot > bestDot then
-			best, bestDot = face, dot
-		end
-	end
-	return best
-end
-
 -- Big gold words on the side of a gatehouse's sign that faces `toward`.
 local function signText(sign: BasePart, toward: Vector3, text: string)
-	local gui = Blocky.face(sign, faceToward(sign, toward))
-	local box = Instance.new("Frame")
-	box.Name = "Words"
-	box.Size = UDim2.fromScale(1, 1)
-	box.BackgroundTransparency = 1
-	local padding = Instance.new("UIPadding")
-	padding.PaddingLeft = UDim.new(0.05, 0)
-	padding.PaddingRight = UDim.new(0.05, 0)
-	padding.PaddingTop = UDim.new(0.12, 0)
-	padding.PaddingBottom = UDim.new(0.12, 0)
-	padding.Parent = box
-	box.Parent = gui
-	Blocky.label(box, text, Config.Style.TitleFont, Config.Style.Gold)
+	Blocky.boardText(sign, toward, text, Config.Style.Gold)
 end
 
 -- One light for all of a gatehouse's lanterns, at `position` in the middle of the gate.

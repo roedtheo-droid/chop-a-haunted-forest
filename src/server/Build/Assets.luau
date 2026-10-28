@@ -16,6 +16,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Types = require(ReplicatedStorage.Shared.Types)
 
 local Assets = {}
 
@@ -125,6 +126,34 @@ local ROLES = {
 	"Dot",
 	"Leaf",
 	"Bone",
+	"Canvas",
+	"Door",
+	"Wood",
+	"Rope",
+	"Step",
+	"Deck",
+	"Hull",
+	"Trim",
+	"Oar",
+	"Tower",
+	"Dark",
+	"Spar",
+	"Sail",
+	"Hub",
+	"Glow",
+	"Front",
+	"Chunk",
+	"Seat",
+	"Leg",
+	"Board",
+	"Tip",
+	"Note",
+	"Pin",
+	"Water",
+	"Bucket",
+	"Metal",
+	"Ash",
+	"Frame",
 }
 
 -- Blender can't give two objects the same name, so they're numbered ("LeafBlock_2"), and
@@ -225,6 +254,48 @@ function Assets.fit(model: Model, reference: BasePart, width: number, base: Vect
 	model.WorldPivot = reference.CFrame * CFrame.new(0, -reference.Size.Y / 2, 0)
 	model:ScaleTo(model:GetScale() * width / reference.Size.X)
 	model:PivotTo(CFrame.new(base) * turn)
+end
+
+-- The Blender model `prop` (see Types.PropModelConfig) in `parent`, sized so its part is
+-- `scale` times its usual width, with that part's bottom middle on `frame` (a spot, turned).
+-- nil if it isn't imported yet: then the caller builds the parts version.
+function Assets.prop(parent: Instance, prop: Types.PropModelConfig, scale: number, frame: CFrame): Model?
+	local model = Assets.model(prop.Model)
+	if not model then
+		return nil
+	end
+	local part = model:FindFirstChild(prop.Part)
+	if not (part and part:IsA("BasePart")) then
+		warn(`[Assets] The "{prop.Model}" model needs a part named {prop.Part}, so parts are used instead`)
+		model:Destroy()
+		return nil
+	end
+	Assets.fit(model, part, prop.Width * scale, frame.Position, frame.Rotation)
+	model.Parent = parent
+	return model
+end
+
+-- Colour every part of `model` called `name`. Solid ones stop players. Returns the last one.
+function Assets.paint(model: Model, name: string, color: Color3, material: Enum.Material, solid: boolean): BasePart?
+	local found: BasePart? = nil
+	for _, part in model:GetChildren() do
+		if part:IsA("BasePart") and part.Name == name then
+			part.Color = color
+			part.Material = material
+			part.CanCollide = solid
+			found = part
+		end
+	end
+	return found
+end
+
+-- Remove every part of `model` called `name` (like the moss on a rock that shouldn't have any).
+function Assets.remove(model: Model, name: string)
+	for _, part in model:GetChildren() do
+		if part.Name == name then
+			part:Destroy()
+		end
+	end
 end
 
 return Assets

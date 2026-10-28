@@ -435,6 +435,31 @@ local Config = {
 			LilyPad = { Model = "LilyPad", Part = "Pad", Width = 1.8 },
 			Mushrooms = { Model = "Mushrooms", Part = "Stem", Width = 1.34 },
 		},
+		-- The landmarks (see Server/Build/Landmarks) and the camp's things (Server/Build/CampProps
+		-- and Systems/CampManager), with the same meaning as Props above.
+		Landmarks = {
+			Tent = { Model = "Tent", Part = "Canvas", Width = 7 },
+			Dock = { Model = "Dock", Part = "Deck", Width = 15.92 },
+			Rowboat = { Model = "Rowboat", Part = "Hull", Width = 7.1 },
+			WindmillTower = { Model = "WindmillTower", Part = "Tower", Width = 10.24 },
+			WindmillSails = { Model = "WindmillSails", Part = "Hub", Width = 1.6 }, -- they turn around the hub
+			IronFence = { Model = "IronFence", Part = "Iron", Width = 3 }, -- one 3-stud section of the graveyard's fence
+			Crypt = { Model = "Crypt", Part = "Stone", Width = 10.35 },
+		},
+		-- The tall stones in a ring around the boss's clearing.
+		BossStones = {
+			{ Model = "BossStone1", Part = "Stone", Width = 3 },
+			{ Model = "BossStone2", Part = "Stone", Width = 3 },
+		},
+		Camp = {
+			Bridge = { Model = "Bridge", Part = "Deck", Width = 16.15 }, -- built for Camp.BridgeWidth 16 and RiverWidth 14
+			Well = { Model = "Well", Part = "Stone", Width = 5.06 },
+			QuestBoard = { Model = "QuestBoard", Part = "Post", Width = 8 },
+			Campfire = { Model = "Campfire", Part = "Stone", Width = 6.08 },
+			Bench = { Model = "Bench", Part = "Leg", Width = 4.65 },
+			Signpost = { Model = "Signpost", Part = "Post", Width = 1.1 },
+			SignArrow = { Model = "SignArrow", Part = "Board", Width = 5.4 }, -- one of the signpost's arrows
+		},
 		-- A slab, a cross and a pillar (Props.gravestone's kind 1, 2 and 3).
 		Gravestones = {
 			{ Model = "Gravestone1", Part = "Stone", Width = 2.6 },

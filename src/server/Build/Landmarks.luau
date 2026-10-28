@@ -4,6 +4,8 @@
 --   Zone 2  two swamps with reeds and lily pads; an old windmill ruin with broken sails
 --   Zone 3  a graveyard behind an iron fence; a stone crypt glowing orange inside;
 --           a ring of tall stones and glowing roots around the boss
+-- The tents, dock, rowboat, windmill, graveyard fence, crypt and ring stones are Blender
+-- models once they're imported into Studio (Config.Models.Landmarks); until then, parts.
 -- Everything is only for looks. LandmarkManager calls Landmarks.build.
 -- It's not a system, so it has no init()/start().
 
@@ -12,6 +14,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Tags = require(ReplicatedStorage.Shared.Tags)
+local Assets = require(script.Parent.Assets)
 local Blocky = require(script.Parent.Blocky)
 local Props = require(script.Parent.Props)
 
@@ -31,6 +34,8 @@ local FLOWERS = { Color3.fromRGB(216, 90, 70), Color3.fromRGB(232, 141, 184), Co
 local GLOW_ORANGE = Color3.fromRGB(255, 130, 45)
 local ROOT_GLOW = Color3.fromRGB(255, 80, 40)
 local LAMP_ORANGE = Color3.fromRGB(255, 150, 60)
+
+local MODELS = Config.Models.Landmarks
 
 local Landmarks = {}
 
@@ -84,6 +89,14 @@ local function buildRowboat(center: Vector3)
 	local hull = Blocky.shade(Config.Style.Wood, 0.05)
 	local trim = Color3.fromRGB(200, 70, 50)
 	local frame = at(center, WATER_TOP) * CFrame.Angles(0, random:NextNumber(-0.2, 0.2), 0)
+	local boat = Assets.prop(folder, MODELS.Rowboat, 1, frame * CFrame.new(0, -0.15, 0))
+	if boat then
+		Assets.paint(boat, "Hull", hull, Enum.Material.WoodPlanks, false)
+		Assets.paint(boat, "Trim", trim, Enum.Material.SmoothPlastic, false)
+		Assets.paint(boat, "Seat", Blocky.shade(hull, 0.1), Enum.Material.Wood, false)
+		Assets.paint(boat, "Oar", Config.Style.InnerWood, Enum.Material.Wood, false)
+		return
+	end
 	decor("BoatFloor", Vector3.new(6, 0.3, 2.6), frame, hull, Enum.Material.WoodPlanks)
 	for _, side in { -1, 1 } do
 		decor("BoatSide", Vector3.new(5.4, 1, 0.3), frame * CFrame.new(-0.3, 0.5, side * 1.3), hull, Enum.Material.WoodPlanks)
@@ -112,15 +125,26 @@ local function buildLake()
 	local fromX, toX = center.X + radius + 3, center.X + radius - 13
 	local length = fromX - toX
 	local middleX = (fromX + toX) / 2
-	piece("Dock", Vector3.new(length, 0.4, 4), at(Vector3.new(middleX, 0, center.Z), deckTop - 0.2), Config.Style.Wood, Enum.Material.WoodPlanks)
-	piece("DockStep", Vector3.new(1.4, 0.5, 4), at(Vector3.new(fromX + 0.7, 0, center.Z), 0.25), Config.Style.Wood, Enum.Material.WoodPlanks)
-	for offset = 0, length, 4 do
-		for _, side in { -1, 1 } do
-			decor("DockPost", Vector3.new(0.6, 1.8, 0.6), at(Vector3.new(fromX - offset, 0, center.Z + side * 2), 0.6), Config.Style.DarkWood, Enum.Material.Wood)
+	local deck = piece("Dock", Vector3.new(length, 0.4, 4), at(Vector3.new(middleX, 0, center.Z), deckTop - 0.2), Config.Style.Wood, Enum.Material.WoodPlanks)
+	local step = piece("DockStep", Vector3.new(1.4, 0.5, 4), at(Vector3.new(fromX + 0.7, 0, center.Z), 0.25), Config.Style.Wood, Enum.Material.WoodPlanks)
+	local dockModel = Assets.prop(folder, MODELS.Dock, 1, at(Vector3.new(middleX, 0, center.Z), deckTop - 0.4))
+	if dockModel then
+		Assets.paint(dockModel, "Deck", Config.Style.Wood, Enum.Material.WoodPlanks, false)
+		Assets.paint(dockModel, "Step", Config.Style.Wood, Enum.Material.WoodPlanks, false)
+		Assets.paint(dockModel, "Post", Config.Style.DarkWood, Enum.Material.Wood, false)
+		-- You still walk on the plain deck and step: they're the exact shape, so they stay as
+		-- invisible floors under the model.
+		Blocky.collider(deck)
+		Blocky.collider(step)
+	else
+		for offset = 0, length, 4 do
+			for _, side in { -1, 1 } do
+				decor("DockPost", Vector3.new(0.6, 1.8, 0.6), at(Vector3.new(fromX - offset, 0, center.Z + side * 2), 0.6), Config.Style.DarkWood, Enum.Material.Wood)
+			end
 		end
-	end
-	for _, side in { -1, 1 } do
-		decor("Bollard", Vector3.new(0.6, 1, 0.6), at(Vector3.new(toX + 0.5, 0, center.Z + side * 1.6), deckTop + 0.5), Config.Style.DarkWood, Enum.Material.Wood)
+		for _, side in { -1, 1 } do
+			decor("Bollard", Vector3.new(0.6, 1, 0.6), at(Vector3.new(toX + 0.5, 0, center.Z + side * 1.6), deckTop + 0.5), Config.Style.DarkWood, Enum.Material.Wood)
+		end
 	end
 	buildRowboat(Vector3.new(toX + 3, 0, center.Z + 4.2))
 
@@ -135,6 +159,14 @@ end
 
 -- A canvas tent with its door facing -X.
 local function buildTent(center: Vector3, color: Color3)
+	local tent = Assets.prop(folder, MODELS.Tent, 1, at(center, 0))
+	if tent then
+		Assets.paint(tent, "Canvas", color, Enum.Material.Fabric, true)
+		Assets.paint(tent, "Door", Color3.fromRGB(45, 35, 30), Enum.Material.Fabric, false)
+		Assets.paint(tent, "Wood", Config.Style.DarkWood, Enum.Material.Wood, false)
+		Assets.paint(tent, "Rope", Color3.fromRGB(205, 175, 120), Enum.Material.Fabric, false)
+		return
+	end
 	local width, height, length = 6, 4, 7
 	local slant = math.sqrt((width / 2) ^ 2 + height ^ 2)
 	local angle = math.atan2(width / 2, height)
@@ -220,48 +252,79 @@ end
 local function buildWindmill()
 	local center = Config.Landmarks.Windmill.Position
 	local mossy = Color3.fromRGB(125, 135, 125)
-	local levels = { { Size = 10, Height = 8 }, { Size = 8.5, Height = 7 }, { Size = 7, Height = 5 } }
-	local y = 0
-	for index, level in levels do
-		local block = piece("Tower", Vector3.new(level.Size, level.Height, level.Size), at(center, y + level.Height / 2), Blocky.shade(mossy, -index * 0.04), Enum.Material.Slate)
-		decor("Moss", Vector3.new(level.Size * 0.5, 0.2, level.Size * 0.4), block.CFrame * CFrame.new(level.Size * 0.15, level.Height / 2 + 0.05, -level.Size * 0.2), Color3.fromRGB(95, 150, 60), Enum.Material.Grass)
-		y += level.Height
-	end
-	-- A broken wooden cap, slipping off the top.
-	decor("BrokenRoof", Vector3.new(8, 1, 8), at(center, y + 0.3) * CFrame.new(0.8, 0, 0) * CFrame.Angles(0, 0.3, math.rad(14)), Blocky.shade(Config.Style.Roof, -0.25), Enum.Material.WoodPlanks)
-	-- The door and windows face the path (-X).
-	decor("Door", Vector3.new(0.1, 4.6, 3), at(center, 2.3) * CFrame.new(-5.05, 0, 0), Color3.fromRGB(30, 25, 22), Enum.Material.SmoothPlastic)
-	decor("Window", Vector3.new(0.1, 1.6, 1.2), at(center, 11) * CFrame.new(-4.3, 0, 1.6), Color3.fromRGB(30, 25, 22), Enum.Material.SmoothPlastic)
-	decor("Window", Vector3.new(0.1, 1.4, 1.1), at(center, 19) * CFrame.new(-3.55, 0, -1.2), Color3.fromRGB(30, 25, 22), Enum.Material.SmoothPlastic)
-
-	-- The sails turn around X (like a cylinder) on a hub sticking out of the front.
-	local sails = Instance.new("Model")
-	sails.Name = "WindmillSails"
 	local wood = Blocky.shade(Config.Style.Wood, -0.3)
+	local sailColor = Color3.fromRGB(205, 195, 170)
+	local dark = Color3.fromRGB(30, 25, 22)
+
+	local tower = Assets.prop(folder, MODELS.WindmillTower, 1, at(center, 0))
+	if tower then
+		Assets.paint(tower, "Tower", mossy, Enum.Material.Slate, true)
+		Assets.paint(tower, "Moss", Color3.fromRGB(95, 150, 60), Enum.Material.Grass, false)
+		Assets.paint(tower, "Roof", Blocky.shade(Config.Style.Roof, -0.25), Enum.Material.WoodPlanks, false)
+		Assets.paint(tower, "Dark", dark, Enum.Material.SmoothPlastic, false)
+		-- The broken-off sail lying on the ground.
+		Assets.paint(tower, "Spar", wood, Enum.Material.Wood, false)
+		Assets.paint(tower, "Sail", Blocky.shade(sailColor, -0.06), Enum.Material.Fabric, false)
+	else
+		local levels = { { Size = 10, Height = 8 }, { Size = 8.5, Height = 7 }, { Size = 7, Height = 5 } }
+		local y = 0
+		for index, level in levels do
+			local block = piece("Tower", Vector3.new(level.Size, level.Height, level.Size), at(center, y + level.Height / 2), Blocky.shade(mossy, -index * 0.04), Enum.Material.Slate)
+			decor("Moss", Vector3.new(level.Size * 0.5, 0.2, level.Size * 0.4), block.CFrame * CFrame.new(level.Size * 0.15, level.Height / 2 + 0.05, -level.Size * 0.2), Color3.fromRGB(95, 150, 60), Enum.Material.Grass)
+			y += level.Height
+		end
+		-- A broken wooden cap, slipping off the top.
+		decor("BrokenRoof", Vector3.new(8, 1, 8), at(center, y + 0.3) * CFrame.new(0.8, 0, 0) * CFrame.Angles(0, 0.3, math.rad(14)), Blocky.shade(Config.Style.Roof, -0.25), Enum.Material.WoodPlanks)
+		-- The door and windows face the path (-X).
+		decor("Door", Vector3.new(0.1, 4.6, 3), at(center, 2.3) * CFrame.new(-5.05, 0, 0), dark, Enum.Material.SmoothPlastic)
+		decor("Window", Vector3.new(0.1, 1.6, 1.2), at(center, 11) * CFrame.new(-4.3, 0, 1.6), dark, Enum.Material.SmoothPlastic)
+		decor("Window", Vector3.new(0.1, 1.4, 1.1), at(center, 19) * CFrame.new(-3.55, 0, -1.2), dark, Enum.Material.SmoothPlastic)
+		-- The broken-off sail on the ground.
+		local fallen = center + Vector3.new(-9, 0, 6)
+		decor("Spar", Vector3.new(0.4, 0.5, 8), at(fallen, 0.25) * CFrame.Angles(0, 0.7, 0), wood, Enum.Material.Wood)
+		decor("Sail", Vector3.new(2.2, 0.15, 6), at(fallen, 0.55) * CFrame.Angles(0, 0.7, 0) * CFrame.new(1.3, 0, 0) * CFrame.Angles(0, 0, 0.12), Color3.fromRGB(190, 180, 155), Enum.Material.Fabric)
+	end
+
+	-- The sails turn around X on a hub sticking out of the front. Every player's computer
+	-- turns them around the model's pivot (see Client/SpinnerController), so the pivot is the hub.
 	local hubFrame = at(center, 17) * CFrame.new(-4.4, 0, 0)
-	local hub = Blocky.part("Hub", Vector3.new(1.6, 1.6, 1.6), hubFrame, Config.Style.DarkWood, Enum.Material.Wood, sails)
-	hub.Shape = Enum.PartType.Cylinder
-	for index, length in { 8, 3.5, 8, 3 } do
-		local arm = hubFrame * CFrame.Angles(index * math.pi / 2 + 0.4, 0, 0)
-		Blocky.part("Spar", Vector3.new(0.4, length, 0.5), arm * CFrame.new(-0.3, length / 2 + 0.6, 0), wood, Enum.Material.Wood, sails)
-		if length > 5 then
-			Blocky.part("Sail", Vector3.new(0.15, length * 0.8, 2.2), arm * CFrame.new(-0.3, length / 2 + 1.2, 1.3), Color3.fromRGB(205, 195, 170), Enum.Material.Fabric, sails)
+	local meshSails = Assets.prop(folder, MODELS.WindmillSails, 1, hubFrame * CFrame.new(0, -MODELS.WindmillSails.Width / 2, 0))
+	local sails: Model
+	local hub: BasePart
+	if meshSails then
+		sails = meshSails
+		Assets.paint(sails, "Hub", Config.Style.DarkWood, Enum.Material.Wood, false)
+		Assets.paint(sails, "Spar", wood, Enum.Material.Wood, false)
+		Assets.paint(sails, "Sail", sailColor, Enum.Material.Fabric, false)
+		-- An invisible axle in the middle of the hub, its X along the way the sails turn.
+		hub = Blocky.part("Axle", Vector3.one * 0.5, hubFrame, dark, Enum.Material.SmoothPlastic, sails)
+		hub.Transparency = 1
+		hub.CanCollide = false
+		hub.CanQuery = false
+	else
+		sails = Instance.new("Model")
+		hub = Blocky.part("Hub", Vector3.new(1.6, 1.6, 1.6), hubFrame, Config.Style.DarkWood, Enum.Material.Wood, sails)
+		hub.Shape = Enum.PartType.Cylinder
+		for index, length in { 8, 3.5, 8, 3 } do
+			local arm = hubFrame * CFrame.Angles(index * math.pi / 2 + 0.4, 0, 0)
+			Blocky.part("Spar", Vector3.new(0.4, length, 0.5), arm * CFrame.new(-0.3, length / 2 + 0.6, 0), wood, Enum.Material.Wood, sails)
+			if length > 5 then
+				Blocky.part("Sail", Vector3.new(0.15, length * 0.8, 2.2), arm * CFrame.new(-0.3, length / 2 + 1.2, 1.3), sailColor, Enum.Material.Fabric, sails)
+			end
+		end
+		for _, part in sails:GetChildren() do
+			if part:IsA("BasePart") then
+				part.CanCollide = false
+			end
 		end
 	end
-	for _, part in sails:GetChildren() do
-		if part:IsA("BasePart") then
-			part.CanCollide = false
-		end
-	end
+	sails.Name = "WindmillSails"
 	sails.PrimaryPart = hub
 	sails:SetAttribute("SpinSpeed", Config.Props.WindmillSpin)
 	CollectionService:AddTag(sails, Tags.Spinner)
 	sails.Parent = folder
 
-	-- The broken-off sail on the ground, and rubble around the tower.
-	local fallen = center + Vector3.new(-9, 0, 6)
-	decor("Spar", Vector3.new(0.4, 0.5, 8), at(fallen, 0.25) * CFrame.Angles(0, 0.7, 0), wood, Enum.Material.Wood)
-	decor("Sail", Vector3.new(2.2, 0.15, 6), at(fallen, 0.55) * CFrame.Angles(0, 0.7, 0) * CFrame.new(1.3, 0, 0) * CFrame.Angles(0, 0, 0.12), Color3.fromRGB(190, 180, 155), Enum.Material.Fabric)
+	-- Rubble around the tower, and broken fences.
 	for _ = 1, 6 do
 		Props.rock(folder, spotOnCircle(center, random:NextNumber(7, 10)), random:NextNumber(1, 1.8), random:NextNumber() < 0.5, random, mossy)
 	end
@@ -276,9 +339,31 @@ local function ironFence(from: Vector3, to: Vector3, gap: number)
 	local length = flat.Magnitude
 	local frame = CFrame.lookAt(Vector3.new(from.X, GROUND, from.Z), Vector3.new(to.X, GROUND, to.Z))
 	local gapStart, gapEnd = (length - gap) / 2, (length + gap) / 2
+	local fence = MODELS.IronFence
+	local useModel = Assets.has(fence.Model)
 	local function addRun(startAt: number, endAt: number)
 		local runLength = endAt - startAt
 		if runLength <= 0 then
+			return
+		end
+		if useModel then
+			-- Sections of the Blender fence, stretched a little so they fit the run exactly,
+			-- and one more at the end that keeps only its post.
+			local count = math.max(1, math.round(runLength / fence.Width))
+			local section = runLength / count
+			for index = 0, count do
+				local middle = startAt + (index + 0.5) * section
+				-- The section runs along its X: a quarter turn lines that up with the fence.
+				local spot = frame * CFrame.new(0, 0, -middle) * CFrame.Angles(0, math.pi / 2, 0)
+				local model = Assets.prop(folder, fence, section / fence.Width, spot)
+				if model then
+					Assets.paint(model, "Post", IRON, Enum.Material.Metal, true)
+					Assets.paint(model, "Iron", IRON, Enum.Material.Metal, true)
+					if index == count then
+						Assets.remove(model, "Iron")
+					end
+				end
+			end
 			return
 		end
 		for _, y in { 0.8, 3.4 } do
@@ -350,12 +435,8 @@ local function buildGraveyard()
 	Props.flicker(Props.lampPost(folder, center + Vector3.new(-halfX + 3, 0, gateWidth / 2 + 3), Vector3.new(0, 0, -1), LAMP_ORANGE, true, random))
 end
 
--- Zone 3: a stone crypt facing the path (+X), with an orange glow behind bars in its door.
-local function buildCrypt()
-	local center = Config.Landmarks.Crypt.Position
-	local ground = Vector3.new(center.X, GROUND, center.Z)
-	-- Its front (-Z) faces +X, so its sides (X) run along the world's Z.
-	local frame = CFrame.lookAt(ground, ground + Vector3.new(1, 0, 0))
+-- The parts crypt (without the model), facing along `frame`'s front.
+local function buildPartsCrypt(frame: CFrame, ground: Vector3)
 	local width, height, depth = 10, 8, 12
 	local body = piece("Crypt", Vector3.new(width, height, depth), frame * CFrame.new(0, height / 2, 0), DARK_STONE, Enum.Material.Slate)
 	Blocky.logLines(body, { Enum.NormalId.Left, Enum.NormalId.Right }) -- lines between the stone blocks
@@ -380,6 +461,32 @@ local function buildCrypt()
 	for step = 1, 2 do
 		piece("Step", Vector3.new(6, 0.4, 1.4), frame * CFrame.new(0, 0.2 + (2 - step) * 0.2, front - 0.6 - step * 1.2), Blocky.shade(DARK_STONE, 0.05), Enum.Material.Slate)
 	end
+end
+
+-- Zone 3: a stone crypt facing the path (+X), with an orange glow behind bars in its door.
+local function buildCrypt()
+	local center = Config.Landmarks.Crypt.Position
+	local ground = Vector3.new(center.X, GROUND, center.Z)
+	-- Its front (-Z) faces +X, so its sides (X) run along the world's Z.
+	local frame = CFrame.lookAt(ground, ground + Vector3.new(1, 0, 0))
+	local crypt = Assets.prop(folder, MODELS.Crypt, 1, frame)
+	if crypt then
+		Assets.paint(crypt, "Stone", DARK_STONE, Enum.Material.Slate, true)
+		Assets.paint(crypt, "Front", Blocky.shade(DARK_STONE, 0.12), Enum.Material.Slate, true)
+		Assets.paint(crypt, "Roof", Blocky.shade(DARK_STONE, -0.2), Enum.Material.Slate, true)
+		Assets.paint(crypt, "Iron", Color3.fromRGB(30, 30, 34), Enum.Material.Metal, false)
+		local glow = Assets.paint(crypt, "Glow", GLOW_ORANGE, Enum.Material.Neon, false)
+		if glow then
+			local light = Instance.new("PointLight")
+			light.Color = GLOW_ORANGE
+			light.Range = 16
+			light.Brightness = 1.2
+			light.Parent = glow
+			Props.flicker(light)
+		end
+	else
+		buildPartsCrypt(frame, ground)
+	end
 	for _ = 1, 3 do
 		Props.rock(folder, spotOnCircle(center, random:NextNumber(9, 11)), random:NextNumber(1, 1.6), true, random, DARK_STONE)
 	end
@@ -397,6 +504,23 @@ local function buildBossRing()
 	for index = 1, cfg.BossStones do
 		local angle = entrance + index * 2 * math.pi / (cfg.BossStones + 1) -- skipping one spot: the entrance
 		local spot = center + Vector3.new(math.cos(angle), 0, math.sin(angle)) * cfg.BossStoneRadius
+		local stones = Config.Models.BossStones
+		local choice = stones[random:NextInteger(1, #stones)]
+		local tilt = CFrame.Angles(random:NextNumber(-0.08, 0.08), 0, random:NextNumber(-0.08, 0.08))
+		-- Sunk in a little and facing the boss, like the parts version below.
+		local frame = CFrame.lookAt(Vector3.new(spot.X, GROUND - 0.3, spot.Z), Vector3.new(center.X, GROUND - 0.3, center.Z)) * tilt
+		local model = Assets.prop(folder, choice, random:NextNumber(2.4, 3.2) / choice.Width, frame)
+		if model then
+			local color = Blocky.shade(DARK_STONE, random:NextNumber(-0.1, 0.05))
+			Assets.paint(model, "Stone", color, Enum.Material.Slate, true)
+			Assets.paint(model, "Chunk", color, Enum.Material.Slate, true)
+			if random:NextNumber() < 0.5 then
+				Assets.paint(model, "Moss", Color3.fromRGB(80, 110, 60), Enum.Material.Grass, false)
+			else
+				Assets.remove(model, "Moss")
+			end
+			continue
+		end
 		local height = random:NextNumber(7, 11)
 		local stone = piece(
 			"RingStone",

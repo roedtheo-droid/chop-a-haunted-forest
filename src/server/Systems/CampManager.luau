@@ -217,6 +217,32 @@ local function buildBridge(riverZ: number)
 			)
 		end
 	end
+
+	-- The Blender bridge, if it's imported and fits this river: it's built over the parts
+	-- above, which stay as invisible floors and rails, so walking over it is exactly the same.
+	local parts = model:GetChildren()
+	local bridge = Assets.prop(model, Config.Models.Camp.Bridge, 1, CFrame.new(0, 0, riverZ))
+	local deck = if bridge then Assets.paint(bridge, "Deck", style.Wood, Enum.Material.WoodPlanks, false) else nil
+	if bridge and deck then
+		local fullLength = length + RAMP_LENGTH * 2
+		if math.abs(deck.Size.X - width) > width * 0.05 or math.abs(deck.Size.Z - fullLength) > fullLength * 0.05 then
+			warn("[CampManager] The Bridge model doesn't fit this river (Camp.BridgeWidth or RiverWidth changed?): using parts")
+			bridge:Destroy()
+		else
+			Assets.paint(bridge, "Post", style.DarkWood, Enum.Material.Wood, false)
+			Assets.paint(bridge, "Stone", STONE, Enum.Material.Slate, false)
+			-- Line its deck up with the parts deck (its ramps dip a little below the ground).
+			local top = deck.Position.Y + deck.Size.Y / 2
+			bridge:PivotTo(bridge:GetPivot() + Vector3.new(0, BRIDGE_TOP - top, 0))
+			for _, part in parts do
+				if part:IsA("BasePart") then
+					Blocky.collider(part)
+				end
+			end
+		end
+	elseif bridge then
+		bridge:Destroy()
+	end
 	model.Parent = folder
 end
 

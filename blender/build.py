@@ -14,6 +14,8 @@ Kits (what to build):
     props   props along the path: BerryBush, FallenLog, LampPost, FenceSection, Pumpkin,
             Gravestone1-3, Reeds, LilyPad
     details little things on the ground: GrassTuft, Flowers, Fern, Mushrooms, DeadLeaves, Bones
+    landmarks  Tent, Dock, Rowboat, WindmillTower, WindmillSails, IronFence, Crypt, BossStone1-2
+    camp    Bridge, Well, QuestBoard, Campfire, Bench, Signpost, SignArrow
     all     every model
 You can also name single models: python blender/build.py Oak Rock2
 And "bundle" packs every model into one file, blender/export/AllModels.fbx, so Studio needs
@@ -31,7 +33,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import bpy  # noqa: E402
 from lib import output  # noqa: E402
 from mathutils import Vector  # noqa: E402
-from models import details, edges, ground, outside, props, rocks, trees  # noqa: E402
+from models import camp, details, edges, ground, landmarks, outside, props, rocks, trees  # noqa: E402
 
 MODELS = {
     "Oak": trees.oak,
@@ -81,6 +83,22 @@ MODELS = {
     "Mushrooms": details.mushrooms,
     "DeadLeaves": details.dead_leaves,
     "Bones": details.bones,
+    "Tent": landmarks.tent,
+    "Dock": landmarks.dock,
+    "Rowboat": landmarks.rowboat,
+    "WindmillTower": landmarks.windmill_tower,
+    "WindmillSails": landmarks.windmill_sails,
+    "IronFence": landmarks.iron_fence,
+    "Crypt": landmarks.crypt,
+    "BossStone1": landmarks.boss_stone1,
+    "BossStone2": landmarks.boss_stone2,
+    "Bridge": camp.bridge,
+    "Well": camp.well,
+    "QuestBoard": camp.quest_board,
+    "Campfire": camp.campfire,
+    "Bench": camp.bench,
+    "Signpost": camp.signpost,
+    "SignArrow": camp.sign_arrow,
 }
 
 KITS = {
@@ -112,6 +130,18 @@ KITS = {
         "LilyPad",
     ],
     "details": ["GrassTuft", "Flowers", "Fern", "Mushrooms", "DeadLeaves", "Bones"],
+    "landmarks": [
+        "Tent",
+        "Dock",
+        "Rowboat",
+        "WindmillTower",
+        "WindmillSails",
+        "IronFence",
+        "Crypt",
+        "BossStone1",
+        "BossStone2",
+    ],
+    "camp": ["Bridge", "Well", "QuestBoard", "Campfire", "Bench", "Signpost", "SignArrow"],
 }
 KITS["all"] = list(MODELS)
 

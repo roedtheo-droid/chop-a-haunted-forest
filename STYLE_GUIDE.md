@@ -86,6 +86,10 @@ Samme kantede stil hele vejen, bare mørkere.
   Hollow, visne blade og et par knogler i Graveyard Grove. Man går igennem dem. Props (buske,
   stammer, lygtepæle, hegn, græskar, gravsten, siv, åkander) er Blender-modeller i samme størrelse
   som Parts-versionerne.
+- **Landemærker og lejren:** telte, bådebro, robåd, vindmølle (vingerne drejer), gravpladsens
+  jernhegn, krypten, ringstenene om bossen, broen, brønden, opslagstavlen, bålet, bænkene og
+  vejviseren er Blender-modeller. Hvor man går på dem (broen, bådebroen) ligger de præcise
+  Parts-gulve usynligt under modellen.
 - **Jorden:** bløde pletter (`Patch`) i lysere/mørkere græs, mos, mudder og visne blade, og ved
   zone-grænserne fletter de to zoners farver ind i hinanden. Stien har en mørkere jordkant og småsten.
   Floden har sandbanker med sten, en mørkere bund, siv og åkander.

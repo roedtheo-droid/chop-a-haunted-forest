@@ -13,7 +13,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Tags = require(ReplicatedStorage.Shared.Tags)
-local Types = require(ReplicatedStorage.Shared.Types)
 local Assets = require(script.Parent.Assets)
 local Blocky = require(script.Parent.Blocky)
 
@@ -63,37 +62,9 @@ local function facing(base: Vector3, direction: Vector3): CFrame
 	return CFrame.lookAt(spot, spot + Vector3.new(direction.X, 0, direction.Z))
 end
 
--- The Blender prop `prop`, sized by its part (so that part is `scale` times its usual width)
--- and standing at `frame` (a spot on the ground, turned). nil if it isn't imported yet: then
--- the caller builds the parts version.
-local function meshProp(parent: Instance, prop: Types.PropModelConfig, scale: number, frame: CFrame): Model?
-	local model = Assets.model(prop.Model)
-	if not model then
-		return nil
-	end
-	local part = model:FindFirstChild(prop.Part)
-	if not (part and part:IsA("BasePart")) then
-		model:Destroy()
-		return nil
-	end
-	Assets.fit(model, part, prop.Width * scale, frame.Position, frame.Rotation)
-	model.Parent = parent
-	return model
-end
-
--- Colour every part of `model` called `name`. Solid ones stop players. Returns the last one.
-local function paint(model: Model, name: string, color: Color3, material: Enum.Material, solid: boolean): BasePart?
-	local found: BasePart? = nil
-	for _, part in model:GetChildren() do
-		if part:IsA("BasePart") and part.Name == name then
-			part.Color = color
-			part.Material = material
-			part.CanCollide = solid
-			found = part
-		end
-	end
-	return found
-end
+-- The Blender props (see Assets.prop and Config.Models.Props).
+local meshProp = Assets.prop
+local paint = Assets.paint
 
 local function addLight(part: BasePart, color: Color3, range: number, brightness: number): PointLight
 	local light = Instance.new("PointLight")
@@ -346,27 +317,42 @@ end
 -- three logs lie around it to sit on.
 function Props.campfire(parent: Instance, base: Vector3, seats: boolean)
 	local center = Vector3.new(base.X, GROUND, base.Z)
-	for index = 1, 8 do
-		local angle = index * math.pi / 4
-		piece(
-			parent,
-			"FireStone",
-			Vector3.new(1.3, 0.9, 1.3),
-			CFrame.new(center + Vector3.new(math.cos(angle) * 2.4, 0.45, math.sin(angle) * 2.4)) * CFrame.Angles(0, angle, 0),
-			Blocky.shade(STONE, (index % 2) * 0.1),
-			Enum.Material.Slate
-		)
+	local model = meshProp(parent, Config.Models.Camp.Campfire, 1, CFrame.new(center))
+	if model then
+		paint(model, "Stone", Blocky.shade(STONE, 0.05), Enum.Material.Slate, true)
+		paint(model, "Ash", Color3.fromRGB(60, 55, 52), Enum.Material.Slate, false)
+		paint(model, "Log", Config.Style.Wood, Enum.Material.Wood, false)
+		if seats then
+			paint(model, "Seat", Config.Style.Wood, Enum.Material.Wood, true)
+			paint(model, "Rings", Config.Style.InnerWood, Enum.Material.Wood, false)
+		else
+			Assets.remove(model, "Seat")
+			Assets.remove(model, "Rings") -- the light ends of the seats
+		end
 	end
-	for index = 1, 3 do
-		local log = decor(
-			parent,
-			"FireLog",
-			Vector3.new(0.7, 0.7, 3),
-			CFrame.new(center + Vector3.new(0, 0.9, 0)) * CFrame.Angles(0, index * 2 * math.pi / 3, 0) * CFrame.new(0, 0, 0.8) * CFrame.Angles(math.rad(35), 0, 0),
-			Config.Style.Wood,
-			Enum.Material.Wood
-		)
-		Blocky.rings(log, Enum.NormalId.Back)
+	if not model then
+		for index = 1, 8 do
+			local angle = index * math.pi / 4
+			piece(
+				parent,
+				"FireStone",
+				Vector3.new(1.3, 0.9, 1.3),
+				CFrame.new(center + Vector3.new(math.cos(angle) * 2.4, 0.45, math.sin(angle) * 2.4)) * CFrame.Angles(0, angle, 0),
+				Blocky.shade(STONE, (index % 2) * 0.1),
+				Enum.Material.Slate
+			)
+		end
+		for index = 1, 3 do
+			local log = decor(
+				parent,
+				"FireLog",
+				Vector3.new(0.7, 0.7, 3),
+				CFrame.new(center + Vector3.new(0, 0.9, 0)) * CFrame.Angles(0, index * 2 * math.pi / 3, 0) * CFrame.new(0, 0, 0.8) * CFrame.Angles(math.rad(35), 0, 0),
+				Config.Style.Wood,
+				Enum.Material.Wood
+			)
+			Blocky.rings(log, Enum.NormalId.Back)
+		end
 	end
 	local flame = decor(parent, "Flame", Vector3.new(1.2, 1.4, 1.2), CFrame.new(center + Vector3.new(0, 0.9, 0)), FIRE_COLOR, Enum.Material.Neon)
 	local fire = Instance.new("Fire")
@@ -375,7 +361,7 @@ function Props.campfire(parent: Instance, base: Vector3, seats: boolean)
 	fire.Parent = flame
 	addLight(flame, FIRE_COLOR, 20, 1.5)
 
-	if seats then
+	if seats and not model then
 		for index = 1, 3 do
 			local angle = index * 2 * math.pi / 3 + math.pi / 6
 			local spot = center + Vector3.new(math.cos(angle) * 6.5, 0.8, math.sin(angle) * 6.5)

@@ -159,6 +159,59 @@ function Blocky.rect(parent: Instance, x: number, y: number, w: number, h: numbe
 end
 local rect = Blocky.rect
 
+local FACES = {
+	Enum.NormalId.Front,
+	Enum.NormalId.Back,
+	Enum.NormalId.Left,
+	Enum.NormalId.Right,
+	Enum.NormalId.Top,
+	Enum.NormalId.Bottom,
+}
+
+-- Which face of `part` points most towards `direction`. (Asked, instead of assuming Back
+-- is +Z, in case Studio turned a model's parts when it imported them.)
+function Blocky.faceToward(part: BasePart, direction: Vector3): Enum.NormalId
+	local best, bestDot = Enum.NormalId.Back, -math.huge
+	for _, face in FACES do
+		local dot = part.CFrame:VectorToWorldSpace(Vector3.FromNormalId(face)):Dot(direction)
+		if dot > bestDot then
+			best, bestDot = face, dot
+		end
+	end
+	return best
+end
+
+-- Big outlined words on the side of a board (a sign from a Blender model) that faces
+-- `toward`. White, or `color`.
+function Blocky.boardText(board: BasePart, toward: Vector3, text: string, color: Color3?)
+	local gui = Blocky.face(board, Blocky.faceToward(board, toward))
+	local box = Instance.new("Frame")
+	box.Name = "Words"
+	box.Size = UDim2.fromScale(1, 1)
+	box.BackgroundTransparency = 1
+	local padding = Instance.new("UIPadding")
+	padding.PaddingLeft = UDim.new(0.05, 0)
+	padding.PaddingRight = UDim.new(0.05, 0)
+	padding.PaddingTop = UDim.new(0.12, 0)
+	padding.PaddingBottom = UDim.new(0.12, 0)
+	padding.Parent = box
+	box.Parent = gui
+	Blocky.label(box, text, Config.Style.TitleFont, color)
+end
+
+-- Turn a part into an invisible collider: players still bump into it and walk on it, but
+-- what they see is the Blender model built over it. (Used where the exact shape matters,
+-- like a bridge's deck and ramps: a mesh's own collision shape is only roughly its shape.)
+function Blocky.collider(part: BasePart)
+	part.Transparency = 1
+	part.CastShadow = false
+	for _, child in part:GetChildren() do
+		if child:IsA("SurfaceGui") then
+			child:Destroy()
+		end
+	end
+end
+
 -- Dark lines between the logs on some faces of a wall, so it looks like a log wall.
 function Blocky.logLines(part: BasePart, faces: { Enum.NormalId })
 	for _, face in faces do

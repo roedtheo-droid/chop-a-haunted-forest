@@ -12,6 +12,8 @@ Kits (what to build):
     outside the view outside the forest: Mountains1-2, Hill1-2
     all     every model
 You can also name single models: python blender/build.py Oak Rock2
+And "bundle" packs every model into one file, blender/export/AllModels.fbx, so Studio needs
+only one import: python blender/build.py bundle
 
 Files go to blender/export/<Name>.fbx and blender/previews/<Name>.png.
 How to get them into the game: see "Blender models" in README.md.
@@ -99,10 +101,35 @@ def lineup(kit, names, gap=4):
     print(f"[build] Kit {kit}: {output.render_preview(f'Kit_{kit}', size=1600, height=700, samples=64)}")
 
 
+def bundle(names, gap=8):
+    """Every model in one file, blender/export/AllModels.fbx, side by side along X. Each part
+    is named "<Model>__<Part>" ("Oak__Trunk"), so the game can tell which model it belongs to
+    (see src/server/Build/Assets.luau)."""
+    collection = output.fresh_scene()
+    x = 0
+    for name in names:
+        before = set(bpy.context.scene.objects)
+        MODELS[name](collection)
+        bpy.context.view_layer.update()
+        new = [obj for obj in bpy.context.scene.objects if obj not in before]
+        xs = [(obj.matrix_world @ Vector(corner)).x for obj in new for corner in obj.bound_box]
+        shift = x - min(xs)
+        for obj in new:
+            obj.location.x += shift
+            # Renamed right away, so the next model's "Trunk" doesn't become "Trunk.001".
+            obj.name = f"{name}__{obj.name}"
+            obj.data.name = obj.name
+        x += max(xs) - min(xs) + gap
+    print(f"[build] All models: {output.export_fbx('AllModels')}")
+
+
 def main(args):
     names = []
     kits = []
     for arg in args or ["pilot"]:
+        if arg == "bundle":
+            bundle(list(MODELS))
+            continue
         if arg in KITS:
             names.extend(KITS[arg])
             kits.append(arg)

@@ -1,8 +1,9 @@
 --!strict
--- Models made in Blender (see the blender/ folder). Theo imports each .fbx into Studio and
--- puts it in ServerStorage > MapAssets (Config.Models.Folder). Builders ask for a model by
--- name: when it's there they get a copy, and when it isn't they get nil and build the old
--- Parts version instead. So the game always works, even before any model is imported.
+-- Models made in Blender (see the blender/ folder). Theo imports them into Studio and puts
+-- them in ServerStorage > MapAssets (Config.Models.Folder): either AllModels.fbx, which holds
+-- every model in one file, or one .fbx per model. Builders ask for a model by name: when it's
+-- there they get a copy, and when it isn't they get nil and build the old Parts version
+-- instead. So the game always works, even before any model is imported.
 --
 -- Why ServerStorage? Rojo only syncs the folders in default.project.json, so imported models
 -- stay safe in the place, and only the server can see them (players get the built copies).
@@ -33,11 +34,49 @@ local function report(name: string, found: boolean)
 	end
 end
 
-local function template(name: string): Instance?
+-- In AllModels.fbx every part is named "<Model>__<Part>" ("Oak__Trunk"). Which parts belong
+-- to which model, worked out the first time it's needed.
+local bundled: { [string]: { BasePart } }? = nil
+
+local function bundle(folder: Instance): { [string]: { BasePart } }
+	if bundled then
+		return bundled
+	end
+	local index: { [string]: { BasePart } } = {}
+	for _, descendant in folder:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			-- Not anchored to the start, in case Studio adds the file's name in front.
+			local model = string.match(descendant.Name, "(%w+)__.")
+			if model then
+				index[model] = index[model] or {}
+				table.insert(index[model], descendant)
+			end
+		end
+	end
+	bundled = index
+	return index
+end
+
+-- The parts of model `name` to copy: the model on its own in the folder, or its parts in
+-- AllModels. nil if it isn't imported.
+local function template(name: string): { BasePart }?
 	local folder = ServerStorage:FindFirstChild(Config.Models.Folder)
-	local found = if folder then folder:FindFirstChild(name) else nil
-	report(name, found ~= nil)
-	return found
+	local parts: { BasePart } = {}
+	local model = if folder then folder:FindFirstChild(name) else nil
+	if model then
+		if model:IsA("BasePart") then
+			table.insert(parts, model)
+		end
+		for _, descendant in model:GetDescendants() do
+			if descendant:IsA("BasePart") then
+				table.insert(parts, descendant)
+			end
+		end
+	elseif folder then
+		parts = bundle(folder)[name] or parts
+	end
+	report(name, #parts > 0)
+	return if #parts > 0 then parts else nil
 end
 
 -- The names the game looks for.
@@ -68,9 +107,9 @@ local ROLES = {
 }
 
 -- Blender can't give two objects the same name, so they're numbered ("LeafBlock_2"), and
--- Studio sometimes adds the file's name too ("Oak_LeafBlock_2", "StoneGatehouse_Iron").
--- The game wants the plain name: "LeafBlock", "Iron". The name it ends with wins, so
--- "StoneGatehouse_Iron" is "Iron", not "Stone".
+-- Studio sometimes adds the file's name too ("Oak_LeafBlock_2", "StoneGatehouse_Iron"), or
+-- it's from AllModels ("Oak__LeafBlock_2"). The game wants the plain name: "LeafBlock",
+-- "Iron". The name it ends with wins, so "StoneGatehouse_Iron" is "Iron", not "Stone".
 local function plainName(name: string): string
 	local trimmed = string.gsub(name, "[%._%d]+$", "")
 	for _, role in ROLES do
@@ -108,27 +147,27 @@ end
 -- The parts keep their imported size: the caller scales the model (Model:ScaleTo) and
 -- moves it (Model:PivotTo), and colours each part.
 function Assets.model(name: string): Model?
-	local source = template(name)
-	if not source then
+	local sources = template(name)
+	if not sources then
 		return nil
 	end
-	local copy = source:Clone()
-	local parts: { BasePart } = {}
-	if copy:IsA("BasePart") then
-		table.insert(parts, copy)
-	end
-	for _, descendant in copy:GetDescendants() do
-		if descendant:IsA("BasePart") then
-			table.insert(parts, descendant)
-		end
-	end
-
 	local model = Instance.new("Model")
 	model.Name = name
-	for _, part in parts do
-		-- Pictures and joints from the import would fight the colours and welds we set.
+	for _, source in sources do
+		local part = source:Clone()
+		if not part:IsA("BasePart") then
+			continue
+		end
 		for _, child in part:GetChildren() do
-			if child:IsA("SurfaceAppearance") or child:IsA("Decal") or child:IsA("JointInstance") or child:IsA("WeldConstraint") then
+			-- Pictures and joints from the import would fight the colours and welds we set,
+			-- and a part inside this part gets copied on its own.
+			if
+				child:IsA("SurfaceAppearance")
+				or child:IsA("Decal")
+				or child:IsA("JointInstance")
+				or child:IsA("WeldConstraint")
+				or child:IsA("BasePart")
+			then
 				child:Destroy()
 			end
 		end
@@ -138,13 +177,6 @@ function Assets.model(name: string): Model?
 		part.Name = plainName(part.Name)
 		part.Anchored = true
 		part.Parent = model
-	end
-	if not copy:IsA("BasePart") then
-		copy:Destroy()
-	end
-	if #parts == 0 then
-		model:Destroy()
-		return nil
 	end
 	return model
 end

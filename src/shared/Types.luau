@@ -61,6 +61,50 @@ export type TreeTypeConfig = {
 	Branches: number?, -- bare branches sticking out of the trunk (for dead trees)
 	BirchChance: number?, -- 0 to 1: share of trees that are white birches with dark marks
 	BirchColor: Color3?, -- a birch's bark colour
+	-- Blender models (Config.Models.Trees) for this tree type, and how often each is picked
+	-- (like { Oak = 0.6, Pine = 0.4 }). Not set: the tree is built from parts.
+	Shapes: { [string]: number }?,
+	BirchShapes: { [string]: number }?, -- the same, for this type's birches
+}
+
+-- One tree shape made in Blender (see Config.Models.Trees and blender/models/trees.py).
+export type TreeShapeConfig = {
+	TrunkWidth: number, -- the trunk's width at Scale 1, the same as blender/ builds it
+	LeafColors: { Color3 }?, -- its own leaf colours (not set: the tree type's LeafColors)
+}
+
+-- A prop made in Blender (see Config.Models.Props and blender/models/props.py).
+export type PropModelConfig = {
+	Model: string, -- its name in ServerStorage > MapAssets
+	Part: string, -- the part the game sizes it by
+	Width: number, -- how wide that part is at the size of the parts version, in studs
+}
+
+-- How Blocky.dress colours one kind of part of a Blender model (by its name).
+export type SkinLook = {
+	Color: Color3,
+	Material: Enum.Material,
+	Solid: boolean?, -- stops players and the camera (the walls and roofs of a building)
+}
+
+-- One kind of little thing scattered over a zone's ground (see Config.Details).
+export type DetailConfig = {
+	Model: string, -- the Blender model (see blender/models/details.py)
+	Part: string, -- the part it's sized by (its bottom stands on the ground)
+	Count: number, -- how many in the zone
+	Size: { number }, -- smallest and biggest width of that part, in studs
+	Colors: { Color3 }, -- each one picks a colour for its parts
+	StemColor: Color3?, -- for parts named Stem and Dot (flowers, mushrooms)
+	Glow: boolean?, -- glowing (Neon), and no white dots
+}
+
+-- How one gate between two zones looks (see Config.Gates.Looks and Server/Build/Edges).
+export type GateLookConfig = {
+	Door: "Wood" | "Iron", -- wooden planks, or iron bars you can see through
+	Gatehouse: "Log" | "Stone", -- log towers with roofs, or stone pillars with an iron arch
+	Border: "Ridge" | "StoneWall", -- along the rest of the border: big rocks, or a crumbling wall
+	LampColor: Color3, -- the gatehouse's lanterns
+	Flicker: boolean, -- do the lanterns flicker?
 }
 
 -- One sound (see Config.Sounds).
@@ -94,6 +138,10 @@ export type ZoneLookConfig = {
 	Haze: number, -- 0 to 10, how washed out the distance looks
 	Saturation: number, -- -1 to 1: how strong the colours are (0 = normal, above 0 = more cartoony)
 	Tint: Color3, -- the whole screen is tinted a little towards this colour (white = no tint)
+	CloudCover: number, -- 0 = a clear sky, 1 = the whole sky is cloud
+	CloudDensity: number, -- 0 = thin, wispy clouds, 1 = thick ones
+	CloudColor: Color3,
+	SunRays: number, -- 0 to 1: soft beams of light when you look towards the sun
 	Ambience: SoundConfig, -- a quiet background sound that loops while you're in the zone
 }
 

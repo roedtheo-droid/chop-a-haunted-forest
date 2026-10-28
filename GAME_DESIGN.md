@@ -157,6 +157,23 @@ mimics first and burn them safely with a torch.
 11. Juicy chopping: (a) swing animation and instant hit effects, (b) tree fall,
     landing and popping logs.
 
+## Map 2.0 (a nicer, more detailed map made with Blender models)
+Models come from the scripts in `blender/` (see README "Blender models"); without them the
+game builds the old parts version.
+1. Blender pipeline + pilot: Oak, Pine, Birch, bark block, rocks. (done, tested)
+2. Ground, smooth path and river banks. (done, tested)
+3. Edges: invisible walls, hedge, ridge, stone wall, gatehouses, two rows of
+   border trees; bigger Tool Shed. (done, tested)
+4. The view outside: mountain ranges, hills with trees, clouds and sun rays; all models in
+   one file (AllModels.fbx) so Studio needs one import. (done, tested)
+5a. Tree variety (two shapes of each, willows, dead oaks), groves and clearings, path
+    props in small groups. (done, tested)
+5b. Ground details (grass tufts, flowers, ferns, mushrooms, dead leaves) and prop models.
+    (done, tested)
+6a. Landmarks and camp props as models. (done, tested)
+6b. Logs, stumps and the Elder Hollow as models. (done, tested)
+6c. The Tool Shed and the sawmills as models. (done, tested)
+
 ## After the MVP (ideas, not scheduled)
 - Lobby with party pads: step on a pad, pick the map and party size (1–4),
   then everyone teleports in together.

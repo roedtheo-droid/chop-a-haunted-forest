@@ -134,12 +134,13 @@ local function buildRoot(index: number, base: Vector3): Root
 		* CFrame.Angles(0, math.rad(90), 0)
 		* CFrame.Angles(0, 0, -ROOT_TILT)
 		+ Vector3.new(0, cfg.RootThickness * 0.3, 0)
-	local part = makePart(
+	local part = Blocky.block(
+		Config.Models.Boss.Root,
 		"Root",
-		Enum.PartType.Block,
 		Vector3.new(cfg.RootLength, cfg.RootThickness, cfg.RootThickness),
 		cframe,
 		BARK_COLOR,
+		Enum.Material.Wood,
 		model
 	)
 	part.CanCollide = false -- so players don't trip over them mid-fight
@@ -164,36 +165,40 @@ local function build()
 
 	bossModel = Instance.new("Model")
 	bossModel.Name = "ElderHollow"
-	-- A huge blocky tree, like the forest's trees (see Build/Blocky.luau).
-	makePart(
+	-- A huge blocky tree, like the forest's trees (see Build/Blocky.luau). Its trunk, crown
+	-- blocks and roots are the Blender models in Config.Models.Boss when they're imported
+	-- (the same sizes), or plain blocks.
+	local models = Config.Models.Boss
+	Blocky.block(
+		models.Trunk,
 		"Trunk",
-		Enum.PartType.Block,
 		Vector3.new(cfg.TrunkWidth, cfg.TrunkHeight, cfg.TrunkWidth),
 		CFrame.new(base + Vector3.new(0, cfg.TrunkHeight / 2, 0)),
 		BARK_COLOR,
+		Enum.Material.Wood,
 		bossModel
 	)
 	local crownCenter = base + Vector3.new(0, cfg.TrunkHeight, 0)
-	local crown = makePart(
+	Blocky.block(
+		models.Crown,
 		"Crown",
-		Enum.PartType.Block,
 		Vector3.one * cfg.CrownSize,
 		CFrame.new(crownCenter) * CFrame.Angles(0, math.rad(20), 0),
 		CROWN_COLOR,
+		Config.Tree.LeafMaterial,
 		bossModel
 	)
-	crown.Material = Config.Tree.LeafMaterial
 	-- More leaf blocks around the main one, a bit lighter and darker.
 	for index, offset in CROWN_BLOCKS do
-		local block = makePart(
+		Blocky.block(
+			models.Crown,
 			"Crown",
-			Enum.PartType.Block,
 			Vector3.one * cfg.CrownSize * 0.65,
 			CFrame.new(crownCenter + offset * cfg.CrownSize) * CFrame.Angles(0, math.rad(index * 25), 0),
 			Blocky.shade(CROWN_COLOR, if index % 2 == 0 then 0.1 else -0.15),
+			Config.Tree.LeafMaterial,
 			bossModel
 		)
-		block.Material = Config.Tree.LeafMaterial
 	end
 
 	-- Its pivot is the bottom of the trunk, so it topples over from its base.

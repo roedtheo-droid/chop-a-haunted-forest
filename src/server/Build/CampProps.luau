@@ -2,12 +2,15 @@
 -- Builds the things around spawn in the camp (see the map design and Config.Camp):
 -- stone tiles under spawn, a campfire with logs to sit on, a quest board, a well with a
 -- bucket, benches along the path, flower beds and a signpost before the bridge.
+-- The quest board, well, benches and signpost are Blender models once they're imported into
+-- Studio (Config.Models.Camp); until then, parts.
 -- Everything is only for looks. CampManager calls CampProps.build.
 -- It's not a system, so it has no init()/start().
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Assets = require(script.Parent.Assets)
 local Blocky = require(script.Parent.Blocky)
 local Props = require(script.Parent.Props)
 
@@ -22,6 +25,8 @@ local STEM = Color3.fromRGB(60, 140, 50)
 local PAPER = Color3.fromRGB(236, 233, 222)
 local PIN = Color3.fromRGB(216, 70, 60)
 local FLOWERS = { Color3.fromRGB(216, 90, 70), Color3.fromRGB(232, 141, 184), Color3.fromRGB(255, 215, 70), Color3.fromRGB(150, 120, 230) }
+
+local MODELS = Config.Models.Camp
 
 local CampProps = {}
 
@@ -71,6 +76,16 @@ local function buildQuestBoard()
 	local style = Config.Style
 	local position = Config.Camp.QuestBoard + Vector3.new(0, GROUND, 0)
 	local base = facing(position, Vector3.new(Config.Camp.Spawn.X, 0, position.Z))
+	local board = Assets.prop(folder, MODELS.QuestBoard, 1, base)
+	if board then
+		Assets.paint(board, "Post", style.DarkWood, Enum.Material.Wood, true)
+		Assets.paint(board, "Board", style.Wood, Enum.Material.WoodPlanks, false)
+		Assets.paint(board, "Roof", style.Roof, Enum.Material.WoodPlanks, false)
+		Assets.paint(board, "Note", PAPER, Enum.Material.SmoothPlastic, false)
+		Assets.paint(board, "Pin", PIN, Enum.Material.SmoothPlastic, false)
+		Blocky.sign("QUESTS", base * CFrame.new(0, 7.8, -0.1), 4.4, 1.4, style.Gold, folder)
+		return
+	end
 	for _, side in { -1, 1 } do
 		piece("BoardPost", Vector3.new(0.8, 8.8, 0.8), base * CFrame.new(side * 3.6, 4.4, 0), style.DarkWood, Enum.Material.Wood)
 	end
@@ -101,6 +116,17 @@ end
 local function buildWell()
 	local style = Config.Style
 	local center = Config.Camp.Well + Vector3.new(0, GROUND, 0)
+	local well = Assets.prop(folder, MODELS.Well, 1, CFrame.new(center))
+	if well then
+		Assets.paint(well, "Stone", STONE, Enum.Material.Slate, true)
+		Assets.paint(well, "Wood", style.DarkWood, Enum.Material.Wood, true)
+		Assets.paint(well, "Roof", style.Roof, Enum.Material.WoodPlanks, false)
+		Assets.paint(well, "Water", WATER_COLOR, Enum.Material.SmoothPlastic, false)
+		Assets.paint(well, "Rope", Color3.fromRGB(205, 175, 120), Enum.Material.Fabric, false)
+		Assets.paint(well, "Bucket", Blocky.shade(style.Wood, -0.1), Enum.Material.WoodPlanks, false)
+		Assets.paint(well, "Metal", style.Metal, Enum.Material.Metal, false)
+		return
+	end
 	local size, thick, height = 5, 0.8, 2.6
 	for _, side in { -1, 1 } do
 		piece("WellWall", Vector3.new(size, height, thick), CFrame.new(center + Vector3.new(0, height / 2, side * (size - thick) / 2)), STONE, Enum.Material.Slate)
@@ -123,6 +149,12 @@ local function buildBench(position: Vector3)
 	local style = Config.Style
 	local spot = position + Vector3.new(0, GROUND, 0)
 	local base = facing(spot, Vector3.new(Config.Camp.Spawn.X, 0, spot.Z))
+	local bench = Assets.prop(folder, MODELS.Bench, 1, base)
+	if bench then
+		Assets.paint(bench, "Seat", style.Wood, Enum.Material.WoodPlanks, true)
+		Assets.paint(bench, "Leg", style.DarkWood, Enum.Material.Wood, false)
+		return
+	end
 	piece("BenchSeat", Vector3.new(5, 0.4, 1.6), base * CFrame.new(0, 1.6, 0), style.Wood, Enum.Material.WoodPlanks)
 	decor("BenchBack", Vector3.new(5, 1.2, 0.3), base * CFrame.new(0, 2.9, 0.75), style.Wood, Enum.Material.WoodPlanks)
 	for _, side in { -1, 1 } do
@@ -155,7 +187,13 @@ end
 local function buildSignpost()
 	local style = Config.Style
 	local position = Config.Camp.Signpost + Vector3.new(0, GROUND, 0)
-	piece("SignPost", Vector3.new(0.6, 7.4, 0.6), CFrame.new(position + Vector3.new(0, 3.7, 0)), style.DarkWood, Enum.Material.Wood)
+	local post = Assets.prop(folder, MODELS.Signpost, 1, CFrame.new(position))
+	if post then
+		Assets.paint(post, "Post", style.DarkWood, Enum.Material.Wood, true)
+		Assets.paint(post, "Stone", STONE, Enum.Material.Slate, true)
+	else
+		piece("SignPost", Vector3.new(0.6, 7.4, 0.6), CFrame.new(position + Vector3.new(0, 3.7, 0)), style.DarkWood, Enum.Material.Wood)
+	end
 	local riverPoint = Vector3.new(position.X, 0, position.Z - 1) -- straight on, over the bridge
 	local places = {
 		{ Text = Config.Zones[1].Name, Target = riverPoint, Height = 6.4 },
@@ -167,6 +205,17 @@ local function buildSignpost()
 		local middle = position + Vector3.new(0, place.Height, 0) + flat * 3.1
 		-- The board's long side (X) points at the place.
 		local frame = CFrame.fromMatrix(middle, flat, Vector3.yAxis)
+		local arrow = Assets.prop(folder, MODELS.SignArrow, 1, frame * CFrame.new(0, -0.55, 0))
+		local board = if arrow then Assets.paint(arrow, "Board", style.Wood, Enum.Material.WoodPlanks, false) else nil
+		if arrow and board then
+			Assets.paint(arrow, "Tip", style.Wood, Enum.Material.WoodPlanks, false)
+			Assets.paint(arrow, "Frame", style.DarkWood, Enum.Material.Wood, false)
+			Blocky.boardText(board, frame.LookVector, place.Text)
+			Blocky.boardText(board, -frame.LookVector, place.Text)
+			continue
+		elseif arrow then
+			arrow:Destroy()
+		end
 		Blocky.sign(place.Text, frame, 5.4, 1.1, nil, folder)
 		-- A pointed tip on the end, so it looks like an arrow.
 		decor("SignTip", Vector3.new(0.78, 0.78, 0.4), frame * CFrame.new(2.7, 0, 0) * CFrame.Angles(0, 0, math.pi / 4), style.Wood, Enum.Material.WoodPlanks)

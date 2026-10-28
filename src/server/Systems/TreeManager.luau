@@ -96,7 +96,9 @@ local function leaveStump(tree: Model, trunk: BasePart, charred: boolean)
 	local height = Config.Tree.StumpHeight
 	-- Normal stumps are a bit darker than the bark.
 	local color = if charred then CHAR_COLOR else trunk.Color:Lerp(Color3.new(0, 0, 0), 0.25)
-	local stump = Blocky.part(
+	-- The Stump model from Blender when that's imported (the same size), or a plain block.
+	local stump = Blocky.block(
+		Config.Models.Stump,
 		"Stump",
 		Vector3.new(width, height, width),
 		CFrame.new(tree:GetPivot().Position + Vector3.new(0, height / 2, 0)) * trunk.CFrame.Rotation,

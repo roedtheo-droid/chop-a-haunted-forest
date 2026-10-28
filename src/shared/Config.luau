@@ -140,6 +140,11 @@ local treeTypes: { [string]: Types.TreeTypeConfig } = {
 		LeafBlocks = 4,
 		BirchChance = 0.3,
 		BirchColor = Color3.fromRGB(235, 232, 222),
+		-- Blender models (see Models below): 60% oaks and 40% pines, two shapes of each, and
+		-- the birches use the two birch shapes. Until they're imported into Studio, these
+		-- trees are built from parts.
+		Shapes = { Oak = 0.3, Oak2 = 0.3, Pine = 0.2, Pine2 = 0.2 },
+		BirchShapes = { Birch = 0.5, Birch2 = 0.5 },
 	},
 	-- Fog Hollow: the same trees, but greyer and gloomier.
 	Willow = {
@@ -156,6 +161,9 @@ local treeTypes: { [string]: Types.TreeTypeConfig } = {
 		LeafBlocks = 4,
 		BirchChance = 0.2,
 		BirchColor = Color3.fromRGB(205, 208, 200),
+		-- Blender models: willows with long hanging strands, and pale birches.
+		Shapes = { Willow1 = 0.5, Willow2 = 0.5 },
+		BirchShapes = { Birch = 0.5, Birch2 = 0.5 },
 	},
 	-- Graveyard Grove: dead, crooked trees with a few dark leaves and bare branches.
 	DeadOak = {
@@ -170,7 +178,26 @@ local treeTypes: { [string]: Types.TreeTypeConfig } = {
 		},
 		LeafBlocks = 2,
 		Branches = 2,
+		-- Blender models: bare, forked branches with a few dark leaves.
+		Shapes = { DeadOak1 = 0.5, DeadOak2 = 0.5 },
 	},
+}
+
+-- Tree shapes made in Blender (see Models below). TrunkWidth is the trunk's width at Scale 1:
+-- keep it the same as in blender/models/trees.py, or the trees come out the wrong size.
+-- Pines stay green (no autumn colours), a little darker than the oaks.
+local pineGreens = { Color3.fromRGB(47, 107, 42), Color3.fromRGB(58, 127, 51), Color3.fromRGB(70, 138, 56) }
+local treeShapes: { [string]: Types.TreeShapeConfig } = {
+	Oak = { TrunkWidth = 3 },
+	Oak2 = { TrunkWidth = 3 },
+	Pine = { TrunkWidth = 2.2, LeafColors = pineGreens },
+	Pine2 = { TrunkWidth = 2.2, LeafColors = pineGreens },
+	Birch = { TrunkWidth = 2.4 },
+	Birch2 = { TrunkWidth = 2.4 },
+	Willow1 = { TrunkWidth = 3.2 },
+	Willow2 = { TrunkWidth = 3.2 },
+	DeadOak1 = { TrunkWidth = 3 },
+	DeadOak2 = { TrunkWidth = 3 },
 }
 
 -- The zones, in order from spawn. Clearing every tree in a zone opens the gate to the next one.
@@ -198,6 +225,10 @@ local zones: { Types.ZoneConfig } = {
 			Haze = 0,
 			Saturation = 0.2,
 			Tint = Color3.fromRGB(255, 250, 240),
+			CloudCover = 0.55, -- fluffy white clouds and a little sunshine through the trees
+			CloudDensity = 0.3,
+			CloudColor = Color3.fromRGB(255, 255, 255),
+			SunRays = 0.1,
 			Ambience = { Id = "rbxassetid://9112832288", Volume = 0.25 }, -- light birds, mountain air
 		},
 	},
@@ -223,6 +254,10 @@ local zones: { Types.ZoneConfig } = {
 			Haze = 3,
 			Saturation = -0.1,
 			Tint = Color3.fromRGB(235, 242, 242),
+			CloudCover = 0.85, -- a heavy grey sky, no sun
+			CloudDensity = 0.6,
+			CloudColor = Color3.fromRGB(185, 190, 192),
+			SunRays = 0,
 			Ambience = { Id = "rbxassetid://9120505513", Volume = 0.35 }, -- thin trickles and drips, echoing
 		},
 	},
@@ -248,7 +283,79 @@ local zones: { Types.ZoneConfig } = {
 			Haze = 1.5,
 			Saturation = 0,
 			Tint = Color3.fromRGB(240, 220, 255),
+			CloudCover = 0.7, -- purple dusk clouds, a last bit of low sun
+			CloudDensity = 0.45,
+			CloudColor = Color3.fromRGB(125, 105, 140),
+			SunRays = 0.04,
 			Ambience = { Id = "rbxassetid://9114625552", Volume = 0.3 }, -- spooky, eerie wind
+		},
+	},
+}
+
+-- How each gate between two zones looks, in order: gate 1 is between zone 1 and zone 2.
+-- See Types.GateLookConfig and Server/Build/Edges.
+local gateLooks: { Types.GateLookConfig } = {
+	{ Door = "Wood", Gatehouse = "Log", Border = "Ridge", LampColor = Color3.fromRGB(255, 205, 130), Flicker = false },
+	{ Door = "Iron", Gatehouse = "Stone", Border = "StoneWall", LampColor = Color3.fromRGB(255, 140, 60), Flicker = true },
+}
+
+-- Little things on each zone's ground, one list per zone (see Types.DetailConfig and
+-- Details below).
+local zoneDetails: { { Types.DetailConfig } } = {
+	{ -- Pale Pines
+		{
+			Model = "GrassTuft",
+			Part = "Grass",
+			Count = 150,
+			Size = { 0.8, 1.4 },
+			Colors = { Color3.fromRGB(95, 170, 60), Color3.fromRGB(80, 150, 50), Color3.fromRGB(120, 180, 70) },
+		},
+		{
+			Model = "Flowers",
+			Part = "Stem",
+			Count = 50,
+			Size = { 1.2, 1.8 },
+			Colors = {
+				Color3.fromRGB(255, 215, 70),
+				Color3.fromRGB(250, 250, 245),
+				Color3.fromRGB(240, 150, 200),
+				Color3.fromRGB(170, 130, 230),
+			},
+			StemColor = Color3.fromRGB(60, 140, 50),
+		},
+	},
+	{ -- Fog Hollow
+		{
+			Model = "Fern",
+			Part = "Frond",
+			Count = 90,
+			Size = { 3, 4.5 },
+			Colors = { Color3.fromRGB(70, 120, 70), Color3.fromRGB(85, 130, 80), Color3.fromRGB(60, 100, 65) },
+		},
+		{
+			Model = "Mushrooms",
+			Part = "Stem",
+			Count = 30,
+			Size = { 1.2, 1.8 },
+			Colors = { Color3.fromRGB(140, 255, 120) },
+			StemColor = Color3.fromRGB(240, 228, 205),
+			Glow = true,
+		},
+	},
+	{ -- Graveyard Grove
+		{
+			Model = "DeadLeaves",
+			Part = "Leaf",
+			Count = 110,
+			Size = { 2.6, 3.6 },
+			Colors = { Color3.fromRGB(92, 47, 43), Color3.fromRGB(120, 70, 35), Color3.fromRGB(70, 50, 40) },
+		},
+		{
+			Model = "Bones",
+			Part = "Bone",
+			Count = 12,
+			Size = { 1.6, 2.2 },
+			Colors = { Color3.fromRGB(225, 218, 195) },
 		},
 	},
 }
@@ -282,12 +389,169 @@ local Config = {
 		StartZ = 520, -- the back edge of the camp, behind spawn. Zone 1 starts Camp.Length further on.
 		MinSpacing = 10, -- minimum distance between two trees
 		EdgeMargin = 8, -- no trees closer than this to a wall
-		WallHeight = 20, -- too high to jump over
+		-- Groves and clearings: trees grow thicker in some places and thinner in others (the
+		-- same number of trees, just not spread evenly), and each zone has a few open clearings.
+		GroveSize = 70, -- studs across a grove (and the thin patches between them)
+		GroveContrast = 1.6, -- how much thicker the groves are than the thin patches (0 = even)
+		GroveMinChance = 0.12, -- even the thinnest patch keeps some trees
+		Clearings = 3, -- open clearings in each zone
+		ClearingRadius = { 12, 20 },
+		-- The walls are invisible: you see hedges, rocks and gatehouses in front of them instead
+		-- (see Edges below). 30 is too high to jump over, even from the top of a ridge rock.
+		WallHeight = 30,
 		WallThickness = 2,
 	},
 
 	Zones = zones,
 	TreeTypes = treeTypes,
+
+	-- Models made in Blender (see the blender/ folder and Server/Build/Assets). Each one is
+	-- imported into Studio and put in ServerStorage > MapAssets (see README.md).
+	-- Anything that isn't imported yet is built from plain parts, so the game always works.
+	Models = {
+		Folder = "MapAssets", -- the folder in ServerStorage
+		BarkBlock = "BarkBlock", -- stretched copies of it make up a chopped trunk (see Blocky.notch)
+		Rocks = { "Rock1", "Rock2" }, -- each rock picks one of these at random
+		Trees = treeShapes, -- which tree types use them: Shapes in TreeTypes above
+		Patches = { "Patch1", "Patch2", "Patch3" }, -- flat blobs on the ground (see Ground below)
+		Pebbles = "Pebbles", -- along the path's edges
+		RiverBank = "RiverBank", -- pieces of the river's banks
+		Hedges = { "Hedge1", "Hedge2", "Hedge3" }, -- along the outside walls (see Edges below)
+		RidgeRocks = { "RidgeRock1", "RidgeRock2" }, -- the rocky ridge at a gate with Border = "Ridge"
+		StoneWalls = { "StoneWall1", "StoneWall2" }, -- the crumbling wall at a gate with Border = "StoneWall"
+		-- By the Gatehouse in Gates.Looks.
+		Gatehouses = { Log = "LogGatehouse", Stone = "StoneGatehouse" } :: { [string]: string },
+		Mountains = { "Mountains1", "Mountains2" }, -- mountain ranges far away (see Scenery)
+		Hills = { "Hill1", "Hill2" }, -- rolling hills with little trees, behind the border trees
+		-- Props along the path and in the landmarks (see Server/Build/Props). Width: how wide
+		-- Part is at the size of the parts version (keep it the same as blender/models/props.py).
+		Props = {
+			BerryBush = { Model = "BerryBush", Part = "Bush", Width = 4.2 },
+			FallenLog = { Model = "FallenLog", Part = "Log", Width = 8 }, -- the game picks each log's length
+			LampPost = { Model = "LampPost", Part = "Post", Width = 0.77 },
+			Fence = { Model = "FenceSection", Part = "Post", Width = 0.71 }, -- one post and its rails
+			Pumpkin = { Model = "Pumpkin", Part = "Pumpkin", Width = 2.2 },
+			Reeds = { Model = "Reeds", Part = "Reed", Width = 2.2 },
+			LilyPad = { Model = "LilyPad", Part = "Pad", Width = 1.8 },
+			Mushrooms = { Model = "Mushrooms", Part = "Stem", Width = 1.34 },
+		},
+		-- The landmarks (see Server/Build/Landmarks) and the camp's things (Server/Build/CampProps
+		-- and Systems/CampManager), with the same meaning as Props above.
+		Landmarks = {
+			Tent = { Model = "Tent", Part = "Canvas", Width = 7 },
+			Dock = { Model = "Dock", Part = "Deck", Width = 15.92 },
+			Rowboat = { Model = "Rowboat", Part = "Hull", Width = 7.1 },
+			WindmillTower = { Model = "WindmillTower", Part = "Tower", Width = 10.24 },
+			WindmillSails = { Model = "WindmillSails", Part = "Hub", Width = 1.6 }, -- they turn around the hub
+			IronFence = { Model = "IronFence", Part = "Iron", Width = 3 }, -- one 3-stud section of the graveyard's fence
+			Crypt = { Model = "Crypt", Part = "Stone", Width = 10.35 },
+		},
+		-- The tall stones in a ring around the boss's clearing.
+		BossStones = {
+			{ Model = "BossStone1", Part = "Stone", Width = 3 },
+			{ Model = "BossStone2", Part = "Stone", Width = 3 },
+		},
+		Camp = {
+			Bridge = { Model = "Bridge", Part = "Deck", Width = 16.15 }, -- built for Camp.BridgeWidth 16 and RiverWidth 14
+			Well = { Model = "Well", Part = "Stone", Width = 5.06 },
+			QuestBoard = { Model = "QuestBoard", Part = "Post", Width = 8 },
+			Campfire = { Model = "Campfire", Part = "Stone", Width = 6.08 },
+			Bench = { Model = "Bench", Part = "Leg", Width = 4.65 },
+			Signpost = { Model = "Signpost", Part = "Post", Width = 1.1 },
+			SignArrow = { Model = "SignArrow", Part = "Board", Width = 5.4 }, -- one of the signpost's arrows
+		},
+		-- A slab, a cross and a pillar (Props.gravestone's kind 1, 2 and 3).
+		Gravestones = {
+			{ Model = "Gravestone1", Part = "Stone", Width = 2.6 },
+			{ Model = "Gravestone2", Part = "Stone", Width = 2.6 },
+			{ Model = "Gravestone3", Part = "Stone", Width = 2.6 },
+		},
+		-- One-part models the game sizes itself: it sets their Size, which stretches the model
+		-- to fill that box. A log on the ground (Server/Systems/LogManager), a felled tree's
+		-- stump (TreeManager), and the Elder Hollow's trunk, crown blocks and roots (BossManager).
+		Log = "Log",
+		Stump = "Stump",
+		Boss = { Trunk = "ElderTrunk", Crown = "ElderCrown", Root = "ElderRoot" },
+		-- The Tool Shed and the sawmills (Server/Build/ToolShed and SawmillBuilding). Their
+		-- models are made for Shop.BuildingSize 56 x 18 x 38 with a 12 x 13 door, and for
+		-- Sawmill.BuildingSize 20 x 11 x 14. If you change those, the game says so in the
+		-- Output and builds that building from parts instead.
+		Buildings = {
+			ToolShedShell = "ToolShedShell",
+			Stove = "Stove",
+			Armchair = "Armchair",
+			Barrel = "Barrel",
+			Crate = "Crate",
+			UpgradeBench = "UpgradeBench",
+			HangingLamp = "HangingLamp",
+			SawmillShed = "SawmillShed",
+			SawTable = "SawTable",
+			SawBlade = "SawBlade", -- resized to Sawmill.SawSize
+			WaterWheel = "WaterWheel", -- resized to Sawmill.WheelRadius
+			Workshop = "Workshop",
+			LogPile = "LogPile",
+		},
+		FitTolerance = 0.05, -- how far (5%) a model's size may be off before the parts are used
+	},
+
+	-- Little things scattered over each zone's ground (see Server/Build/Details): grass and
+	-- flowers, ferns and glowing mushrooms, dead leaves and bones. Only for looks: you walk
+	-- through them and clicks go through them. Fewer of them = faster on phones.
+	Details = {
+		PathGap = 6.5, -- studs from the middle of the path (it's 8 wide, plus its dirt edge)
+		EdgeGap = 4, -- studs from the walls
+		BorderGap = 10, -- studs from a border between two zones (the gatehouses, ridge and wall)
+		FallbackShare = 0.4, -- without the models: only this share of them, made of a few parts each
+		Zones = zoneDetails, -- what's on each zone's ground (at the top of this file)
+	},
+
+	-- What you see at the forest's edges, in front of the invisible walls (see Server/Build/Edges).
+	Edges = {
+		HedgeLength = 12, -- studs per piece of hedge along the outside walls
+		HedgeOffset = 1.6, -- the hedge's middle is this far past the walls' inside, so you bump into its leaves
+		HedgeHeight = { 6, 11 }, -- lowest and highest (only for the parts version, without the models)
+		-- The hedge's colour next to the camp and zone 1, zone 2 and zone 3.
+		HedgeColors = { Color3.fromRGB(55, 110, 45), Color3.fromRGB(78, 100, 72), Color3.fromRGB(38, 52, 40) },
+		TwigZone = 3, -- from this zone on, dark dead twigs poke out of the hedge
+		TwigColor = Color3.fromRGB(58, 42, 36),
+		BoulderEvery = 26, -- studs between the boulders at the hedge's foot
+		BoulderSize = { 2, 3.5 },
+		-- A rocky ridge (Border = "Ridge")
+		RidgeSpacing = 9, -- studs between rocks (they're wider than that, so they overlap)
+		RidgeRockSize = { 8, 11 },
+		RidgeColor = Color3.fromRGB(143, 150, 163),
+		RidgeTreeChance = 0.3, -- this share of the rocks has a little tree on top
+		RidgeTreeScale = 0.5,
+		-- A crumbling stone wall (Border = "StoneWall")
+		StoneWallLength = 8, -- studs per piece
+		StoneWallHeight = { 3, 7 }, -- lowest and highest (only for the parts version)
+		StoneWallGaps = 2, -- pieces on each side that have fallen down into rubble
+		StoneWallColor = Color3.fromRGB(107, 103, 117),
+		DeadTrees = 4, -- bare trees along the wall
+		DeadTreeScale = 0.9,
+		-- The gatehouse around each gate (which one: Gates.Looks)
+		GatehouseWidth = 30, -- the gate plus a tower 7 wide on each side
+		LampHeight = 11, -- the lanterns on the towers (only for the parts version)
+		LampRange = 20, -- how far their light reaches
+		LampBrightness = 1.5,
+	},
+
+	-- Soft patches of colour on the ground, so the floors aren't one flat colour, and where two
+	-- zones meet each one's colour frays into the other (see Server/Build/Ground).
+	Ground = {
+		CampPatches = 14,
+		ZonePatches = { 30, 34, 38 }, -- in zone 1, 2 and 3
+		PatchSize = { 8, 24 }, -- smallest and biggest, in studs
+		BlendPatches = 10, -- on each side of a border between two zones
+		BlendDepth = 24, -- how far (studs) into the next zone they reach
+		CampColors = { Color3.fromRGB(146, 212, 102), Color3.fromRGB(104, 173, 68) },
+		-- One list per zone. Each patch picks one colour at random.
+		ZoneColors = {
+			{ Color3.fromRGB(110, 190, 70), Color3.fromRGB(76, 146, 51), Color3.fromRGB(132, 176, 70) }, -- grass, dark grass, mossy
+			{ Color3.fromRGB(111, 138, 98), Color3.fromRGB(85, 72, 58), Color3.fromRGB(72, 98, 70) }, -- grey-green, mud, dark moss
+			{ Color3.fromRGB(77, 61, 68), Color3.fromRGB(92, 47, 43), Color3.fromRGB(46, 36, 40) }, -- dusty, dead leaves, dark mud
+		},
+	},
 
 	-- The camp: a safe area before zone 1 with spawn, the Tool Shed and the first sawmill.
 	-- No trees grow here. A river with a bridge runs across its far end (see Server/Systems/CampManager).
@@ -298,6 +562,13 @@ local Config = {
 		RiverWidth = 14,
 		RiverGap = 3, -- studs between the river and zone 1
 		RiverColor = Color3.fromRGB(90, 169, 230),
+		RiverTransparency = 0.35, -- you see the darker riverbed through the water
+		RiverbedColor = Color3.fromRGB(52, 98, 118),
+		BankColor = Color3.fromRGB(226, 205, 150), -- the sandy banks along both sides
+		BankLength = 12, -- studs per piece of bank (each one a little longer or shorter)
+		RiverRocks = 6, -- small rocks sticking out of the water
+		RiverReeds = 12, -- clumps of reeds on the banks
+		RiverLilyPads = 10,
 		BridgeWidth = 16,
 		-- The things in the camp (see Server/Build/CampProps). Positions are (X, 0, Z).
 		PlazaSize = 24, -- the square of stone tiles around spawn
@@ -311,10 +582,15 @@ local Config = {
 
 	-- A dirt path from spawn through every gate to the boss. Trees don't grow on it.
 	-- Points are (X, Z) on the map, in order. The gates are at X = 0, so the path crosses there.
+	-- The path bends smoothly through the points (see Zones.getPathPoints).
 	Path = {
 		Width = 8,
-		TreeClearance = 7, -- no trees closer than this to the middle of the path
+		TreeClearance = 9, -- no trees closer than this to the middle of the path
 		Color = Color3.fromRGB(210, 173, 115),
+		Smoothness = 6, -- pieces between two points: more = rounder bends (and more parts)
+		EdgeWidth = 1.2, -- a darker strip of dirt along each side
+		EdgeColor = Color3.fromRGB(168, 129, 79),
+		PebbleSpacing = 7, -- studs between little groups of pebbles along the edges
 		Points = {
 			Vector2.new(0, 480),
 			Vector2.new(0, 370),
@@ -351,9 +627,12 @@ local Config = {
 	-- Little things along the path and around the zones (see Server/Systems/LandmarkManager).
 	-- Only for looks: you can't chop them.
 	Props = {
-		PathSpacing = 14, -- studs between props along the path
-		PathOffset = 5.4, -- how far from the middle of the path (the path is 8 wide, trees stay 7 away)
-		LampEvery = 3, -- in zones 2 and 3, every 3rd prop along the path is a lamp post
+		-- Props along the path come in little groups, with empty stretches in between.
+		GroupSpacing = { 35, 50 }, -- studs between groups (picked at random each time)
+		GroupSize = { 2, 4 }, -- props in a group
+		GroupSpread = 4, -- how far (studs) a group's props spread along the path
+		PathOffset = 5.4, -- how far from the middle of the path (the path is 8 wide, trees stay 9 away)
+		LampSpacing = 42, -- in zones 2 and 3, a lamp post every this many studs, on alternate sides
 		GateGap = 14, -- no props this close to a gate or the bridge
 		FogBanks = 9, -- drifting fog in zone 2
 		FogDrift = 14, -- studs each fog bank drifts to each side
@@ -367,6 +646,9 @@ local Config = {
 	-- Gates between zones
 	Gates = {
 		Width = 16,
+		DoorHeight = 14, -- the door you see; the invisible wall above it goes up to Forest.WallHeight
+		DoorDepth = 1,
+		Looks = gateLooks, -- the door, gatehouse and border of each gate (at the top of this file)
 		OpenTime = 2, -- seconds the gate takes to sink into the ground
 		MessageCooldown = 3, -- seconds between "Clear every tree first" messages for one player
 	},
@@ -379,6 +661,7 @@ local Config = {
 		BloomIntensity = 0.4, -- a soft glow around bright things
 		BloomSize = 24,
 		BloomThreshold = 0.95,
+		SunRaySpread = 0.3, -- how wide the sun's rays fan out (0 to 1); how strong they are is in each zone's Look
 	},
 
 	-- The intro when you join (see Client/Controllers/IntroController): the camera flies over
@@ -395,8 +678,8 @@ local Config = {
 		-- to looking at LookTo, over Time seconds.
 		Shots = {
 			{ -- the camp: spawn, the Tool Shed and the sawmill
-				From = Vector3.new(-70, 40, 545),
-				To = Vector3.new(60, 32, 535),
+				From = Vector3.new(-70, 40, 510),
+				To = Vector3.new(60, 32, 502),
 				LookFrom = Vector3.new(-10, 4, 455),
 				LookTo = Vector3.new(10, 4, 440),
 				Time = 4,
@@ -425,7 +708,7 @@ local Config = {
 		},
 		-- Behind the title, the camera circles slowly around this spot over the camp.
 		OrbitCenter = Vector3.new(0, 4, 455),
-		OrbitRadius = 80,
+		OrbitRadius = 55, -- small enough that the camera stays inside the camp, clear of the big trees behind it
 		OrbitHeight = 42,
 		OrbitSpeed = 0.06, -- radians per second (lower = slower)
 		SwoopTime = 1.6, -- seconds the camera takes to swoop down behind your character after PLAY
@@ -466,20 +749,37 @@ local Config = {
 
 	-- Scenery around the forest, only for looks: you can't chop it (see Server/Systems/SceneryManager).
 	Scenery = {
-		HedgeColor = Color3.fromRGB(55, 110, 45), -- the outer walls look like a thick hedge
-		FenceColor = Color3.fromRGB(120, 78, 45), -- the walls between zones are wooden
-		GateColor = Color3.fromRGB(95, 60, 35),
-		OutsideGround = Color3.fromRGB(85, 160, 55), -- the baseplate around the forest
+		FenceColor = Color3.fromRGB(120, 78, 45), -- wooden fences (see Build/Props)
+		OutsideGround = Color3.fromRGB(85, 160, 55), -- the grass around the forest (the baseplate and the big tiles below)
 		BorderTreeSpacing = 14, -- studs between the big trees just outside the walls
-		BorderTreeDistance = 10, -- studs from the wall to those trees
-		BorderTreeScale = 1.7, -- they're bigger than forest trees, so they show above the walls
-		MountainCount = 34,
-		MountainDistance = 320, -- studs from the forest's edge to the nearest mountains
-		MountainMinSize = 100,
-		MountainMaxSize = 180,
+		BorderTreeDistance = 10, -- studs from the wall to the first row of them
+		BorderTreeRows = 2, -- rows of them, one behind the other
+		BorderTreeRowGap = 16, -- studs between the rows
+		BorderTreeRowSpacing = 1.4, -- each row further out has its trees this much further apart
+		BorderTreeScale = { 1.4, 2.1 }, -- smallest and biggest: bigger than forest trees, so they show above the hedge
+		-- Rolling hills with little trees, behind the border trees
+		HillCount = 24, -- all the way around the forest
+		HillDistance = { 60, 100 }, -- studs from the forest's edge to the middle of each hill
+		HillWidth = { 100, 160 },
+		HillSink = 1, -- hills sit this far down, so their flat edge is under the grass
+		HillColor = Color3.fromRGB(85, 150, 55),
+		FarTreeColor = Color3.fromRGB(48, 100, 50), -- the little trees on the hills
+		-- Mountain ranges in two rings: a near one, and a far one that's paler and bluer, so it
+		-- looks further away.
+		MountainCount = 18,
+		MountainDistance = 320, -- studs from the forest's edge to the near ring
+		MountainWidth = { 220, 330 }, -- how wide each range is
 		MountainColor = Color3.fromRGB(110, 120, 138),
 		SnowColor = Color3.fromRGB(245, 248, 252),
-		SnowCap = 0.3, -- the top 30% of each mountain is snow
+		FarMountainCount = 14,
+		FarMountainDistance = 560,
+		FarMountainWidth = { 320, 480 },
+		FarMountainColor = Color3.fromRGB(150, 165, 188),
+		FarSnowColor = Color3.fromRGB(226, 234, 245),
+		SnowCap = 0.3, -- without the models: the top 30% of each (block) mountain is snow
+		-- Big flat ground tiles under everything (3 x 3 of them, each 2048 studs, as big as a part
+		-- can be), so you never see the edge of the baseplate behind the far mountains.
+		OutsideTiles = 3,
 	},
 
 	Sounds = sounds,
@@ -631,6 +931,7 @@ local Config = {
 	Tree = {
 		TrunkHeight = 14,
 		TrunkWidth = 3,
+		SizeSpread = 0.15, -- each tree is up to 15% bigger or smaller, so they don't look copied
 		LeavesSize = 10, -- the biggest leaf block (the others are a bit smaller)
 		LeafMaterial = Enum.Material.SmoothPlastic,
 		RootCount = 4, -- little blocks that flare out at the bottom of the trunk
@@ -717,11 +1018,15 @@ local Config = {
 
 	-- Tool Shed (in the camp, across the path from the sawmill)
 	Shop = {
-		Position = Vector3.new(-50, 0, 430), -- center of the building (height is found automatically)
-		BuildingSize = Vector3.new(32, 12, 22), -- big enough to walk around inside (see Build/ToolShed)
-		DoorWidth = 8,
-		DoorHeight = 10,
-		RoofHeight = 8,
+		-- A big cabin that fills the camp's left side, between the river and spawn.
+		Position = Vector3.new(-62, 0, 430), -- center of the building (height is found automatically)
+		Turn = 90, -- degrees: 0 = the door faces spawn's side (+Z), 90 = the middle of the camp (+X)
+		-- Width, wall height, depth. The room inside is laid out to fit whatever size this is,
+		-- and the furniture stays player-sized (see Build/ToolShed).
+		BuildingSize = Vector3.new(56, 18, 38),
+		DoorWidth = 12,
+		DoorHeight = 13,
+		RoofHeight = 12,
 		PromptDistance = 10, -- how close to the counter (inside) you must be to see "Open shop"
 		MaxBuyDistance = 20, -- the server refuses purchases from further away than this
 		BuyCooldown = 0.25, -- seconds between purchases for one player

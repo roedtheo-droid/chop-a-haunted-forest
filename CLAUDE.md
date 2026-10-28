@@ -17,7 +17,8 @@
 - Never use `_G`. Always `require` explicitly.
 - The server is authoritative. Never trust numbers sent by the client.
 - Every tunable number goes in `src/shared/Config.luau`.
-- Use placeholder parts for models. Never wait on art.
+- Models come from the Blender scripts in `blender/` (see README "Blender models"). The code
+  always falls back to placeholder parts when a model isn't imported into Studio yet. Never wait on art.
 
 ## Git
 - After each phase works and I confirm it, commit with a clear message like "Phase 3: sawmill selling and coins".

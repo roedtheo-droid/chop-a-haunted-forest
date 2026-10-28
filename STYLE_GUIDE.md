@@ -68,5 +68,46 @@ Samme kantede stil hele vejen, bare mørkere.
 - **Tool Shed:** bjælkehytte (brune vandrette bjælker, skråt tag, skilt med "TOOL SHED").
 - **Porte:** træporte med bjælker, ikke grå blokke.
 
+## 8. Blender-modeller
+- Modellerne bygges af Python-scripts i `blender/` (se README, "Blender models"), i samme kantede stil:
+  kasser med skrå kanter (bevel), ingen kugler eller runde stammer.
+- **Én farve pr. del:** hver farve er sin egen del, og spillet farver selv delene (tilfældige bladfarver,
+  lilla Cursed-træer, mimic-tell'en "Tint"). Farverne i Blender er kun til preview-billederne.
+- **Navne spillet leder efter:** `Trunk`, `Root`, `Branch`, `Leaves` (den største blad-klump),
+  `LeafBlock`, `Rock`, `Moss`, `Hedge`, `Twig`, `Stone`, `Log`, `Roof`, `Sign`, `Lamp`, `Iron`,
+  `Mountain`, `Snow`, `Hill`, `Grove`.
+  Nummerér med `_1`, `_2`...
+- **Stammen er altid en firkantet, lige blok** med bark-riller, så hakket kan skæres i den.
+- **Træerne:** to former af hver slags (eg, gran, birk) i Pale Pines, piletræer med lange hængende
+  grene i Fog Hollow og døde, forgrenede ege med få mørke blade i Graveyard Grove. Hvert træ er op
+  til 15% større eller mindre. Træerne står tættere i lunde og tyndere imellem, med et par åbne
+  lysninger, og ting langs stien står i små grupper med tomme stykker imellem.
+- **Små ting på jorden:** græstotter og blomster i Pale Pines, bregner og selvlysende svampe i Fog
+  Hollow, visne blade og et par knogler i Graveyard Grove. Man går igennem dem. Props (buske,
+  stammer, lygtepæle, hegn, græskar, gravsten, siv, åkander) er Blender-modeller i samme størrelse
+  som Parts-versionerne.
+- **Landemærker og lejren:** telte, bådebro, robåd, vindmølle (vingerne drejer), gravpladsens
+  jernhegn, krypten, ringstenene om bossen, broen, brønden, opslagstavlen, bålet, bænkene og
+  vejviseren er Blender-modeller. Hvor man går på dem (broen, bådebroen) ligger de præcise
+  Parts-gulve usynligt under modellen.
+- **Stammer, stubbe og bossen:** stammerne på jorden, stubbene og Elder Hollows stamme, krone og
+  rødder er Blender-modeller med bark-riller. De har præcis samme størrelse som de gamle blokke, så
+  ringene på enderne og alt spillet gør med dem (samle op, rødder der bliver tyndere) virker som før.
+- **Værktøjsskuret og savværkerne:** Blender-modeller med bjælkevægge, tagspån, skorsten, vinduer med
+  blomsterkasser og møbler (komfur, lænestol, tønder, kasser, bænk, hængelamper; savbord, rundsav,
+  vandhjul, savbukke og brændestabel). De gamle Parts ligger usynligt under og klarer kollisioner, lys
+  og røg. De slidte savværker i zone 2 og 3 er de samme modeller i mørkere farver.
+- **Jorden:** bløde pletter (`Patch`) i lysere/mørkere græs, mos, mudder og visne blade, og ved
+  zone-grænserne fletter de to zoners farver ind i hinanden. Stien har en mørkere jordkant og småsten.
+  Floden har sandbanker med sten, en mørkere bund, siv og åkander.
+- **Kanterne:** væggene er usynlige. Man ser en tyk, ujævn hæk med sten for foden (grøn, så grå-grøn,
+  så næsten sort med tørre kviste i zone 3), og to rækker store træer bag den. Mellem zone 1 og 2 står
+  en klippe-ryg med små træer og et port-hus af bjælker; mellem zone 2 og 3 en smuldrende stenmur med
+  døde træer og et port-hus af sten med jernbue og blafrende orange lygter.
+- **Udsigten:** bag træerne bølgende bakker med små træer, og to ringe af kantede bjerge med sne på
+  toppen; den bageste ring er lysere og mere blå, så den ser langt væk ud. Himlen har rigtige skyer
+  og bløde solstråler, der skifter med zonen (hvide skyer, tunge grå skyer, lilla skumrings-skyer).
+- Mangler en model i Studio, bygger spillet den gamle Parts-version i stedet.
+
 ## Hvad vi IKKE kopierer
-Deres logo, ikoner, billeder, meshes, lyde og navne (fx "Old Barkback"). Vi laver vores egne med Parts og tekst.
+Deres logo, ikoner, billeder, meshes, lyde og navne (fx "Old Barkback"). Vi laver vores egne med Parts, tekst og vores egne Blender-modeller.

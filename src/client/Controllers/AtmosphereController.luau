@@ -1,7 +1,8 @@
 --!strict
--- Each zone has its own light, fog and background sound (the Look in Config.Zones): a clear
--- afternoon with birds in Pale Pines, thick fog and drips in Fog Hollow, eerie dusk in
--- Graveyard Grove. When you walk into a zone, this fades YOUR lighting and sound to it.
+-- Each zone has its own light, fog, sky and background sound (the Look in Config.Zones): a
+-- clear afternoon with fluffy clouds and birds in Pale Pines, thick fog, grey clouds and drips
+-- in Fog Hollow, eerie dusk with purple clouds in Graveyard Grove. When you walk into a zone,
+-- this fades YOUR lighting, clouds and sound to it.
 --
 -- Why on the client? Changes a client makes to Lighting (and sounds it plays itself) only
 -- happen on that client. So every player gets the zone they're standing in, and the server
@@ -21,6 +22,8 @@ local AtmosphereController = {}
 
 local player = Players.LocalPlayer
 local atmosphere: Atmosphere
+local clouds: Clouds
+local sunRays: SunRaysEffect
 local colorCorrection: ColorCorrectionEffect -- makes colours stronger and tints the screen per zone
 local ambience: { Sound } = {} -- ambience[i] is zone i's background sound
 local currentZone: number? = nil
@@ -62,6 +65,12 @@ local function fadeTo(zone: number, seconds: number)
 			Decay = look.FogDecay,
 			Haze = look.Haze,
 		}),
+		TweenService:Create(clouds, info, {
+			Cover = look.CloudCover,
+			Density = look.CloudDensity,
+			Color = look.CloudColor,
+		}),
+		TweenService:Create(sunRays, info, { Intensity = look.SunRays }),
 	}
 	-- Every zone's background sound keeps looping; only this zone's one is turned up.
 	for index, sound in ambience do
@@ -109,8 +118,18 @@ function AtmosphereController.init()
 		atmosphere.Parent = Lighting
 	end
 
+	-- Real clouds in the sky. They only work inside Terrain. If the place already has some,
+	-- we use those.
+	local existingClouds = workspace.Terrain:FindFirstChildOfClass("Clouds")
+	if existingClouds then
+		clouds = existingClouds
+	else
+		clouds = Instance.new("Clouds")
+		clouds.Parent = workspace.Terrain
+	end
+
 	-- The cartoony look (see STYLE_GUIDE.md): soft shadows, a gentle glow on bright things,
-	-- and a colour filter that each zone's Look fades.
+	-- soft rays when you look towards the sun, and a colour filter that each zone's Look fades.
 	local cfg = Config.ZoneLook
 	Lighting.ShadowSoftness = cfg.ShadowSoftness
 	colorCorrection = Instance.new("ColorCorrectionEffect")
@@ -122,6 +141,11 @@ function AtmosphereController.init()
 	bloom.Size = cfg.BloomSize
 	bloom.Threshold = cfg.BloomThreshold
 	bloom.Parent = Lighting
+	sunRays = Instance.new("SunRaysEffect")
+	sunRays.Name = "ZoneSunRays"
+	sunRays.Intensity = 0
+	sunRays.Spread = cfg.SunRaySpread
+	sunRays.Parent = Lighting
 
 	-- One looping background sound per zone, all silent until you walk into that zone.
 	local folder = Instance.new("Folder")

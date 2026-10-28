@@ -1,11 +1,18 @@
 --!strict
 -- Builds the Tool Shed in the camp: a big log cabin you can walk into (see STYLE_GUIDE.md and
--- the map design). The door faces +Z, towards spawn. Inside:
+-- the map design). Below, +Z is the side with the door; Config.Shop.Turn turns the whole shed
+-- (90: the door faces +X, the middle of the camp). Its size comes from Config.Shop and
+-- everything is placed relative to its walls, so it can be made bigger or smaller; the
+-- furniture stays player-sized. Inside:
 --   * every tool hangs on the back wall with a price tag above it
 --   * the shopkeeper stands behind the counter, and the "Open shop" prompt is on the counter
 --   * an upgrade bench, the Log Vacuum machine, a stove under the chimney, an armchair,
 --     a barrel, crates, a rug, and lamps hanging from the roof beams
 -- Everything is only for looks, apart from the counter. ShopManager calls ToolShed.build.
+-- When the Blender models are imported (Config.Models.Buildings), the shell and the furniture
+-- are those models, each over its parts version: the parts turn invisible but still do the
+-- bumping, the lights and the smoke (see Blocky.dress). The tools, signs, counter,
+-- shopkeeper, rug and Log Vacuum machine stay parts.
 -- It's not a system, so it has no init()/start().
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -13,11 +20,12 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Shop = require(ReplicatedStorage.Shared.Shop)
 local Types = require(ReplicatedStorage.Shared.Types)
+local Assets = require(script.Parent.Assets)
 local Blocky = require(script.Parent.Blocky)
 
 local WALL = 1 -- how thick the walls are
 local FLOOR_TOP = 0.7 -- the plank floor sits on a low stone foundation
-local BEAM_HEIGHT = 11.6 -- the beams across the room, just under the top of the walls
+local LAMP_HEIGHT = 9 -- the lamps hang this high, on chains from the beams
 
 local STONE = Color3.fromRGB(143, 150, 163)
 local DARK_METAL = Color3.fromRGB(70, 70, 78)
@@ -29,12 +37,50 @@ local SKIN = Color3.fromRGB(255, 210, 90)
 local SHIRT = Color3.fromRGB(75, 150, 70)
 local TROUSERS = Color3.fromRGB(50, 70, 120)
 local FLOWERS = { Color3.fromRGB(216, 90, 70), Color3.fromRGB(232, 141, 184), Color3.fromRGB(255, 215, 70) }
+local LEAF_GREEN = Color3.fromRGB(95, 160, 60)
+local CRATE_COLOR = Color3.fromRGB(200, 145, 90)
+local MODELS = Config.Models.Buildings
+
+local BARREL_LOOKS: { [string]: Types.SkinLook } = {
+	Barrel = { Color = Blocky.shade(Config.Style.Wood, -0.1), Material = Enum.Material.Wood },
+	Hoop = { Color = DARK_METAL, Material = Enum.Material.Metal },
+}
+local CRATE_LOOKS: { [string]: Types.SkinLook } = {
+	Crate = { Color = CRATE_COLOR, Material = Enum.Material.WoodPlanks },
+	Trim = { Color = Blocky.shade(CRATE_COLOR, -0.25), Material = Enum.Material.Wood },
+}
 
 local ToolShed = {}
 
--- Set at the start of build(): where the shed stands, and the model everything goes in.
+-- Set at the start of build(): where the shed stands, the whole shed, the group the next
+-- parts go in (see group()), and whether the shell model is used (then the furniture
+-- models are too, because the shed is the size they're made for).
 local origin: CFrame
+local shed: Model
 local model: Model
+local dressed = false
+
+-- Start a group for the parts of one thing (the shell, the stove...), so its Blender model
+-- can go over it. piece() and decor() put their parts in the newest group.
+local function group(name: string)
+	model = Instance.new("Model")
+	model.Name = name
+	model.Parent = shed
+end
+
+-- Put Blender model `name` over the newest group, with its origin `offset` from the middle of
+-- the shed's floor plan (at ground level), `scale` times its usual size. Only once the shell
+-- is dressed. Returns the model, or nil (then the parts stay as they are).
+local function dress(name: string, offset: CFrame, looks: { [string]: Types.SkinLook }, scale: number?): Model?
+	if not dressed then
+		return nil
+	end
+	local skin = Assets.placed(model, name, origin * offset, scale)
+	if skin then
+		Blocky.dress(model, skin, looks)
+	end
+	return skin
+end
 
 -- A part placed relative to the middle of the shed's floor plan, at ground level.
 local function piece(name: string, size: Vector3, offset: Vector3, color: Color3, material: Enum.Material): Part
@@ -56,11 +102,15 @@ local function addLight(part: BasePart, color: Color3, range: number, brightness
 	light.Parent = part
 end
 
--- A window in a wall facing +Z or -Z (side 1 or -1): glass on both faces of the wall,
--- a dark wood frame with a cross, and (outside only) a flower box under it.
-local function addWindow(x: number, y: number, wallZ: number, side: number, flowerBox: boolean)
+-- How high the beams across the room are: just under the top of the walls.
+local function beamHeight(): number
+	return Config.Shop.BuildingSize.Y - 0.4
+end
+
+-- A window `width` by `height` in a wall facing +Z or -Z (side 1 or -1): glass on both faces
+-- of the wall, a dark wood frame with a cross, and (outside only) a flower box under it.
+local function addWindow(x: number, y: number, width: number, height: number, wallZ: number, side: number, flowerBox: boolean)
 	local style = Config.Style
-	local width, height = 5, 4
 	for _, face in { 1, -1 } do
 		local z = wallZ + face * (WALL / 2 + 0.05)
 		decor("Window", Vector3.new(width, height, 0.1), Vector3.new(x, y, z), style.Window, Enum.Material.Glass)
@@ -90,6 +140,7 @@ end
 
 -- The walls, floor, roof, door, windows, porch and chimney.
 local function buildShell()
+	group("Shell")
 	local cfg = Config.Shop
 	local style = Config.Style
 	local size = cfg.BuildingSize
@@ -157,39 +208,43 @@ local function buildShell()
 	end
 	decor("DoorFrame", Vector3.new(doorWidth + 2, 1, WALL + 0.4), Vector3.new(0, doorHeight + 0.5, frontZ), style.DarkWood, Enum.Material.Wood)
 
-	Blocky.roof(origin.Position + Vector3.new(0, h, 0), w, d, cfg.RoofHeight, style.Roof, model)
+	Blocky.roof(origin.Position + Vector3.new(0, h, 0), w, d, cfg.RoofHeight, style.Roof, model, origin.Rotation)
 
 	-- Beams across the room, which the lamps hang from.
-	for _, z in { -1, 6 } do
-		decor("Beam", Vector3.new(w - WALL * 2, 0.8, 0.8), Vector3.new(0, BEAM_HEIGHT, z), style.DarkWood, Enum.Material.Wood)
+	for _, z in { -d * 0.05, d * 0.27 } do
+		decor("Beam", Vector3.new(w - WALL * 2, 0.8, 0.8), Vector3.new(0, beamHeight(), z), style.DarkWood, Enum.Material.Wood)
 	end
 
-	-- Windows on both sides of the door.
-	addWindow(-w / 4 - 2, 6, frontZ, 1, true)
-	addWindow(w / 4 + 2, 6, frontZ, 1, true)
+	-- A window in the middle of the wall on each side of the door, sized to fit the wall.
+	local windowWidth, windowHeight = w * 0.16, h * 0.33
+	local windowY = math.max(6, h * 0.42)
+	addWindow(-doorWidth / 2 - sidePiece / 2, windowY, windowWidth, windowHeight, frontZ, 1, true)
+	addWindow(doorWidth / 2 + sidePiece / 2, windowY, windowWidth, windowHeight, frontZ, 1, true)
 
-	-- A big sign on the roof above the door.
-	Blocky.sign(
-		"TOOL SHED",
-		origin * CFrame.new(0, h + 2, d / 2 + 1.4),
-		14,
-		3.4,
-		style.HazardYellow,
-		model
-	)
-
-	-- A porch in front of the door, with a little roof on two posts and a lantern each side.
+	-- A porch in front of the door, with a little roof on two posts just above the door, and
+	-- a lantern each side.
+	local porchTop = math.min(h - 0.6, doorHeight + 1.4)
 	piece("Porch", Vector3.new(doorWidth + 8, FLOOR_TOP, 4), Vector3.new(0, FLOOR_TOP / 2, d / 2 + 2), style.Wood, Enum.Material.WoodPlanks)
-	local porchRoof = decor("PorchRoof", Vector3.new(doorWidth + 7, 0.5, 5), Vector3.new(0, h - 0.6, d / 2 + 2.2), style.Roof, Enum.Material.WoodPlanks)
+	local porchRoof = decor("PorchRoof", Vector3.new(doorWidth + 7, 0.5, 5), Vector3.new(0, porchTop, d / 2 + 2.2), style.Roof, Enum.Material.WoodPlanks)
 	porchRoof.CFrame *= CFrame.Angles(math.rad(15), 0, 0) -- sloping down towards the front
 	for _, side in { -1, 1 } do
-		decor("PorchPost", Vector3.new(0.6, h - 1, 0.6), Vector3.new(side * (doorWidth / 2 + 3), (h - 1) / 2, d / 2 + 3.9), style.DarkWood, Enum.Material.Wood)
-		local lantern = decor("Lantern", Vector3.new(0.9, 1.2, 0.9), Vector3.new(side * (doorWidth / 2 + 1.6), 7.5, d / 2 + 0.6), LAMP_COLOR, Enum.Material.Neon)
+		local postHeight = porchTop - 0.4
+		decor("PorchPost", Vector3.new(0.6, postHeight, 0.6), Vector3.new(side * (doorWidth / 2 + 3), postHeight / 2, d / 2 + 3.9), style.DarkWood, Enum.Material.Wood)
+		local lantern = decor("Lantern", Vector3.new(0.9, 1.2, 0.9), Vector3.new(side * (doorWidth / 2 + 1.6), doorHeight * 0.75, d / 2 + 0.6), LAMP_COLOR, Enum.Material.Neon)
 		addLight(lantern, LAMP_COLOR, 12, 1)
 	end
 
-	-- A stone chimney over the stove (see buildCozyCorner), with smoke coming out.
-	local chimney = decor("Chimney", Vector3.new(3, 9, 3), Vector3.new(w / 2 - 3, h + 2.5, -d / 2 + 5), STONE, Enum.Material.Slate)
+	-- A stone chimney over the stove (see buildCozyCorner), with smoke coming out. It's tall
+	-- enough to stick out of the roof.
+	local chimneySize = math.max(3, w * 0.07)
+	local chimneyHeight = cfg.RoofHeight + 1
+	local chimney = decor(
+		"Chimney",
+		Vector3.new(chimneySize, chimneyHeight, chimneySize),
+		Vector3.new(w / 2 - 3, h + chimneyHeight / 2 - 2, -d / 2 + 5),
+		STONE,
+		Enum.Material.Slate
+	)
 	local smoke = Instance.new("ParticleEmitter")
 	smoke.Texture = "rbxasset://textures/particles/smoke_main.dds"
 	smoke.Color = ColorSequence.new(Color3.fromRGB(235, 235, 235))
@@ -203,8 +258,91 @@ local function buildShell()
 	smoke.Parent = chimney
 end
 
+-- Is the shell model made for this size of shed (Config.Shop)? Checked on its foundation,
+-- the height of its walls and its door frame.
+local function shellFits(shell: Model): boolean
+	local cfg = Config.Shop
+	local size = cfg.BuildingSize
+	local foundation = shell:FindFirstChild("Foundation")
+	local doorway = shell:FindFirstChild("Doorway")
+	if not (foundation and foundation:IsA("BasePart") and doorway and doorway:IsA("BasePart")) then
+		return false
+	end
+	local wallTop = 0
+	for _, part in shell:GetChildren() do
+		if part:IsA("BasePart") and part.Name == "Wall" then
+			wallTop = math.max(wallTop, part.Position.Y + part.Size.Y / 2 - origin.Position.Y)
+		end
+	end
+	return Assets.near(foundation.Size.X, size.X + 0.6)
+		and Assets.near(foundation.Size.Z, size.Z + 0.6)
+		and Assets.near(wallTop, size.Y)
+		and Assets.near(doorway.Size.X, cfg.DoorWidth + 2)
+		and Assets.near(doorway.Size.Y, cfg.DoorHeight + 1)
+end
+
+-- The ToolShedShell model over the shell's parts, if it's imported and fits. Its walls and
+-- roof are solid, so the camera stays inside when you're in the shed.
+local function dressShell()
+	local shell = Assets.placed(model, MODELS.ToolShedShell, origin)
+	if not shell then
+		return
+	end
+	if not shellFits(shell) then
+		warn("[ToolShed] The Tool Shed models are made for a 56 x 18 x 38 shed with a 12 x 13 door (Config.Shop changed?): using parts")
+		shell:Destroy()
+		return
+	end
+	local style = Config.Style
+	Blocky.dress(model, shell, {
+		Foundation = { Color = STONE, Material = Enum.Material.Slate },
+		Floor = { Color = style.Wood, Material = Enum.Material.WoodPlanks },
+		Wall = { Color = style.Wood, Material = Enum.Material.Wood, Solid = true },
+		Gable = { Color = style.Wood, Material = Enum.Material.Wood, Solid = true },
+		Roof = { Color = style.Roof, Material = Enum.Material.WoodPlanks, Solid = true },
+		Corner = { Color = Blocky.shade(style.Wood, 0.25), Material = Enum.Material.Wood },
+		Doorway = { Color = style.DarkWood, Material = Enum.Material.Wood },
+		Door = { Color = Blocky.shade(style.Wood, -0.1), Material = Enum.Material.WoodPlanks },
+		Trim = { Color = style.DarkWood, Material = Enum.Material.Wood },
+		Glass = { Color = style.Window, Material = Enum.Material.Glass },
+		FlowerBox = { Color = style.Wood, Material = Enum.Material.WoodPlanks },
+		Leaf = { Color = LEAF_GREEN, Material = Enum.Material.Grass },
+		Porch = { Color = style.Wood, Material = Enum.Material.WoodPlanks },
+		Awning = { Color = style.Roof, Material = Enum.Material.WoodPlanks },
+		Chimney = { Color = STONE, Material = Enum.Material.Slate },
+		Lamp = { Color = LAMP_COLOR, Material = Enum.Material.Neon },
+		Iron = { Color = DARK_METAL, Material = Enum.Material.Metal },
+	})
+	-- The window boxes' flowers come in three parts, one for each colour.
+	local index = 0
+	for _, part in shell:GetChildren() do
+		if part:IsA("BasePart") and part.Name == "Flower" then
+			index += 1
+			part.Color = FLOWERS[(index - 1) % #FLOWERS + 1]
+			part.Material = Enum.Material.SmoothPlastic
+		end
+	end
+	dressed = true
+end
+
+-- A big sign on the roof above the door.
+local function buildSign()
+	group("Sign")
+	local size = Config.Shop.BuildingSize
+	local signWidth = size.X * 0.44
+	Blocky.sign(
+		"TOOL SHED",
+		origin * CFrame.new(0, size.Y + Config.Shop.RoofHeight * 0.25, size.Z / 2 + 1.4),
+		signWidth,
+		signWidth * 0.24,
+		Config.Style.HazardYellow,
+		model
+	)
+end
+
 -- The tools hang on a board on the back wall, each with a price tag above it.
 local function buildToolWall(makeDisplay: (toolId: string) -> Model)
+	group("ToolWall")
 	local style = Config.Style
 	local backZ = -Config.Shop.BuildingSize.Z / 2 + WALL
 	local tools: { Types.ShopItem } = {}
@@ -230,8 +368,10 @@ end
 
 -- The counter with the "Open shop" prompt, and the shopkeeper behind it. Returns the counter.
 local function buildCounter(): Part
+	group("Counter")
 	local style = Config.Style
-	local z = -4.5
+	-- Near the back wall, with room for the shopkeeper behind it.
+	local z = -Config.Shop.BuildingSize.Z / 2 + WALL + 5.5
 	local counter = piece("Counter", Vector3.new(18, 3.4, 2.4), Vector3.new(0, FLOOR_TOP + 1.7, z), style.Wood, Enum.Material.WoodPlanks)
 	Blocky.logLines(counter, { Enum.NormalId.Back })
 	piece("CounterTop", Vector3.new(18.6, 0.4, 2.8), Vector3.new(0, FLOOR_TOP + 3.6, z), Blocky.shade(style.Wood, 0.2), Enum.Material.Wood)
@@ -256,6 +396,7 @@ end
 
 -- Along the left wall: a bench with the upgrades on it, and the Log Vacuum machine.
 local function buildUpgradeCorner()
+	group("UpgradeBench")
 	local style = Config.Style
 	local x = -Config.Shop.BuildingSize.X / 2 + WALL + 1.8
 	piece("Bench", Vector3.new(3.6, 0.4, 8), Vector3.new(x, FLOOR_TOP + 3, -1), Blocky.shade(style.Wood, 0.1), Enum.Material.Wood)
@@ -269,8 +410,16 @@ local function buildUpgradeCorner()
 	end
 	local grindstone = decor("Grindstone", Vector3.new(0.6, 2, 2), Vector3.new(x, top + 1, 1.6), STONE, Enum.Material.Slate)
 	grindstone.Shape = Enum.PartType.Cylinder -- a cylinder's flat sides face along X
+	dress(MODELS.UpgradeBench, CFrame.new(x, FLOOR_TOP, -1), {
+		Top = { Color = Blocky.shade(style.Wood, 0.1), Material = Enum.Material.Wood },
+		Leg = { Color = style.DarkWood, Material = Enum.Material.Wood },
+		Sack = { Color = Color3.fromRGB(150, 110, 70), Material = Enum.Material.Fabric },
+		Boot = { Color = Color3.fromRGB(60, 40, 30), Material = Enum.Material.Fabric },
+		Grinder = { Color = STONE, Material = Enum.Material.Slate },
+	})
 
-	local machineZ = 6.5
+	group("LogVacuum")
+	local machineZ = Config.Shop.BuildingSize.Z / 2 - 4.5 -- near the front corner
 	piece("LogVacuum", Vector3.new(3.6, 4, 3.6), Vector3.new(x + 1, FLOOR_TOP + 2, machineZ), style.Metal, Enum.Material.Metal)
 	decor("LogVacuumLight", Vector3.new(0.1, 0.6, 2.4), Vector3.new(x + 2.85, FLOOR_TOP + 3, machineZ), Color3.fromRGB(110, 230, 110), Enum.Material.Neon)
 	decor("LogVacuumPipe", Vector3.new(1.2, 2.4, 1.2), Vector3.new(x + 1, FLOOR_TOP + 5.2, machineZ), DARK_METAL, Enum.Material.Metal)
@@ -280,8 +429,11 @@ end
 -- Along the right wall: the stove with a wood pile, an armchair, a barrel and crates.
 local function buildCozyCorner()
 	local style = Config.Style
-	local wallX = Config.Shop.BuildingSize.X / 2 - WALL
-	local stoveX, stoveZ = wallX - 2, -6
+	local size = Config.Shop.BuildingSize
+	local wallX = size.X / 2 - WALL
+	local frontZ = size.Z / 2 -- the front wall (the stove is near the back, under the chimney)
+	local stoveX, stoveZ = wallX - 2, -size.Z / 2 + 5
+	group("Stove")
 	piece("Stove", Vector3.new(3, 3.6, 3), Vector3.new(stoveX, FLOOR_TOP + 1.8, stoveZ), DARK_METAL, Enum.Material.Metal)
 	local fire = decor("StoveFire", Vector3.new(0.1, 1.2, 1.6), Vector3.new(stoveX - 1.55, FLOOR_TOP + 1.6, stoveZ), FIRE_COLOR, Enum.Material.Neon)
 	addLight(fire, FIRE_COLOR, 14, 1.5)
@@ -291,40 +443,76 @@ local function buildCozyCorner()
 
 	-- Firewood next to the stove: square logs with ringed ends, like the ones you chop.
 	for _, offset in { Vector3.new(0, 0, 0), Vector3.new(0, 0, 1), Vector3.new(0, 0.9, 0.5) } do
-		local log = decor("Firewood", Vector3.new(2.4, 0.9, 0.9), Vector3.new(stoveX + offset.X, FLOOR_TOP + 0.45 + offset.Y, -2.8 + offset.Z), style.Wood, Enum.Material.Wood)
+		local log = decor("Firewood", Vector3.new(2.4, 0.9, 0.9), Vector3.new(stoveX + offset.X, FLOOR_TOP + 0.45 + offset.Y, stoveZ + 3.2 + offset.Z), style.Wood, Enum.Material.Wood)
 		Blocky.rings(log, Enum.NormalId.Left)
 	end
+	dress(MODELS.Stove, CFrame.new(stoveX, FLOOR_TOP, stoveZ), {
+		Stove = { Color = DARK_METAL, Material = Enum.Material.Metal },
+		Pipe = { Color = DARK_METAL, Material = Enum.Material.Metal },
+		Fire = { Color = FIRE_COLOR, Material = Enum.Material.Neon },
+		Log = { Color = style.Wood, Material = Enum.Material.Wood },
+		Rings = { Color = style.InnerWood, Material = Enum.Material.Wood },
+	})
 
 	-- An armchair facing into the room.
-	local chairX, chairZ = wallX - 1.8, 1.5
+	group("Armchair")
+	local chairX, chairZ = wallX - 1.8, stoveZ + 7.5
 	piece("Chair", Vector3.new(3, 1.2, 3), Vector3.new(chairX, FLOOR_TOP + 1, chairZ), CHAIR_COLOR, Enum.Material.Fabric)
 	decor("Chair", Vector3.new(0.8, 3, 3), Vector3.new(chairX + 1.1, FLOOR_TOP + 2, chairZ), CHAIR_COLOR, Enum.Material.Fabric)
 	for _, side in { -1, 1 } do
 		decor("Chair", Vector3.new(3, 1, 0.6), Vector3.new(chairX, FLOOR_TOP + 1.9, chairZ + side * 1.3), Blocky.shade(CHAIR_COLOR, -0.15), Enum.Material.Fabric)
 	end
+	dress(MODELS.Armchair, CFrame.new(chairX, FLOOR_TOP, chairZ), {
+		Seat = { Color = CHAIR_COLOR, Material = Enum.Material.Fabric },
+		Arm = { Color = Blocky.shade(CHAIR_COLOR, -0.15), Material = Enum.Material.Fabric },
+		Leg = { Color = style.DarkWood, Material = Enum.Material.Wood },
+	})
 
 	-- A barrel full of axe handles, and two crates.
-	local barrel = piece("Barrel", Vector3.new(3, 2.4, 2.4), Vector3.new(wallX - 7, FLOOR_TOP + 1.5, 6.5), Blocky.shade(style.Wood, -0.1), Enum.Material.Wood)
+	local barrelZ, crateZ = frontZ - 4.5, frontZ - 2.8 -- near the front corner
+	group("Barrel")
+	local barrel = piece("Barrel", Vector3.new(3, 2.4, 2.4), Vector3.new(wallX - 7, FLOOR_TOP + 1.5, barrelZ), Blocky.shade(style.Wood, -0.1), Enum.Material.Wood)
 	barrel.Shape = Enum.PartType.Cylinder
 	barrel.CFrame *= CFrame.Angles(0, 0, math.pi / 2) -- stand it up
+	dress(MODELS.Barrel, CFrame.new(wallX - 7, FLOOR_TOP, barrelZ), BARREL_LOOKS)
+	group("AxeHandles")
 	for index, offset in { Vector3.new(-0.4, 0, 0.3), Vector3.new(0.4, 0, -0.2), Vector3.new(0, 0, 0.5) } do
-		local handle = decor("AxeHandle", Vector3.new(0.3, 3, 0.3), Vector3.new(wallX - 7 + offset.X, FLOOR_TOP + 3.2, 6.5 + offset.Z), style.InnerWood, Enum.Material.Wood)
+		local handle = decor("AxeHandle", Vector3.new(0.3, 3, 0.3), Vector3.new(wallX - 7 + offset.X, FLOOR_TOP + 3.2, barrelZ + offset.Z), style.InnerWood, Enum.Material.Wood)
 		handle.CFrame *= CFrame.Angles(0, 0, math.rad((index - 2) * 10))
 	end
-	piece("Crate", Vector3.new(2.4, 2.4, 2.4), Vector3.new(wallX - 3, FLOOR_TOP + 1.2, 8.2), Color3.fromRGB(200, 145, 90), Enum.Material.WoodPlanks)
-	local topCrate = piece("Crate", Vector3.new(2, 2, 2), Vector3.new(wallX - 3, FLOOR_TOP + 3.4, 8.2), Color3.fromRGB(200, 145, 90), Enum.Material.WoodPlanks)
+	group("Crate")
+	piece("Crate", Vector3.new(2.4, 2.4, 2.4), Vector3.new(wallX - 3, FLOOR_TOP + 1.2, crateZ), CRATE_COLOR, Enum.Material.WoodPlanks)
+	dress(MODELS.Crate, CFrame.new(wallX - 3, FLOOR_TOP, crateZ), CRATE_LOOKS)
+	group("Crate")
+	local topCrate = piece("Crate", Vector3.new(2, 2, 2), Vector3.new(wallX - 3, FLOOR_TOP + 3.4, crateZ), CRATE_COLOR, Enum.Material.WoodPlanks)
 	topCrate.CFrame *= CFrame.Angles(0, math.rad(20), 0)
+	dress(MODELS.Crate, CFrame.new(wallX - 3, FLOOR_TOP + 2.4, crateZ) * CFrame.Angles(0, math.rad(20), 0), CRATE_LOOKS, 2 / 2.4)
 end
 
--- A rug in the middle of the floor and three lamps hanging from the beams.
+-- A rug in the middle of the floor and three lamps hanging from the beams, all sized and
+-- spread out to fit the room.
 local function buildRugAndLamps()
 	local style = Config.Style
-	decor("RugEdge", Vector3.new(10.6, 0.06, 7.6), Vector3.new(0, FLOOR_TOP + 0.03, 3), style.Gold, Enum.Material.Fabric)
-	decor("Rug", Vector3.new(10, 0.08, 7), Vector3.new(0, FLOOR_TOP + 0.05, 3), RUG_COLOR, Enum.Material.Fabric)
-	for _, spot in { Vector2.new(-7, -1), Vector2.new(7, -1), Vector2.new(0, 6) } do
-		decor("LampChain", Vector3.new(0.2, 1.6, 0.2), Vector3.new(spot.X, BEAM_HEIGHT - 1.2, spot.Y), DARK_METAL, Enum.Material.Metal)
-		local lamp = decor("Lamp", Vector3.new(1, 1.2, 1), Vector3.new(spot.X, BEAM_HEIGHT - 2.6, spot.Y), LAMP_COLOR, Enum.Material.Neon)
-		addLight(lamp, LAMP_COLOR, 18, 1.2)
+	local size = Config.Shop.BuildingSize
+	local w, d = size.X, size.Z
+	local rug = Vector3.new(w * 0.33, 0.08, d * 0.32)
+	local rugZ = d * 0.14
+	group("Rug")
+	decor("RugEdge", rug + Vector3.new(0.6, -0.02, 0.6), Vector3.new(0, FLOOR_TOP + 0.03, rugZ), style.Gold, Enum.Material.Fabric)
+	decor("Rug", rug, Vector3.new(0, FLOOR_TOP + 0.05, rugZ), RUG_COLOR, Enum.Material.Fabric)
+	-- The lamps hang below the beams (see buildShell) on chains that reach down to LAMP_HEIGHT.
+	local beam = beamHeight()
+	local lampY = math.min(LAMP_HEIGHT, beam - 2.6)
+	local chain = beam - 0.4 - (lampY + 0.6)
+	for _, spot in { Vector2.new(-w * 0.22, -d * 0.05), Vector2.new(w * 0.22, -d * 0.05), Vector2.new(0, d * 0.27) } do
+		group("HangingLamp")
+		decor("LampChain", Vector3.new(0.2, chain, 0.2), Vector3.new(spot.X, lampY + 0.6 + chain / 2, spot.Y), DARK_METAL, Enum.Material.Metal)
+		local lamp = decor("Lamp", Vector3.new(1, 1.2, 1), Vector3.new(spot.X, lampY, spot.Y), LAMP_COLOR, Enum.Material.Neon)
+		addLight(lamp, LAMP_COLOR, math.min(18 * w / 32, 40), 1.2)
+		dress(MODELS.HangingLamp, CFrame.new(spot.X, lampY, spot.Y), {
+			Lamp = { Color = LAMP_COLOR, Material = Enum.Material.Neon },
+			Iron = { Color = DARK_METAL, Material = Enum.Material.Metal },
+		})
 	end
 end
 
@@ -333,16 +521,32 @@ end
 local function buildYard()
 	local style = Config.Style
 	local d = Config.Shop.BuildingSize.Z
-	local barrel = piece("Barrel", Vector3.new(3, 2.4, 2.4), Vector3.new(-12, 1.5, d / 2 + 2.5), Blocky.shade(style.Wood, -0.1), Enum.Material.Wood)
+	-- Just past the ends of the porch.
+	local side = Config.Shop.DoorWidth / 2 + 8
+	group("Barrel")
+	local barrel = piece("Barrel", Vector3.new(3, 2.4, 2.4), Vector3.new(-side, 1.5, d / 2 + 2.5), Blocky.shade(style.Wood, -0.1), Enum.Material.Wood)
 	barrel.Shape = Enum.PartType.Cylinder
 	barrel.CFrame *= CFrame.Angles(0, 0, math.pi / 2)
-	piece("Crate", Vector3.new(2.4, 2.4, 2.4), Vector3.new(-9.4, 1.2, d / 2 + 2.8), Color3.fromRGB(200, 145, 90), Enum.Material.WoodPlanks)
+	dress(MODELS.Barrel, CFrame.new(-side, 0, d / 2 + 2.5), BARREL_LOOKS)
+	group("Crate")
+	piece("Crate", Vector3.new(2.4, 2.4, 2.4), Vector3.new(-side + 2.6, 1.2, d / 2 + 2.8), CRATE_COLOR, Enum.Material.WoodPlanks)
+	dress(MODELS.Crate, CFrame.new(-side + 2.6, 0, d / 2 + 2.8), CRATE_LOOKS)
 
-	local block = piece("ChoppingBlock", Vector3.new(2.2, 1.4, 2.2), Vector3.new(12, 0.7, d / 2 + 3), style.Wood, Enum.Material.Wood)
+	-- The chopping block is the Stump model from the forest when it's imported.
+	group("ChoppingBlock")
+	local block = Blocky.block(
+		Config.Models.Stump,
+		"ChoppingBlock",
+		Vector3.new(2.2, 1.4, 2.2),
+		origin * CFrame.new(side, 0.7, d / 2 + 3),
+		style.Wood,
+		Enum.Material.Wood,
+		model
+	)
 	Blocky.rings(block, Enum.NormalId.Top)
-	local handle = decor("AxeHandle", Vector3.new(0.3, 2.6, 0.3), Vector3.new(12.2, 2.4, d / 2 + 3), style.InnerWood, Enum.Material.Wood)
+	local handle = decor("AxeHandle", Vector3.new(0.3, 2.6, 0.3), Vector3.new(side + 0.2, 2.4, d / 2 + 3), style.InnerWood, Enum.Material.Wood)
 	handle.CFrame *= CFrame.Angles(0, 0, math.rad(-20))
-	decor("AxeHead", Vector3.new(0.3, 1, 1.2), Vector3.new(11.9, 1.6, d / 2 + 3), style.Metal, Enum.Material.Metal)
+	decor("AxeHead", Vector3.new(0.3, 1, 1.2), Vector3.new(side - 0.1, 1.6, d / 2 + 3), style.Metal, Enum.Material.Metal)
 
 	local gravel = decor("Gravel", Vector3.new(5, 0.18, 10), Vector3.new(0, 0.14, d / 2 + 9), Color3.fromRGB(191, 154, 96), Enum.Material.Pebble)
 	gravel.CanQuery = false
@@ -351,17 +555,20 @@ end
 -- Builds the shed with the middle of its floor plan at `ground` and returns the counter
 -- (the "Open shop" prompt goes on it). `makeDisplay` makes the look of a tool for the wall.
 function ToolShed.build(ground: Vector3, makeDisplay: (toolId: string) -> Model): Part
-	origin = CFrame.new(ground)
-	model = Instance.new("Model")
-	model.Name = "ToolShed"
+	origin = CFrame.new(ground) * CFrame.Angles(0, math.rad(Config.Shop.Turn), 0)
+	dressed = false
+	shed = Instance.new("Model")
+	shed.Name = "ToolShed"
 	buildShell()
+	dressShell()
+	buildSign()
 	buildToolWall(makeDisplay)
 	local counter = buildCounter()
 	buildUpgradeCorner()
 	buildCozyCorner()
 	buildRugAndLamps()
 	buildYard()
-	model.Parent = workspace
+	shed.Parent = workspace
 	return counter
 end
 

@@ -513,6 +513,7 @@ local function findSleepSpot(mimic: Mimic): Vector3
 			and Zones.distanceToPath(spot.X, spot.Z) >= Config.Path.TreeClearance
 			and not Boss.isInClearing(spot)
 			and not Zones.isNearLandmark(spot.X, spot.Z)
+			and not ForestSpawner.isInClearing(spot.X, spot.Z)
 			and isFreeSpot(spot, mimic.Tree)
 		then
 			return spot

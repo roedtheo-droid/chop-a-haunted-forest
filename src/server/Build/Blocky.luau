@@ -1,15 +1,17 @@
 --!strict
 -- Helpers that build the blocky, cartoony look (see STYLE_GUIDE.md) out of plain parts:
 -- trees, log cabins and log walls, gable roofs, wooden signs, striped pad edges and wood rings.
--- No art needed: everything is Parts, colours and a little SurfaceGui.
+-- No art needed: everything is Parts, colours and a little SurfaceGui. Trees use the Blender
+-- models instead once they're imported into Studio (see Build/Assets).
 -- Used by ForestSpawner, SceneryManager, SawmillManager, ToolShed, ZoneManager, CampManager,
--- TreeManager, LogManager and BossManager. It's not a system, so it has no init()/start().
+-- TreeManager, LogManager, BossManager and Edges. It's not a system, so it has no init()/start().
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local ChopRules = require(ReplicatedStorage.Shared.ChopRules)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Types = require(ReplicatedStorage.Shared.Types)
+local Assets = require(script.Parent.Assets)
 
 local BLACK = Color3.new(0, 0, 0)
 local WHITE = Color3.new(1, 1, 1)
@@ -19,14 +21,14 @@ local SIGN_DEPTH = 0.4
 
 local Blocky = {}
 
--- A plain anchored part.
+-- A plain anchored part. `parent` can be nil, to parent it yourself once it's set up.
 function Blocky.part(
 	name: string,
 	size: Vector3,
 	cframe: CFrame,
 	color: Color3,
 	material: Enum.Material,
-	parent: Instance
+	parent: Instance?
 ): Part
 	local part = Instance.new("Part")
 	part.Name = name
@@ -39,6 +41,31 @@ function Blocky.part(
 	part.BottomSurface = Enum.SurfaceType.Smooth
 	part.Parent = parent
 	return part
+end
+
+-- Like Blocky.part, but it's the one-part Blender model `model` (a log, a stump, the boss's
+-- trunk...) when that's imported. Setting a MeshPart's Size stretches its mesh to fill it, so
+-- both versions are the same box, and the game can still resize it later (the boss's roots).
+function Blocky.block(
+	model: string,
+	name: string,
+	size: Vector3,
+	cframe: CFrame,
+	color: Color3,
+	material: Enum.Material,
+	parent: Instance?
+): BasePart
+	local mesh = Assets.part(model)
+	if not mesh then
+		return Blocky.part(name, size, cframe, color, material, parent)
+	end
+	mesh.Name = name
+	mesh.Size = size
+	mesh.CFrame = cframe * Assets.TURN_AROUND -- the same box, its model facing the right way
+	mesh.Color = color
+	mesh.Material = material
+	mesh.Parent = parent -- Assets.part already anchored it
+	return mesh
 end
 
 -- A wedge. Its slope faces its front (-Z): the back is tall and the front touches the ground.
@@ -59,6 +86,40 @@ function Blocky.wedge(
 	wedge.Anchored = true
 	wedge.Parent = parent
 	return wedge
+end
+
+-- A roundish flat patch on the ground at `center` (its Y is ignored), made of a cross and a
+-- square turned 45 degrees, with its top at height `top`. You walk through it, and raycasts
+-- looking for the ground go through it too. The three pieces sit a hair apart in height,
+-- so where they overlap doesn't flicker.
+function Blocky.patch(
+	name: string,
+	center: Vector3,
+	radius: number,
+	top: number,
+	color: Color3,
+	material: Enum.Material,
+	parent: Instance
+): { Part }
+	local thickness = 0.2
+	local y = top - thickness / 2
+	local parts = {
+		Blocky.part(name, Vector3.new(radius * 2, thickness, radius * 1.2), CFrame.new(center.X, y, center.Z), color, material, parent),
+		Blocky.part(name, Vector3.new(radius * 1.2, thickness, radius * 2), CFrame.new(center.X, y + 0.01, center.Z), color, material, parent),
+		Blocky.part(
+			name,
+			Vector3.new(radius * 1.45, thickness, radius * 1.45),
+			CFrame.new(center.X, y + 0.02, center.Z) * CFrame.Angles(0, math.pi / 4, 0),
+			color,
+			material,
+			parent
+		),
+	}
+	for _, part in parts do
+		part.CanCollide = false
+		part.CanQuery = false
+	end
+	return parts
 end
 
 -- A colour a bit lighter (amount above 0) or darker (amount below 0). 0.2 = 20%.
@@ -112,7 +173,7 @@ function Blocky.face(part: BasePart, face: Enum.NormalId, color: Color3?): Surfa
 end
 
 -- A plain coloured rectangle on a SurfaceGui, placed with scale (0 to 1) numbers.
-local function rect(parent: Instance, x: number, y: number, w: number, h: number, color: Color3): Frame
+function Blocky.rect(parent: Instance, x: number, y: number, w: number, h: number, color: Color3): Frame
 	local frame = Instance.new("Frame")
 	frame.Position = UDim2.fromScale(x, y)
 	frame.Size = UDim2.fromScale(w, h)
@@ -120,6 +181,87 @@ local function rect(parent: Instance, x: number, y: number, w: number, h: number
 	frame.BackgroundColor3 = color
 	frame.Parent = parent
 	return frame
+end
+local rect = Blocky.rect
+
+local FACES = {
+	Enum.NormalId.Front,
+	Enum.NormalId.Back,
+	Enum.NormalId.Left,
+	Enum.NormalId.Right,
+	Enum.NormalId.Top,
+	Enum.NormalId.Bottom,
+}
+
+-- Which face of `part` points most towards `direction`. (Asked, instead of assuming Back
+-- is +Z, in case Studio turned a model's parts when it imported them.)
+function Blocky.faceToward(part: BasePart, direction: Vector3): Enum.NormalId
+	local best, bestDot = Enum.NormalId.Back, -math.huge
+	for _, face in FACES do
+		local dot = part.CFrame:VectorToWorldSpace(Vector3.FromNormalId(face)):Dot(direction)
+		if dot > bestDot then
+			best, bestDot = face, dot
+		end
+	end
+	return best
+end
+
+-- Big outlined words on the side of a board (a sign from a Blender model) that faces
+-- `toward`. White, or `color`.
+function Blocky.boardText(board: BasePart, toward: Vector3, text: string, color: Color3?)
+	local gui = Blocky.face(board, Blocky.faceToward(board, toward))
+	local box = Instance.new("Frame")
+	box.Name = "Words"
+	box.Size = UDim2.fromScale(1, 1)
+	box.BackgroundTransparency = 1
+	local padding = Instance.new("UIPadding")
+	padding.PaddingLeft = UDim.new(0.05, 0)
+	padding.PaddingRight = UDim.new(0.05, 0)
+	padding.PaddingTop = UDim.new(0.12, 0)
+	padding.PaddingBottom = UDim.new(0.12, 0)
+	padding.Parent = box
+	box.Parent = gui
+	Blocky.label(box, text, Config.Style.TitleFont, color)
+end
+
+-- Turn a part into an invisible collider: players still bump into it and walk on it, but
+-- what they see is the Blender model built over it. (Used where the exact shape matters,
+-- like a bridge's deck and ramps: a mesh's own collision shape is only roughly its shape.)
+function Blocky.collider(part: BasePart)
+	part.Transparency = 1
+	part.CastShadow = false
+	for _, child in part:GetChildren() do
+		if child:IsA("SurfaceGui") then
+			child:Destroy()
+		end
+	end
+end
+
+-- Put `skin` (a Blender model in `group`, see Assets.placed) over the rest of `group`: the
+-- parts version of the same thing (a building, a stove...). Those parts turn invisible but
+-- keep doing their job: solid ones still stop players, and lights and smoke on them still
+-- work. `looks` colours the model's parts by name; only Solid ones stop players and the
+-- camera (so it can't swing through a wall to the outside).
+function Blocky.dress(group: Instance, skin: Model, looks: { [string]: Types.SkinLook })
+	for _, part in group:GetDescendants() do
+		if part:IsA("BasePart") and not part:IsDescendantOf(skin) then
+			Blocky.collider(part)
+			part.CanQuery = part.CanCollide -- invisible decorations don't catch clicks
+		end
+	end
+	for _, part in skin:GetChildren() do
+		if part:IsA("BasePart") then
+			local look = looks[part.Name]
+			if look then
+				part.Color = look.Color
+				part.Material = look.Material
+			end
+			local solid = look ~= nil and look.Solid == true
+			part.CanCollide = solid
+			part.CanQuery = solid
+			part.CanTouch = false
+		end
+	end
 end
 
 -- Dark lines between the logs on some faces of a wall, so it looks like a log wall.
@@ -163,20 +305,114 @@ local function addBirchMarks(trunk: BasePart, random: Random)
 	end
 end
 
+-- One of `shapes` (names with how often each is picked), or nil if there are none.
+local function pickShape(shapes: { [string]: number }?, random: Random): string?
+	if not shapes then
+		return nil
+	end
+	local total = 0
+	for _, weight in shapes do
+		total += weight
+	end
+	local roll = random:NextNumber() * total
+	local last: string? = nil
+	for name, weight in shapes do
+		roll -= weight
+		last = name
+		if roll <= 0 then
+			return name
+		end
+	end
+	return last
+end
+
+-- A tree from the Blender model `shapeName` (see Build/Assets), or nil if it isn't imported.
+-- It has the same parts as the parts tree below (Trunk, Root, Branch, Leaves, LeafBlock),
+-- so chopping, mimics, stumps and falling work just the same.
+local function meshTree(
+	shapeName: string,
+	base: Vector3,
+	treeType: Types.TreeTypeConfig,
+	random: Random,
+	scale: number,
+	barkColor: Color3,
+	birch: boolean
+): Model?
+	local shape = Config.Models.Trees[shapeName]
+	local model = if shape then Assets.model(shapeName) else nil
+	if not (shape and model) then
+		return nil
+	end
+	local trunk = model:FindFirstChild("Trunk")
+	local leaves = model:FindFirstChild("Leaves")
+	if not (trunk and trunk:IsA("BasePart") and leaves and leaves:IsA("BasePart")) then
+		warn(`[Blocky] The "{shapeName}" model needs parts named Trunk and Leaves, so parts are used instead`)
+		model:Destroy()
+		return nil
+	end
+	-- A random quarter turn: the trunk stays square to the world, which the chop notch and
+	-- a mimic's knot rely on.
+	local turn = CFrame.Angles(0, random:NextInteger(0, 3) * math.pi / 2, 0)
+	Assets.fit(model, trunk, shape.TrunkWidth * scale, base, turn)
+	model.Name = "Tree"
+
+	local leafColor = pick(shape.LeafColors or treeType.LeafColors, random)
+	for _, part in model:GetChildren() do
+		if not part:IsA("BasePart") then
+			continue
+		elseif part.Name == "Trunk" then
+			part.Color = barkColor
+			part.Material = Enum.Material.Wood
+		elseif part.Name == "Root" or part.Name == "Branch" then
+			part.Color = if part.Name == "Root" then Blocky.shade(barkColor, -0.12) else barkColor
+			part.Material = Enum.Material.Wood
+			part.CanCollide = false
+		elseif part.Name == "Leaves" then
+			part.Color = leafColor
+			part.Material = Config.Tree.LeafMaterial
+		elseif part.Name == "LeafBlock" then
+			part.Color = Blocky.shade(leafColor, random:NextNumber(-0.12, 0.12))
+			part.Material = Config.Tree.LeafMaterial
+			-- Unanchored but welded to the anchored Leaves, so it follows Leaves around.
+			part.Anchored = false
+			part.CanCollide = false
+			part.Massless = true
+			local weld = Instance.new("WeldConstraint")
+			weld.Part0 = leaves
+			weld.Part1 = part
+			weld.Parent = part
+		end
+	end
+	if birch then
+		addBirchMarks(trunk, random)
+	end
+	return model
+end
+
 -- A blocky tree with its pivot at `base` (the bottom of the trunk), not yet parented.
 -- Parts: "Trunk" (a square block), "Root" wedges at its foot, maybe "Branch" blocks, and a
 -- crown: the biggest leaf block is "Leaves", the others ("LeafBlock") are welded to it,
 -- so moving Leaves by its CFrame (a mimic's "Sway" tell) moves the whole crown.
 -- The trunk isn't turned, so its faces line up with the model's pivot (mimic eyes rely on that).
+-- When the tree type has Blender models (Shapes) and they're imported, it's one of those instead.
 function Blocky.tree(base: Vector3, treeType: Types.TreeTypeConfig, random: Random, extraScale: number?): Model
 	local cfg = Config.Tree
-	local scale = treeType.Scale * (extraScale or 1)
+	-- Every tree is a little bigger or smaller than the next, so they don't look copied.
+	local scale = treeType.Scale * (extraScale or 1) * (1 + random:NextNumber(-cfg.SizeSpread, cfg.SizeSpread))
 	local birch = random:NextNumber() < (treeType.BirchChance or 0)
 	-- Birches are a bit taller and thinner.
 	local height = cfg.TrunkHeight * scale * (if birch then 1.15 else 1)
 	local width = cfg.TrunkWidth * scale * (if birch then 0.8 else 1)
 	local barkColor = if birch and treeType.BirchColor then treeType.BirchColor else pick(treeType.TrunkColors, random)
 	local origin = CFrame.new(base)
+
+	local shapeName = pickShape(if birch then treeType.BirchShapes else treeType.Shapes, random)
+	if shapeName then
+		local model = meshTree(shapeName, base, treeType, random, scale, barkColor, birch)
+		if model then
+			return model
+		end
+	end
 
 	local model = Instance.new("Model")
 	model.Name = "Tree"
@@ -274,8 +510,10 @@ function Blocky.tree(base: Vector3, treeType: Types.TreeTypeConfig, random: Rand
 end
 
 -- One piece of a notched trunk: same colour and material as the trunk, never in the way.
+-- A Blender trunk (a MeshPart) is cut into stretched bark blocks, so the pieces keep its bark.
 local function trunkPiece(name: string, trunk: BasePart, tree: Model, wedge: boolean): BasePart
-	local piece: BasePart = if wedge then Instance.new("WedgePart") else Instance.new("Part")
+	local bark = if not wedge and trunk:IsA("MeshPart") then Assets.part(Config.Models.BarkBlock) else nil
+	local piece: BasePart = bark or (if wedge then Instance.new("WedgePart") else Instance.new("Part"))
 	piece.Name = name
 	piece.Color = trunk.Color
 	piece.Material = trunk.Material
@@ -360,17 +598,18 @@ function Blocky.notch(tree: Model, trunk: BasePart, outward: Vector3, cut: numbe
 	return space * CFrame.new(0, middle, -width / 2)
 end
 
--- A gable roof: two wedges meeting in a ridge that runs along X. `top` is the middle of
--- the walls' top.
-function Blocky.roof(top: Vector3, width: number, depth: number, height: number, color: Color3, parent: Instance)
+-- A gable roof: two wedges meeting in a ridge that runs along X (turned by `turn`, if given).
+-- `top` is the middle of the walls' top.
+function Blocky.roof(top: Vector3, width: number, depth: number, height: number, color: Color3, parent: Instance, turn: CFrame?)
+	local frame = CFrame.new(top) * (turn or CFrame.identity)
 	local half = Vector3.new(width + 2, height, depth / 2 + 1)
 	local offset = half.Z / 2
 	-- Each wedge's front (the low side) points away from the ridge.
-	Blocky.wedge("Roof", half, CFrame.new(top + Vector3.new(0, height / 2, -offset)), color, Enum.Material.WoodPlanks, parent)
+	Blocky.wedge("Roof", half, frame * CFrame.new(0, height / 2, -offset), color, Enum.Material.WoodPlanks, parent)
 	Blocky.wedge(
 		"Roof",
 		half,
-		CFrame.new(top + Vector3.new(0, height / 2, offset)) * CFrame.Angles(0, math.pi, 0),
+		frame * CFrame.new(0, height / 2, offset) * CFrame.Angles(0, math.pi, 0),
 		color,
 		Enum.Material.WoodPlanks,
 		parent

@@ -25,15 +25,66 @@ local upgrades: { [string]: Types.UpgradeConfig } = {
 	LanternRadius = { PerLevel = 5, Prices = { 60, 120, 240 } }, -- the Lantern sees 5 studs further per level
 }
 
+-- How each chopping tool FEELS (see Client/Controllers/ChopEffectsController): its sound, your
+-- swing, the chips and how hard things shake. Bigger tools hit harder and messier.
+-- The swing is Roblox's own tool-slash animation, which every game is allowed to use.
+local SWING = "rbxassetid://522635514"
+local chopFeel: { [string]: Types.ChopFeelConfig } = {
+	-- The Torch has no entry: it swings like Fists, but burning is its only effect.
+	Fists = {
+		Sound = "ChopFists",
+		Swing = SWING,
+		SwingSpeed = 1.6,
+		SwingSize = 1,
+		Chips = 5,
+		ChipSize = 0.35,
+		Wobble = 1.5,
+		CameraKick = 0.06,
+	},
+	Axe = {
+		Sound = "ChopAxe",
+		Swing = SWING,
+		SwingSpeed = 1.6,
+		SwingSize = 1,
+		Chips = 8,
+		ChipSize = 0.45,
+		Wobble = 2,
+		CameraKick = 0.09,
+	},
+	SteelAxe = {
+		Sound = "ChopSteelAxe",
+		Swing = SWING,
+		SwingSpeed = 1.8,
+		SwingSize = 1,
+		Chips = 12,
+		ChipSize = 0.55,
+		Wobble = 3,
+		CameraKick = 0.13,
+	},
+	Chainsaw = {
+		Sound = "ChopChainsaw",
+		Swing = SWING,
+		SwingSpeed = 3,
+		SwingSize = 0.35, -- a small, fast sawing movement instead of big chops
+		Chips = 4, -- fewer per hit, but it hits very often
+		ChipSize = 0.3,
+		Wobble = 1,
+		CameraKick = 0.04,
+	},
+}
+
 -- Sounds. Swap any Id to change a sound (no code changes needed).
 -- "rbxassetid://..." sounds are free sounds from the Roblox Creator Store (most are from the
 -- Pro Sound Effects library); "rbxasset://sounds/..." ones are built into Roblox itself.
 local sounds: { [string]: Types.SoundConfig } = {
-	-- World sounds: everyone near the spot hears them (made by the server, see EffectsManager).
+	-- Chop sounds: every player's computer plays these itself, a little higher or lower each
+	-- time (see ChopEffectsController). Hits on the boss are played by the server.
 	ChopFists = { Id = "rbxassetid://9113568548", Volume = 0.5 }, -- boxing glove thud
 	ChopAxe = { Id = "rbxassetid://9113974103", Volume = 0.6 }, -- slam into a wooden box
 	ChopSteelAxe = { Id = "rbxassetid://9120965080", Volume = 0.6 }, -- wood splintering
 	ChopChainsaw = { Id = "rbxassetid://133850299035625", Volume = 0.45, MinGap = 0.3 }, -- chainsaw bite
+
+	-- World sounds: everyone near the spot hears them (made by the server, see EffectsManager).
 	TreeFall = { Id = "rbxassetid://9120957463", Volume = 0.7, Range = 120 }, -- heavy wooden crash
 	MimicWake = { Id = "rbxassetid://9125475729", Volume = 0.9, Range = 120 }, -- creature growl and hiss
 	Burn = { Id = "rbxassetid://9114446277", Volume = 0.7 }, -- fire whoosh
@@ -315,12 +366,24 @@ local Config = {
 
 	-- Chop effects, only for looks: every player draws them on their own screen
 	-- (see Client/Controllers/ChopEffectsController).
+	-- How many chips, how big, how hard the crown sways and your camera jolts is set per
+	-- tool in chopFeel at the top of this file.
 	ChopEffects = {
-		ChipSize = 0.45, -- the little wood cubes that fly out of the notch
-		ChipSpeed = 16,
+		ImpactDelay = 0.1, -- seconds from your click to the moment your swing hits the tree
+		PitchJitter = 0.08, -- each hit sounds up to 8% higher or lower, so it never sounds the same twice
+		ChipSpeed = 16, -- the little wood cubes that fly out of the notch
 		ChipLifetime = 1.2, -- seconds before a chip fades away
-		WobbleAngle = 2, -- degrees the crown sways when the tree is hit
+		MaxChips = 80, -- never more chips than this at once (keeps phones fast)
 		WobbleTime = 0.35,
+		PuffCubes = 5, -- little beige cubes that puff out where a swing hits
+		PuffSize = 0.5,
+		PuffTime = 0.35,
+		FlashSize = 1.2, -- the small white flash where a swing hits, in studs
+		FlashTime = 0.12,
+		KickTime = 0.12, -- seconds your camera jolts on your own hits
+		-- Your own hits show the moment your swing lands. When the server then says the hit
+		-- counted, it isn't shown again if it was shown this many seconds ago.
+		ShownWindow = 0.5,
 		EffectsDistance = 150, -- you only see effects on trees this close
 		ShakeDistance = 45, -- your camera shakes when a tree lands this close to you
 		ShakeStrength = 0.25, -- studs the camera moves at most
@@ -411,6 +474,7 @@ local Config = {
 		RootHP = 300, -- HP of each root. The boss's HP bar is all its roots added up.
 		RootLength = 12,
 		RootThickness = 3,
+		SparksPerHit = 10, -- glowing sparks when a root is hit
 		SlamInterval = 4, -- seconds between slams
 		SlamWarning = 1.5, -- seconds the red circle shows before the slam lands (time to dodge)
 		SlamRadius = 10, -- studs
@@ -444,7 +508,6 @@ local Config = {
 		RootHeight = 1.6,
 		BirchMarks = 6, -- dark marks on each side of a birch trunk
 		MinTrunkScale = 0.4, -- the boss's trunk width at 0 HP, compared to full width (shows damage)
-		ChipsPerHit = 10, -- wood chips that fly out on each hit
 		-- Hitting a tree cuts a notch on the side you chop from. It gets deeper as HP goes down.
 		NotchHeight = 2, -- studs from the ground to the middle of the notch
 		NotchFirstHit = 0.15, -- how deep the first hit cuts, as a part of the trunk's width
@@ -457,6 +520,7 @@ local Config = {
 	},
 
 	Tools = tools,
+	ChopFeel = chopFeel,
 	Upgrades = upgrades,
 	Quests = quests,
 

@@ -7,6 +7,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local ChopRules = require(ReplicatedStorage.Shared.ChopRules)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Types = require(ReplicatedStorage.Shared.Types)
 
@@ -290,20 +291,11 @@ end
 -- pieces: a block below the notch, a block above it, a thinner block behind it, and two
 -- wedges for the notch's light, freshly cut slopes.
 -- Returns where the notch opens on the bark, facing out (for the chop effects).
+-- Which side and how high come from Shared/ChopRules, so clients can work out the same spot.
 function Blocky.notch(tree: Model, trunk: BasePart, outward: Vector3, cut: number): CFrame
 	local cfg = Config.Tree
-	local stored = tree:GetAttribute("NotchFace")
-	local face: Vector3
-	if typeof(stored) == "Vector3" then
-		face = stored
-	else
-		-- The trunk side closest to `outward`, in the trunk's own space.
-		local direction = trunk.CFrame:VectorToObjectSpace(outward)
-		if math.abs(direction.X) > math.abs(direction.Z) then
-			face = Vector3.new(math.sign(direction.X), 0, 0)
-		else
-			face = Vector3.new(0, 0, if direction.Z >= 0 then 1 else -1)
-		end
+	local face = ChopRules.notchFace(tree, trunk, outward)
+	if tree:GetAttribute("NotchFace") == nil then
 		tree:SetAttribute("NotchFace", face)
 
 		trunkPiece("TrunkBelow", trunk, tree, false)
@@ -327,9 +319,8 @@ function Blocky.notch(tree: Model, trunk: BasePart, outward: Vector3, cut: numbe
 	local width, height = trunk.Size.X, trunk.Size.Y
 	local depth = width * math.clamp(cut, 0.05, 0.95)
 	local opening = depth * cfg.NotchOpening
-	local maxOpening = width * cfg.NotchMaxDepth * cfg.NotchOpening
 	-- The middle of the notch, measured from the trunk's centre.
-	local middle = -height / 2 + math.min(math.max(cfg.NotchHeight, maxOpening / 2 + 0.3), height * 0.4)
+	local middle = ChopRules.notchMiddle(trunk)
 
 	-- The trunk's space turned so that -Z points out of the notched side.
 	local space = trunk.CFrame * CFrame.lookAt(Vector3.zero, face)

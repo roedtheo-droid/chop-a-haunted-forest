@@ -7,12 +7,15 @@
 -- The Torch doesn't chop: it burns a sleeping mimic safely and does nothing to anything
 -- else. The Lantern doesn't hit trees at all.
 -- Hits on the Elder Hollow (the final boss) and its roots go to BossManager.
+-- The chips, sound and shakes of a hit are drawn by every player's own computer: this
+-- only tells them a hit counted (the TreeHit remote, see Client/Controllers/ChopEffectsController).
 
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
+local ChopRules = require(ReplicatedStorage.Shared.ChopRules)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Tags = require(ReplicatedStorage.Shared.Tags)
@@ -29,13 +32,6 @@ local UpgradeManager = require(script.Parent.UpgradeManager)
 local ZoneManager = require(script.Parent.ZoneManager)
 local Blocky = require(script.Parent.Parent.Build.Blocky)
 
--- Which sound (in Config.Sounds) each chopping tool makes when it hits.
-local CHOP_SOUNDS: { [string]: string } = {
-	Fists = "ChopFists",
-	Axe = "ChopAxe",
-	SteelAxe = "ChopSteelAxe",
-	Chainsaw = "ChopChainsaw",
-}
 local CHAR_COLOR = Color3.fromRGB(30, 25, 22) -- a burned mimic turns this colour
 local CRUMBLE_TIME = 0.8 -- seconds a burned mimic takes to fade away
 
@@ -267,14 +263,12 @@ local function onSwing(player: Player, target: unknown)
 	if toolId == "Lantern" then
 		return -- the Lantern is for looking, not hitting
 	end
-	local stats = Config.Tools[toolId]
-	local base = tree:GetPivot().Position
-	local flatDistance = Vector2.new(root.Position.X - base.X, root.Position.Z - base.Z).Magnitude
-	if flatDistance > stats.Reach + getNumberAttribute(tree, "TrunkWidth") / 2 then
+	if not ChopRules.inReach(root.Position, tree, toolId) then
 		return
 	end
 
 	-- 3. Is the player swinging faster than their tool allows?
+	local stats = Config.Tools[toolId]
 	local now = os.clock()
 	local last = lastSwing[player]
 	if last and now - last < stats.Cooldown * Config.Anticheat.CooldownTolerance then
@@ -285,13 +279,12 @@ local function onSwing(player: Player, target: unknown)
 	-- The SERVER decides the damage, from the held tool and upgrades.
 	local damage = stats.Damage * UpgradeManager.damageMultiplier(player)
 
-	-- Each chopping tool has its own hit sound (the Torch and Lantern don't chop).
-	local chopSound = CHOP_SOUNDS[toolId]
-
 	-- 4. The Elder Hollow and its roots: BossManager decides what a hit does.
+	-- Each chopping tool has its own hit sound (the Torch and Lantern don't chop).
 	if isBoss then
-		if chopSound then
-			EffectsManager.playSound(chopSound, tree:GetPivot().Position, player)
+		local feel = Config.ChopFeel[toolId]
+		if feel then
+			EffectsManager.playSound(feel.Sound, tree:GetPivot().Position, player)
 		end
 		BossManager.hit(player, tree, damage)
 		return
@@ -318,11 +311,8 @@ local function onSwing(player: Player, target: unknown)
 	tree:SetAttribute("HP", hp)
 	local notch = cutNotch(tree, trunk, root.Position)
 	local falling = if hp <= 0 then fallDirection(tree, root.Position) else nil
-	-- Every player draws the chips and dust themselves (Client/Controllers/ChopEffectsController).
-	treeHitRemote:FireAllClients(tree, notch.Position, notch.LookVector, falling)
-	if chopSound then
-		EffectsManager.playSound(chopSound, trunk.Position, player)
-	end
+	-- Every player draws the chips and plays the sound themselves (Client/Controllers/ChopEffectsController).
+	treeHitRemote:FireAllClients(tree, notch.Position, notch.LookVector, toolId, player, falling)
 
 	if falling then
 		local wasMimic = MimicManager.isMimic(tree)

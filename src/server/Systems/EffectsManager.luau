@@ -4,30 +4,21 @@
 --   EffectsManager.burst("Dust", position)
 -- The server makes them, so every player near the spot hears and sees them.
 -- Which sound and how it looks are in Config.Sounds and Config.Particles.
--- (Sounds only one player should hear, like selling, are played by Client/Controllers/SoundController.)
+-- (Sounds only one player should hear, like selling, are played by Client/Controllers/SoundController.
+-- Chop sounds are played by every player's own computer, see Client/Controllers/ChopEffectsController.)
 
 local Debris = game:GetService("Debris")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Fx = require(ReplicatedStorage.Shared.Fx)
 local Types = require(ReplicatedStorage.Shared.Types)
-
-local CLEANUP_FALLBACK = 10 -- seconds: remove a sound by then even if it never says it ended
 
 local EffectsManager = {}
 
 -- When each player (or thing) last made each sound, for sounds with a MinGap.
 local lastPlayed: { [Instance]: { [string]: number } } = {}
-
--- An invisible point in the world to hang a sound or particles on.
-local function makeAnchor(position: Vector3): Attachment
-	local anchor = Instance.new("Attachment")
-	anchor.Name = "Effect"
-	anchor.Parent = workspace.Terrain -- Terrain is always there and never moves
-	anchor.WorldPosition = position
-	return anchor
-end
 
 -- Play a world sound at a position. `owner` (like the player who chopped) is only needed
 -- for sounds with a MinGap, so one player can't stack the same sound on top of itself.
@@ -48,22 +39,7 @@ function EffectsManager.playSound(name: string, position: Vector3, owner: Instan
 		end
 		played[name] = now
 	end
-
-	local anchor = makeAnchor(position)
-	local sound = Instance.new("Sound")
-	sound.SoundId = cfg.Id
-	sound.Volume = cfg.Volume
-	sound.PlaybackSpeed = cfg.Speed or 1
-	-- Fades out smoothly with distance, and can't be heard past its range.
-	sound.RollOffMode = Enum.RollOffMode.InverseTapered
-	sound.RollOffMinDistance = Config.Effects.SoundFullVolume
-	sound.RollOffMaxDistance = cfg.Range or Config.Effects.SoundRange
-	sound.Parent = anchor
-	sound.Ended:Once(function()
-		anchor:Destroy()
-	end)
-	Debris:AddItem(anchor, CLEANUP_FALLBACK)
-	sound:Play()
+	Fx.playSound(cfg, position)
 end
 
 local function makeEmitter(cfg: Types.ParticleConfig, parent: Instance): ParticleEmitter
@@ -87,7 +63,7 @@ function EffectsManager.burst(name: string, position: Vector3)
 		warn(`[Effects] No particles called "{name}" in Config.Particles`)
 		return
 	end
-	local anchor = makeAnchor(position)
+	local anchor = Fx.anchorAt(position)
 	local emitter = makeEmitter(cfg, anchor)
 	emitter.Enabled = false
 	emitter:Emit(cfg.Amount)

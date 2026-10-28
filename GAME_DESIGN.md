@@ -61,6 +61,11 @@ mimics first and burn them safely with a torch.
 - Visible damage: every hit shrinks the trunk a little (or grows a notch) and
   throws a small burst of wood chips, so players can read a tree's HP without
   a health bar.
+- Chopping must feel satisfying (see STYLE_GUIDE.md). Every hit swings your
+  character and shows chips, a small puff and a sound right away, without
+  waiting for the server; bigger tools hit harder. A felled tree cracks, falls,
+  bounces and pops its logs out. Each player's own computer draws these
+  effects; the server still decides every hit.
 - Felled trees leave a STUMP behind. A cleared area is easy to spot, which
   helps players find the last trees.
 - Normal trees come in mixed colours (red, orange, pink leaves, white birch
@@ -149,6 +154,8 @@ mimics first and burn them safely with a torch.
 8. DataStore saving for Embers and stats.
 9. Final boss + Forest Cleared screen.
 10. Polish: sounds, particles, fog per zone, mobile buttons, bug fixes.
+11. Juicy chopping: (a) swing animation and instant hit effects, (b) tree fall,
+    landing and popping logs.
 
 ## After the MVP (ideas, not scheduled)
 - Lobby with party pads: step on a pad, pick the map and party size (1–4),

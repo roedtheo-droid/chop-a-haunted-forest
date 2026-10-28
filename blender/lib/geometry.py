@@ -1,0 +1,232 @@
+"""Chunky low-poly shapes for the game's models (see STYLE_GUIDE.md).
+
+Everything is built from boxes: a box can be bevelled (soft, chamfered edges that catch the
+light), tapered (a smaller top, for pine tiers) and jittered (wobbly corners, for rocks).
+Several boxes ("islands") are merged into one object, and each object gets ONE colour in the
+game, so every colour slot of a model is its own object, named the way the game expects
+("Trunk", "Leaves", "LeafBlock_1", "Root_2"...).
+
+Units are studs. Blender's Z axis is up; the FBX export turns that into Roblox's Y.
+"""
+
+import math
+import random
+
+import bmesh
+import bpy
+from mathutils import Matrix, Vector
+
+UV_STUDS = 8  # one tile of a Roblox material (Wood, Slate...) covers this many studs
+
+
+def box(size, bevel=0.0, taper=1.0, jitter=0.0, rng=None):
+    """A box of `size` (x, y, z) centred on the origin, as a new bmesh.
+
+    bevel  chamfers every edge by this many studs
+    taper  the top face is this much smaller than the bottom (1 = a plain box)
+    jitter moves every corner up to this many studs, for rough rocks
+    """
+    bm = bmesh.new()
+    bmesh.ops.create_cube(bm, size=1.0)
+    for v in bm.verts:
+        if v.co.z > 0:
+            v.co.x *= taper
+            v.co.y *= taper
+        v.co.x *= size[0]
+        v.co.y *= size[1]
+        v.co.z *= size[2]
+    if bevel > 0:
+        bmesh.ops.bevel(
+            bm,
+            geom=list(bm.verts) + list(bm.edges),
+            offset=bevel,
+            offset_type="OFFSET",
+            segments=1,
+            profile=0.5,
+            affect="EDGES",
+            clamp_overlap=True,
+        )
+    if jitter > 0:
+        rng = rng or random.Random(1)
+        for v in bm.verts:
+            v.co += Vector((rng.uniform(-jitter, jitter), rng.uniform(-jitter, jitter), rng.uniform(-jitter, jitter)))
+    return bm
+
+
+def wedge(size, bevel=0.0):
+    """A ramp of `size` (x, y, z): full height at -Y, sloping down to the ground at +Y.
+    Its bottom sits at z = 0 (not centred), so roots and ramps stand on the ground."""
+    bm = bmesh.new()
+    bmesh.ops.create_cube(bm, size=1.0)
+    for v in bm.verts:
+        if v.co.z > 0 and v.co.y > 0:
+            v.co.z = -0.5  # the far top edge drops to the ground
+    for v in bm.verts:
+        v.co.x *= size[0]
+        v.co.y *= size[1]
+        v.co.z = (v.co.z + 0.5) * size[2]
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=0.0001)
+    if bevel > 0:
+        bmesh.ops.bevel(
+            bm,
+            geom=list(bm.verts) + list(bm.edges),
+            offset=bevel,
+            offset_type="OFFSET",
+            segments=1,
+            profile=0.5,
+            affect="EDGES",
+            clamp_overlap=True,
+        )
+    return bm
+
+
+def place(location=(0, 0, 0), turn_z=0.0, tilt_x=0.0, tilt_y=0.0):
+    """A matrix that tilts (degrees around X and Y), turns (degrees around Z) and then moves."""
+    return (
+        Matrix.Translation(Vector(location))
+        @ Matrix.Rotation(math.radians(turn_z), 4, "Z")
+        @ Matrix.Rotation(math.radians(tilt_y), 4, "Y")
+        @ Matrix.Rotation(math.radians(tilt_x), 4, "X")
+    )
+
+
+class Piece:
+    """One object of a model: several boxes merged together, all one colour in the game."""
+
+    def __init__(self, name, color):
+        self.name = name
+        self.color = color
+        self.bm = bmesh.new()
+
+    def add(self, island, matrix=None):
+        if matrix is not None:
+            bmesh.ops.transform(island, matrix=matrix, verts=island.verts)
+        temp = bpy.data.meshes.new("temp")
+        island.to_mesh(temp)
+        island.free()
+        self.bm.from_mesh(temp)
+        bpy.data.meshes.remove(temp)
+        return self
+
+    def build(self, collection):
+        """Turn the merged boxes into a Blender object, with its origin in the middle of its
+        bounding box (Roblox puts a MeshPart's position there too) and box-projected UVs."""
+        mesh = bpy.data.meshes.new(self.name)
+        box_uvs(self.bm)
+        self.bm.normal_update()
+        self.bm.to_mesh(mesh)
+        self.bm.free()
+        coords = [v.co for v in mesh.vertices]
+        low = Vector((min(c.x for c in coords), min(c.y for c in coords), min(c.z for c in coords)))
+        high = Vector((max(c.x for c in coords), max(c.y for c in coords), max(c.z for c in coords)))
+        middle = (low + high) / 2
+        mesh.transform(Matrix.Translation(-middle))
+        obj = bpy.data.objects.new(self.name, mesh)
+        obj.location = middle
+        obj.data.materials.append(material(self.color))
+        collection.objects.link(obj)
+        return obj
+
+
+def box_uvs(bm):
+    """Flat UVs for every face, projected from the side it faces, so Roblox materials
+    (Wood, Slate, Grass) show the same size on every face."""
+    uv_layer = bm.loops.layers.uv.verify()
+    bm.faces.ensure_lookup_table()
+    for face in bm.faces:
+        n = face.normal
+        ax, ay, az = abs(n.x), abs(n.y), abs(n.z)
+        for loop in face.loops:
+            co = loop.vert.co
+            if az >= ax and az >= ay:
+                uv = (co.x, co.y)
+            elif ax >= ay:
+                uv = (co.y, co.z)
+            else:
+                uv = (co.x, co.z)
+            loop[uv_layer].uv = (uv[0] / UV_STUDS, uv[1] / UV_STUDS)
+
+
+_materials = {}
+
+
+def material(color):
+    """A plain material of one colour (the game recolours parts anyway; this is for previews)."""
+    key = tuple(round(c, 4) for c in color)
+    if key in _materials and _materials[key].name in bpy.data.materials:
+        return _materials[key]
+    mat = bpy.data.materials.new(f"Colour_{len(_materials)}")
+    if not mat.node_tree:
+        mat.use_nodes = True  # older Blenders; Blender 5 always uses nodes
+    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs["Base Color"].default_value = (*srgb_to_linear(color), 1.0)
+        bsdf.inputs["Roughness"].default_value = 0.85
+    mat.diffuse_color = (*srgb_to_linear(color), 1.0)
+    _materials[key] = mat
+    return mat
+
+
+def srgb_to_linear(color):
+    def one(c):
+        return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+
+    return tuple(one(c) for c in color)
+
+
+def bark(piece, width, height, depth=None, ridges=3, rng=None):
+    """A square trunk with raised bark ridges on all four sides, standing on z = 0.
+    Its outside is exactly `width` x `depth` x `height`, so the game can read the trunk's
+    size from the part (and cut the chop notch in the right place)."""
+    depth = depth or width
+    rng = rng or random.Random(3)
+    core = 0.86
+    piece.add(box((width * core, depth * core, height)), place((0, 0, height / 2)))
+    # Corner posts, so the outline is a clean square.
+    post = width * 0.13
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            piece.add(
+                box((post, post, height), bevel=post * 0.2),
+                place((sx * (width / 2 - post / 2), sy * (depth / 2 - post / 2), height / 2)),
+            )
+    # Ridges between the corners on every side.
+    for side in range(4):
+        along = width if side % 2 == 0 else depth
+        out = depth if side % 2 == 0 else width
+        usable = along - 2 * post
+        for i in range(ridges):
+            w = usable / ridges * rng.uniform(0.45, 0.7)
+            centre = -usable / 2 + usable / ridges * (i + 0.5) + rng.uniform(-0.08, 0.08) * usable / ridges
+            thick = out * (1 - core) / 2 + out * 0.02
+            ridge = box((w, thick, height), bevel=min(w, thick) * 0.3)
+            offset = out / 2 - thick / 2
+            if side == 0:
+                piece.add(ridge, place((centre, offset, height / 2)))
+            elif side == 1:
+                piece.add(ridge, place((offset, centre, height / 2), turn_z=90))
+            elif side == 2:
+                piece.add(ridge, place((centre, -offset, height / 2)))
+            else:
+                piece.add(ridge, place((-offset, centre, height / 2), turn_z=90))
+    return piece
+
+
+def leaf_clump(piece, size, location, turn=0.0, bumps=4, rng=None):
+    """A chunky block of leaves: a bevelled cube with smaller cubes bulging out of its sides
+    and top, so the crown looks leafy instead of perfectly square."""
+    rng = rng or random.Random(5)
+    piece.add(box((size, size, size), bevel=size * 0.12), place(location, turn_z=turn))
+    directions = [(1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1)]
+    rng.shuffle(directions)
+    for d in directions[:bumps]:
+        s = size * rng.uniform(0.38, 0.5)
+        offset = Vector(d) * (size / 2) + Vector((rng.uniform(-0.18, 0.18) * size * (1 - abs(d[0])),
+                                                  rng.uniform(-0.18, 0.18) * size * (1 - abs(d[1])),
+                                                  rng.uniform(-0.15, 0.1) * size * (1 - abs(d[2]))))
+        rotated = Matrix.Rotation(math.radians(turn), 3, "Z") @ offset
+        piece.add(
+            box((s, s, s * 0.85), bevel=s * 0.14),
+            place(Vector(location) + rotated, turn_z=turn + rng.uniform(-15, 15)),
+        )
+    return piece

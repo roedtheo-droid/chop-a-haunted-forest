@@ -140,6 +140,10 @@ local treeTypes: { [string]: Types.TreeTypeConfig } = {
 		LeafBlocks = 4,
 		BirchChance = 0.3,
 		BirchColor = Color3.fromRGB(235, 232, 222),
+		-- Blender models (see Models below): 60% oaks and 40% pines, and the birches use the
+		-- Birch model. Until they're imported into Studio, these trees are built from parts.
+		Shapes = { Oak = 0.6, Pine = 0.4 },
+		BirchShape = "Birch",
 	},
 	-- Fog Hollow: the same trees, but greyer and gloomier.
 	Willow = {
@@ -171,6 +175,18 @@ local treeTypes: { [string]: Types.TreeTypeConfig } = {
 		LeafBlocks = 2,
 		Branches = 2,
 	},
+}
+
+-- Tree shapes made in Blender (see Models below). TrunkWidth is the trunk's width at Scale 1:
+-- keep it the same as in blender/models/trees.py, or the trees come out the wrong size.
+local treeShapes: { [string]: Types.TreeShapeConfig } = {
+	Oak = { TrunkWidth = 3 },
+	Pine = {
+		TrunkWidth = 2.2,
+		-- Pines stay green (no autumn colours), a little darker than the oaks.
+		LeafColors = { Color3.fromRGB(47, 107, 42), Color3.fromRGB(58, 127, 51), Color3.fromRGB(70, 138, 56) },
+	},
+	Birch = { TrunkWidth = 2.4 },
 }
 
 -- The zones, in order from spawn. Clearing every tree in a zone opens the gate to the next one.
@@ -288,6 +304,16 @@ local Config = {
 
 	Zones = zones,
 	TreeTypes = treeTypes,
+
+	-- Models made in Blender (see the blender/ folder and Server/Build/Assets). Each one is
+	-- imported into Studio and put in ServerStorage > MapAssets (see README.md).
+	-- Anything that isn't imported yet is built from plain parts, so the game always works.
+	Models = {
+		Folder = "MapAssets", -- the folder in ServerStorage
+		BarkBlock = "BarkBlock", -- stretched copies of it make up a chopped trunk (see Blocky.notch)
+		Rocks = { "Rock1", "Rock2" }, -- each rock picks one of these at random
+		Trees = treeShapes, -- which tree types use them: Shapes in TreeTypes above
+	},
 
 	-- The camp: a safe area before zone 1 with spawn, the Tool Shed and the first sawmill.
 	-- No trees grow here. A river with a bridge runs across its far end (see Server/Systems/CampManager).

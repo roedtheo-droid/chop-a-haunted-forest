@@ -44,6 +44,34 @@ You only do this once per PC.
 
 Tip: Rojo copies code *into* Studio. If you edit a script inside Studio, Rojo will overwrite it. Always change the files in `src/` instead.
 
+## Blender models
+
+The trees, rocks and (later) everything else are 3D models made by Python scripts in the
+`blender/` folder. The finished files are already in `blender/export/` (`.fbx`), with a
+picture of each one in `blender/previews/`. Rojo can't copy models into Studio, so you import
+each one yourself, **once**. Until you do, the game simply builds the old blocky version.
+
+**Import a model:**
+
+1. In Studio, open the **File** menu and click **Import 3D**. Pick a file from `blender/export/` (for example `Oak.fbx`).
+2. In the import window, keep the settings as they are and click **Import**. (Don't worry about the size: the game resizes every model itself.)
+3. The model shows up in the Workspace. In the Explorer, find **ServerStorage**. The first time, add a **Folder** in it and name it `MapAssets`.
+4. Drag the imported model into `ServerStorage > MapAssets`. Its name must match the file name (`Oak`, `Pine`, `Birch`, `BarkBlock`, `Rock1`, `Rock2`). Rename it if Studio called it something else.
+5. Save the place (File > Save). The models live in the place file, not in GitHub.
+
+When you press Play, the Output window says which models the game found
+(`[Assets] Using the Blender model "Oak"`) and which ones are missing.
+
+**Rebuild the models** (only needed after changing the scripts in `blender/`). With Blender installed:
+
+```
+blender --background --python blender/build.py -- pilot
+```
+
+or with Blender's Python package instead (`pip install bpy`, needs Python 3.13): `python blender/build.py pilot`.
+
+Then import the changed files again (delete the old copy in `MapAssets` first).
+
 ## Game settings to set once in Studio
 
 - **Max players = 4:** Home tab > Game Settings > Places > (your place) > Max Players. You must publish the game first for this option to appear.

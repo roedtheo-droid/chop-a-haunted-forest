@@ -68,5 +68,15 @@ Samme kantede stil hele vejen, bare mørkere.
 - **Tool Shed:** bjælkehytte (brune vandrette bjælker, skråt tag, skilt med "TOOL SHED").
 - **Porte:** træporte med bjælker, ikke grå blokke.
 
+## 8. Blender-modeller
+- Modellerne bygges af Python-scripts i `blender/` (se README, "Blender models"), i samme kantede stil:
+  kasser med skrå kanter (bevel), ingen kugler eller runde stammer.
+- **Én farve pr. del:** hver farve er sin egen del, og spillet farver selv delene (tilfældige bladfarver,
+  lilla Cursed-træer, mimic-tell'en "Tint"). Farverne i Blender er kun til preview-billederne.
+- **Navne spillet leder efter:** `Trunk`, `Root`, `Branch`, `Leaves` (den største blad-klump),
+  `LeafBlock`, `Rock`, `Moss`. Nummerér med `_1`, `_2`...
+- **Stammen er altid en firkantet, lige blok** med bark-riller, så hakket kan skæres i den.
+- Mangler en model i Studio, bygger spillet den gamle Parts-version i stedet.
+
 ## Hvad vi IKKE kopierer
-Deres logo, ikoner, billeder, meshes, lyde og navne (fx "Old Barkback"). Vi laver vores egne med Parts og tekst.
+Deres logo, ikoner, billeder, meshes, lyde og navne (fx "Old Barkback"). Vi laver vores egne med Parts, tekst og vores egne Blender-modeller.

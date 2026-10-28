@@ -1,7 +1,8 @@
 --!strict
 -- Helpers that build the blocky, cartoony look (see STYLE_GUIDE.md) out of plain parts:
 -- trees, log cabins and log walls, gable roofs, wooden signs, striped pad edges and wood rings.
--- No art needed: everything is Parts, colours and a little SurfaceGui.
+-- No art needed: everything is Parts, colours and a little SurfaceGui. Trees use the Blender
+-- models instead once they're imported into Studio (see Build/Assets).
 -- Used by ForestSpawner, SceneryManager, SawmillManager, ToolShed, ZoneManager, CampManager,
 -- TreeManager, LogManager and BossManager. It's not a system, so it has no init()/start().
 
@@ -10,6 +11,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ChopRules = require(ReplicatedStorage.Shared.ChopRules)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Types = require(ReplicatedStorage.Shared.Types)
+local Assets = require(script.Parent.Assets)
 
 local BLACK = Color3.new(0, 0, 0)
 local WHITE = Color3.new(1, 1, 1)
@@ -163,11 +165,96 @@ local function addBirchMarks(trunk: BasePart, random: Random)
 	end
 end
 
+-- One of `shapes` (names with how often each is picked), or nil if there are none.
+local function pickShape(shapes: { [string]: number }?, random: Random): string?
+	if not shapes then
+		return nil
+	end
+	local total = 0
+	for _, weight in shapes do
+		total += weight
+	end
+	local roll = random:NextNumber() * total
+	local last: string? = nil
+	for name, weight in shapes do
+		roll -= weight
+		last = name
+		if roll <= 0 then
+			return name
+		end
+	end
+	return last
+end
+
+-- A tree from the Blender model `shapeName` (see Build/Assets), or nil if it isn't imported.
+-- It has the same parts as the parts tree below (Trunk, Root, Branch, Leaves, LeafBlock),
+-- so chopping, mimics, stumps and falling work just the same.
+local function meshTree(
+	shapeName: string,
+	base: Vector3,
+	treeType: Types.TreeTypeConfig,
+	random: Random,
+	scale: number,
+	barkColor: Color3,
+	birch: boolean
+): Model?
+	local shape = Config.Models.Trees[shapeName]
+	local model = if shape then Assets.model(shapeName) else nil
+	if not (shape and model) then
+		return nil
+	end
+	local trunk = model:FindFirstChild("Trunk")
+	local leaves = model:FindFirstChild("Leaves")
+	if not (trunk and trunk:IsA("BasePart") and leaves and leaves:IsA("BasePart")) then
+		warn(`[Blocky] The "{shapeName}" model needs parts named Trunk and Leaves, so parts are used instead`)
+		model:Destroy()
+		return nil
+	end
+	-- A random quarter turn: the trunk stays square to the world, which the chop notch and
+	-- a mimic's knot rely on.
+	local turn = CFrame.Angles(0, random:NextInteger(0, 3) * math.pi / 2, 0)
+	Assets.fit(model, trunk, shape.TrunkWidth * scale, base, turn)
+	model.Name = "Tree"
+
+	local leafColor = pick(shape.LeafColors or treeType.LeafColors, random)
+	for _, part in model:GetChildren() do
+		if not part:IsA("BasePart") then
+			continue
+		elseif part.Name == "Trunk" then
+			part.Color = barkColor
+			part.Material = Enum.Material.Wood
+		elseif part.Name == "Root" or part.Name == "Branch" then
+			part.Color = if part.Name == "Root" then Blocky.shade(barkColor, -0.12) else barkColor
+			part.Material = Enum.Material.Wood
+			part.CanCollide = false
+		elseif part.Name == "Leaves" then
+			part.Color = leafColor
+			part.Material = Config.Tree.LeafMaterial
+		elseif part.Name == "LeafBlock" then
+			part.Color = Blocky.shade(leafColor, random:NextNumber(-0.12, 0.12))
+			part.Material = Config.Tree.LeafMaterial
+			-- Unanchored but welded to the anchored Leaves, so it follows Leaves around.
+			part.Anchored = false
+			part.CanCollide = false
+			part.Massless = true
+			local weld = Instance.new("WeldConstraint")
+			weld.Part0 = leaves
+			weld.Part1 = part
+			weld.Parent = part
+		end
+	end
+	if birch then
+		addBirchMarks(trunk, random)
+	end
+	return model
+end
+
 -- A blocky tree with its pivot at `base` (the bottom of the trunk), not yet parented.
 -- Parts: "Trunk" (a square block), "Root" wedges at its foot, maybe "Branch" blocks, and a
 -- crown: the biggest leaf block is "Leaves", the others ("LeafBlock") are welded to it,
 -- so moving Leaves by its CFrame (a mimic's "Sway" tell) moves the whole crown.
 -- The trunk isn't turned, so its faces line up with the model's pivot (mimic eyes rely on that).
+-- When the tree type has Blender models (Shapes) and they're imported, it's one of those instead.
 function Blocky.tree(base: Vector3, treeType: Types.TreeTypeConfig, random: Random, extraScale: number?): Model
 	local cfg = Config.Tree
 	local scale = treeType.Scale * (extraScale or 1)
@@ -177,6 +264,14 @@ function Blocky.tree(base: Vector3, treeType: Types.TreeTypeConfig, random: Rand
 	local width = cfg.TrunkWidth * scale * (if birch then 0.8 else 1)
 	local barkColor = if birch and treeType.BirchColor then treeType.BirchColor else pick(treeType.TrunkColors, random)
 	local origin = CFrame.new(base)
+
+	local shapeName = if birch then treeType.BirchShape else pickShape(treeType.Shapes, random)
+	if shapeName then
+		local model = meshTree(shapeName, base, treeType, random, scale, barkColor, birch)
+		if model then
+			return model
+		end
+	end
 
 	local model = Instance.new("Model")
 	model.Name = "Tree"
@@ -274,8 +369,10 @@ function Blocky.tree(base: Vector3, treeType: Types.TreeTypeConfig, random: Rand
 end
 
 -- One piece of a notched trunk: same colour and material as the trunk, never in the way.
+-- A Blender trunk (a MeshPart) is cut into stretched bark blocks, so the pieces keep its bark.
 local function trunkPiece(name: string, trunk: BasePart, tree: Model, wedge: boolean): BasePart
-	local piece: BasePart = if wedge then Instance.new("WedgePart") else Instance.new("Part")
+	local bark = if not wedge and trunk:IsA("MeshPart") then Assets.part(Config.Models.BarkBlock) else nil
+	local piece: BasePart = bark or (if wedge then Instance.new("WedgePart") else Instance.new("Part"))
 	piece.Name = name
 	piece.Color = trunk.Color
 	piece.Material = trunk.Material

@@ -2,6 +2,7 @@
 -- Small props made of blocky parts (see STYLE_GUIDE.md): rocks, mushrooms, berry bushes,
 -- fallen logs, campfires, lamp posts, fences, pumpkins, gravestones, reeds and lily pads.
 -- Every prop stands on flat ground: `base` is a spot on the ground (its Y is ignored).
+-- Rocks use the Blender rock models once they're imported into Studio (see Build/Assets).
 -- Used by CampProps, Landmarks and LandmarkManager. Only for looks: nothing can be chopped.
 -- It's not a system, so it has no init()/start().
 
@@ -10,6 +11,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Tags = require(ReplicatedStorage.Shared.Tags)
+local Assets = require(script.Parent.Assets)
 local Blocky = require(script.Parent.Blocky)
 
 local GROUND = 0.05 -- the top of the camp's grass and the zone floors
@@ -67,9 +69,57 @@ local function addLight(part: BasePart, color: Color3, range: number, brightness
 	return light
 end
 
+-- A rock from one of the Blender rock models (Config.Models.Rocks), or nil if none is
+-- imported yet. Returns the stone part.
+local function meshRock(parent: Instance, base: Vector3, size: number, mossy: boolean, random: Random, stone: Color3): BasePart?
+	local names: { string } = {}
+	for _, name in Config.Models.Rocks do
+		if Assets.has(name) then
+			table.insert(names, name)
+		end
+	end
+	if #names == 0 then
+		return nil
+	end
+	local model = Assets.model(names[random:NextInteger(1, #names)])
+	if not model then
+		return nil
+	end
+	local rock = model:FindFirstChild("Rock")
+	if not (rock and rock:IsA("BasePart")) then
+		model:Destroy()
+		return nil
+	end
+	-- The model includes a smaller stone beside the big one, so it's a bit wider than `size`.
+	-- It sinks a little into the ground, so it doesn't look like it's balancing on a corner.
+	local spot = Vector3.new(base.X, GROUND - size * 0.1, base.Z)
+	Assets.fit(model, rock, size * 1.3, spot, CFrame.Angles(0, random:NextNumber(0, math.pi * 2), 0))
+	rock.Color = Blocky.shade(stone, random:NextNumber(-0.08, 0.05))
+	rock.Material = Enum.Material.Slate
+	local moss = model:FindFirstChild("Moss")
+	if moss and moss:IsA("BasePart") then
+		if mossy then
+			moss.Color = MOSS
+			moss.Material = Enum.Material.Grass
+			moss.CanCollide = false
+		else
+			moss:Destroy()
+		end
+	end
+	for _, part in model:GetChildren() do
+		part.Parent = parent
+	end
+	model:Destroy()
+	return rock
+end
+
 -- A grey rock with a smaller one leaning on it, and maybe moss on top. Returns the big one.
-function Props.rock(parent: Instance, base: Vector3, size: number, mossy: boolean, random: Random, color: Color3?): Part
+function Props.rock(parent: Instance, base: Vector3, size: number, mossy: boolean, random: Random, color: Color3?): BasePart
 	local stone = color or STONE
+	local fromModel = meshRock(parent, base, size, mossy, random, stone)
+	if fromModel then
+		return fromModel
+	end
 	local turn = CFrame.Angles(0, random:NextNumber(0, math.pi), 0)
 	local main = piece(
 		parent,

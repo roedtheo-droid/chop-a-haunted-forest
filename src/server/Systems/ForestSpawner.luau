@@ -1,5 +1,6 @@
 --!strict
--- Spawns blocky placeholder trees (see Build/Blocky.tree) in every zone.
+-- Spawns trees in every zone: Blender models where they're imported, blocky parts
+-- everywhere else (see Build/Blocky.tree).
 -- Each tree is a Model tagged "Tree" with these attributes:
 --   HP, MaxHP     how much chopping it takes
 --   ZoneId        which zone it's in (1, 2, 3...)

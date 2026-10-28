@@ -111,6 +111,15 @@ export type ZoneConfig = {
 	Look: ZoneLookConfig, -- its light and fog
 }
 
+-- One camera shot in the intro flyover (see Config.Intro and Client/Controllers/IntroController).
+export type IntroShot = {
+	From: Vector3, -- where the camera starts
+	To: Vector3, -- where it ends up
+	LookFrom: Vector3, -- what it looks at first
+	LookTo: Vector3, -- what it looks at last
+	Time: number, -- seconds
+}
+
 -- What knocked a player down (see Server/Systems/KnockdownManager).
 -- It decides how long they're down and what their screen says.
 export type KnockdownCause = "Mimic" | "Slam"

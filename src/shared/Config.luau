@@ -381,6 +381,57 @@ local Config = {
 		BloomThreshold = 0.95,
 	},
 
+	-- The intro when you join (see Client/Controllers/IntroController): the camera flies over
+	-- the forest, then the title and a PLAY button show while it circles over the camp.
+	-- PLAY swoops the camera down behind your character. Positions are (X, Y, Z) on the map.
+	Intro = {
+		Enabled = true, -- false skips it (handy when you're testing other things in Studio)
+		Title = "CHOP A HAUNTED FOREST",
+		Subtitle = "Chop every tree... but watch out for the mimics!",
+		FadeTime = 1, -- seconds the screen takes to fade in from black at the start
+		CutTime = 0.35, -- seconds of black between two camera shots
+		BarSize = 0.08, -- black bars at the top and bottom during the flyover, as a share of the screen
+		-- Each shot moves the camera from From to To while it turns from looking at LookFrom
+		-- to looking at LookTo, over Time seconds.
+		Shots = {
+			{ -- the camp: spawn, the Tool Shed and the sawmill
+				From = Vector3.new(-70, 40, 545),
+				To = Vector3.new(60, 32, 535),
+				LookFrom = Vector3.new(-10, 4, 455),
+				LookTo = Vector3.new(10, 4, 440),
+				Time = 4,
+			},
+			{ -- Pale Pines and the lake
+				From = Vector3.new(10, 55, 345),
+				To = Vector3.new(-20, 45, 310),
+				LookFrom = Vector3.new(-60, 0, 260),
+				LookTo = Vector3.new(-75, 0, 230),
+				Time = 3.5,
+			},
+			{ -- the fog of Fog Hollow and the broken windmill
+				From = Vector3.new(10, 35, -70),
+				To = Vector3.new(25, 28, -105),
+				LookFrom = Vector3.new(80, 12, -140),
+				LookTo = Vector3.new(85, 12, -150),
+				Time = 3.5,
+			},
+			{ -- the graveyard, where the Elder Hollow waits
+				From = Vector3.new(0, 26, -250),
+				To = Vector3.new(30, 20, -275),
+				LookFrom = Vector3.new(70, 4, -320),
+				LookTo = Vector3.new(80, 4, -330),
+				Time = 4,
+			},
+		},
+		-- Behind the title, the camera circles slowly around this spot over the camp.
+		OrbitCenter = Vector3.new(0, 4, 455),
+		OrbitRadius = 80,
+		OrbitHeight = 42,
+		OrbitSpeed = 0.06, -- radians per second (lower = slower)
+		SwoopTime = 1.6, -- seconds the camera takes to swoop down behind your character after PLAY
+		SwoopOffset = Vector3.new(0, 6, 14), -- where the camera ends up, seen from your character
+	},
+
 	-- The cartoony look (see STYLE_GUIDE.md): colours and fonts for buildings, signs and the UI.
 	Style = {
 		TitleFont = Enum.Font.LuckiestGuy, -- big words: signs, "FOREST CLEARED!"

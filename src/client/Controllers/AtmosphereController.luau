@@ -25,6 +25,10 @@ local colorCorrection: ColorCorrectionEffect -- makes colours stronger and tints
 local ambience: { Sound } = {} -- ambience[i] is zone i's background sound
 local currentZone: number? = nil
 local playing: { Tween } = {}
+-- While the intro flies the camera over the forest, the look follows this spot instead of
+-- your character (see setViewPoint).
+local viewPoint: Vector3? = nil
+local viewFadeTime: number? = nil
 
 local function getRoot(): BasePart?
 	local character = player.Character
@@ -71,17 +75,27 @@ end
 
 local function update()
 	local root = getRoot()
-	local zone = if root then Zones.indexAt(root.Position) else nil
-	if root and not zone and Zones.isInCamp(root.Position) then
+	local position = viewPoint or (if root then root.Position else nil)
+	local zone = if position then Zones.indexAt(position) else nil
+	if position and not zone and Zones.isInCamp(position) then
 		zone = 1 -- the camp has zone 1's sunny look
 	end
 	if not zone or zone == currentZone then
 		return -- same zone as before (or between zones): keep the look we have
 	end
 	-- The very first time (when you spawn), switch at once instead of fading.
-	local seconds = if currentZone == nil then 0 else Config.ZoneLook.FadeTime
+	local seconds = if currentZone == nil then 0 else viewFadeTime or Config.ZoneLook.FadeTime
 	currentZone = zone
 	fadeTo(zone, seconds)
+end
+
+-- Show the look of the zone at `position` (fading over `fadeTime` seconds, 0 = at once)
+-- instead of the zone your character is in. The intro uses this so each zone it flies over
+-- has its own fog and light. Call it with nil to follow your character again.
+function AtmosphereController.setViewPoint(position: Vector3?, fadeTime: number?)
+	viewPoint = position
+	viewFadeTime = fadeTime
+	update()
 end
 
 function AtmosphereController.init()

@@ -10,6 +10,7 @@ local Tags = {
 	RevivePrompt = "RevivePrompt", -- the "Revive" prompt on a knocked-down player
 	ElderHollow = "ElderHollow", -- the final boss (its trunk can't be chopped)
 	BossRoot = "BossRoot", -- one of the Elder Hollow's roots, its weak points
+	Spinner = "Spinner", -- a model that turns all the time, like a saw or a water wheel (see SpinnerController)
 }
 
 return table.freeze(Tags)

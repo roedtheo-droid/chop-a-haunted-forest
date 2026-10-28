@@ -73,6 +73,15 @@ export type TreeShapeConfig = {
 	LeafColors: { Color3 }?, -- its own leaf colours (not set: the tree type's LeafColors)
 }
 
+-- How one gate between two zones looks (see Config.Gates.Looks and Server/Build/Edges).
+export type GateLookConfig = {
+	Door: "Wood" | "Iron", -- wooden planks, or iron bars you can see through
+	Gatehouse: "Log" | "Stone", -- log towers with roofs, or stone pillars with an iron arch
+	Border: "Ridge" | "StoneWall", -- along the rest of the border: big rocks, or a crumbling wall
+	LampColor: Color3, -- the gatehouse's lanterns
+	Flicker: boolean, -- do the lanterns flicker?
+}
+
 -- One sound (see Config.Sounds).
 export type SoundConfig = {
 	Id: string, -- "rbxassetid://123" from the Creator Store, or "rbxasset://sounds/..." built into Roblox

@@ -269,6 +269,13 @@ local zones: { Types.ZoneConfig } = {
 	},
 }
 
+-- How each gate between two zones looks, in order: gate 1 is between zone 1 and zone 2.
+-- See Types.GateLookConfig and Server/Build/Edges.
+local gateLooks: { Types.GateLookConfig } = {
+	{ Door = "Wood", Gatehouse = "Log", Border = "Ridge", LampColor = Color3.fromRGB(255, 205, 130), Flicker = false },
+	{ Door = "Iron", Gatehouse = "Stone", Border = "StoneWall", LampColor = Color3.fromRGB(255, 140, 60), Flicker = true },
+}
+
 -- Tutorial quests, in order. They teach new players the core loop.
 local quests: { Types.QuestConfig } = {
 	{ Event = "FellTree", Goal = 1, Text = "Chop down a tree" },
@@ -298,7 +305,9 @@ local Config = {
 		StartZ = 520, -- the back edge of the camp, behind spawn. Zone 1 starts Camp.Length further on.
 		MinSpacing = 10, -- minimum distance between two trees
 		EdgeMargin = 8, -- no trees closer than this to a wall
-		WallHeight = 20, -- too high to jump over
+		-- The walls are invisible: you see hedges, rocks and gatehouses in front of them instead
+		-- (see Edges below). 30 is too high to jump over, even from the top of a ridge rock.
+		WallHeight = 30,
 		WallThickness = 2,
 	},
 
@@ -316,6 +325,42 @@ local Config = {
 		Patches = { "Patch1", "Patch2", "Patch3" }, -- flat blobs on the ground (see Ground below)
 		Pebbles = "Pebbles", -- along the path's edges
 		RiverBank = "RiverBank", -- pieces of the river's banks
+		Hedges = { "Hedge1", "Hedge2", "Hedge3" }, -- along the outside walls (see Edges below)
+		RidgeRocks = { "RidgeRock1", "RidgeRock2" }, -- the rocky ridge at a gate with Border = "Ridge"
+		StoneWalls = { "StoneWall1", "StoneWall2" }, -- the crumbling wall at a gate with Border = "StoneWall"
+		-- By the Gatehouse in Gates.Looks.
+		Gatehouses = { Log = "LogGatehouse", Stone = "StoneGatehouse" } :: { [string]: string },
+	},
+
+	-- What you see at the forest's edges, in front of the invisible walls (see Server/Build/Edges).
+	Edges = {
+		HedgeLength = 12, -- studs per piece of hedge along the outside walls
+		HedgeOffset = 1.6, -- the hedge's middle is this far past the walls' inside, so you bump into its leaves
+		HedgeHeight = { 6, 11 }, -- lowest and highest (only for the parts version, without the models)
+		-- The hedge's colour next to the camp and zone 1, zone 2 and zone 3.
+		HedgeColors = { Color3.fromRGB(55, 110, 45), Color3.fromRGB(78, 100, 72), Color3.fromRGB(38, 52, 40) },
+		TwigZone = 3, -- from this zone on, dark dead twigs poke out of the hedge
+		TwigColor = Color3.fromRGB(58, 42, 36),
+		BoulderEvery = 26, -- studs between the boulders at the hedge's foot
+		BoulderSize = { 2, 3.5 },
+		-- A rocky ridge (Border = "Ridge")
+		RidgeSpacing = 9, -- studs between rocks (they're wider than that, so they overlap)
+		RidgeRockSize = { 8, 11 },
+		RidgeColor = Color3.fromRGB(143, 150, 163),
+		RidgeTreeChance = 0.3, -- this share of the rocks has a little tree on top
+		RidgeTreeScale = 0.5,
+		-- A crumbling stone wall (Border = "StoneWall")
+		StoneWallLength = 8, -- studs per piece
+		StoneWallHeight = { 3, 7 }, -- lowest and highest (only for the parts version)
+		StoneWallGaps = 2, -- pieces on each side that have fallen down into rubble
+		StoneWallColor = Color3.fromRGB(107, 103, 117),
+		DeadTrees = 4, -- bare trees along the wall
+		DeadTreeScale = 0.9,
+		-- The gatehouse around each gate (which one: Gates.Looks)
+		GatehouseWidth = 30, -- the gate plus a tower 7 wide on each side
+		LampHeight = 11, -- the lanterns on the towers (only for the parts version)
+		LampRange = 20, -- how far their light reaches
+		LampBrightness = 1.5,
 	},
 
 	-- Soft patches of colour on the ground, so the floors aren't one flat colour, and where two
@@ -425,6 +470,9 @@ local Config = {
 	-- Gates between zones
 	Gates = {
 		Width = 16,
+		DoorHeight = 14, -- the door you see; the invisible wall above it goes up to Forest.WallHeight
+		DoorDepth = 1,
+		Looks = gateLooks, -- the door, gatehouse and border of each gate (at the top of this file)
 		OpenTime = 2, -- seconds the gate takes to sink into the ground
 		MessageCooldown = 3, -- seconds between "Clear every tree first" messages for one player
 	},
@@ -524,13 +572,14 @@ local Config = {
 
 	-- Scenery around the forest, only for looks: you can't chop it (see Server/Systems/SceneryManager).
 	Scenery = {
-		HedgeColor = Color3.fromRGB(55, 110, 45), -- the outer walls look like a thick hedge
-		FenceColor = Color3.fromRGB(120, 78, 45), -- the walls between zones are wooden
-		GateColor = Color3.fromRGB(95, 60, 35),
+		FenceColor = Color3.fromRGB(120, 78, 45), -- wooden fences (see Build/Props)
 		OutsideGround = Color3.fromRGB(85, 160, 55), -- the baseplate around the forest
 		BorderTreeSpacing = 14, -- studs between the big trees just outside the walls
-		BorderTreeDistance = 10, -- studs from the wall to those trees
-		BorderTreeScale = 1.7, -- they're bigger than forest trees, so they show above the walls
+		BorderTreeDistance = 10, -- studs from the wall to the first row of them
+		BorderTreeRows = 2, -- rows of them, one behind the other
+		BorderTreeRowGap = 16, -- studs between the rows
+		BorderTreeRowSpacing = 1.4, -- each row further out has its trees this much further apart
+		BorderTreeScale = { 1.4, 2.1 }, -- smallest and biggest: bigger than forest trees, so they show above the hedge
 		MountainCount = 34,
 		MountainDistance = 320, -- studs from the forest's edge to the nearest mountains
 		MountainMinSize = 100,

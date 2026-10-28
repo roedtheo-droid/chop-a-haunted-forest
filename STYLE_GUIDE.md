@@ -74,11 +74,16 @@ Samme kantede stil hele vejen, bare mørkere.
 - **Én farve pr. del:** hver farve er sin egen del, og spillet farver selv delene (tilfældige bladfarver,
   lilla Cursed-træer, mimic-tell'en "Tint"). Farverne i Blender er kun til preview-billederne.
 - **Navne spillet leder efter:** `Trunk`, `Root`, `Branch`, `Leaves` (den største blad-klump),
-  `LeafBlock`, `Rock`, `Moss`. Nummerér med `_1`, `_2`...
+  `LeafBlock`, `Rock`, `Moss`, `Hedge`, `Twig`, `Stone`, `Log`, `Roof`, `Sign`, `Lamp`, `Iron`.
+  Nummerér med `_1`, `_2`...
 - **Stammen er altid en firkantet, lige blok** med bark-riller, så hakket kan skæres i den.
 - **Jorden:** bløde pletter (`Patch`) i lysere/mørkere græs, mos, mudder og visne blade, og ved
   zone-grænserne fletter de to zoners farver ind i hinanden. Stien har en mørkere jordkant og småsten.
   Floden har sandbanker med sten, en mørkere bund, siv og åkander.
+- **Kanterne:** væggene er usynlige. Man ser en tyk, ujævn hæk med sten for foden (grøn, så grå-grøn,
+  så næsten sort med tørre kviste i zone 3), og to rækker store træer bag den. Mellem zone 1 og 2 står
+  en klippe-ryg med små træer og et port-hus af bjælker; mellem zone 2 og 3 en smuldrende stenmur med
+  døde træer og et port-hus af sten med jernbue og blafrende orange lygter.
 - Mangler en model i Studio, bygger spillet den gamle Parts-version i stedet.
 
 ## Hvad vi IKKE kopierer

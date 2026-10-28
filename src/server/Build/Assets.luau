@@ -7,7 +7,8 @@
 -- Why ServerStorage? Rojo only syncs the folders in default.project.json, so imported models
 -- stay safe in the place, and only the server can see them (players get the built copies).
 --
--- Used by Blocky (trees and the chop notch) and Props (rocks).
+-- Used by Blocky (trees and the chop notch), Props (rocks and pebbles), Ground, CampManager
+-- (the river banks) and Edges.
 -- It's not a system, so it has no init()/start().
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -39,13 +40,40 @@ local function template(name: string): Instance?
 	return found
 end
 
--- The names the game looks for. Longer names first, so "BarkBlock" isn't mistaken for "Block".
-local ROLES = { "BarkBlock", "LeafBlock", "Leaves", "Trunk", "Branch", "Root", "Moss", "Rock", "Patch", "Pebble", "Sand", "Stone" }
+-- The names the game looks for.
+local ROLES = {
+	"BarkBlock",
+	"LeafBlock",
+	"Leaves",
+	"Trunk",
+	"Branch",
+	"Root",
+	"Moss",
+	"Twig",
+	"Roof",
+	"Sign",
+	"Lamp",
+	"Iron",
+	"Rock",
+	"Patch",
+	"Pebble",
+	"Sand",
+	"Stone",
+	"Hedge",
+	"Log",
+}
 
 -- Blender can't give two objects the same name, so they're numbered ("LeafBlock_2"), and
--- Studio sometimes adds the file's name too ("Oak_LeafBlock_2"). The game wants the plain
--- name: "LeafBlock".
+-- Studio sometimes adds the file's name too ("Oak_LeafBlock_2", "StoneGatehouse_Iron").
+-- The game wants the plain name: "LeafBlock", "Iron". The name it ends with wins, so
+-- "StoneGatehouse_Iron" is "Iron", not "Stone".
 local function plainName(name: string): string
+	local trimmed = string.gsub(name, "[%._%d]+$", "")
+	for _, role in ROLES do
+		if string.sub(trimmed, -#role) == role then
+			return role
+		end
+	end
 	for _, role in ROLES do
 		if string.find(name, role, 1, true) then
 			return role

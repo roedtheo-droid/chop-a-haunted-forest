@@ -8,6 +8,7 @@ or with Blender itself:
 Kits (what to build):
     pilot   the first test models: Oak, Pine, Birch, BarkBlock, Rock1, Rock2
     ground  ground patches, pebbles and river banks: Patch1-3, Pebbles, RiverBank
+    edges   the forest's edges: Hedge1-3, RidgeRock1-2, StoneWall1-2, LogGatehouse, StoneGatehouse
     all     every model
 You can also name single models: python blender/build.py Oak Rock2
 
@@ -23,7 +24,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import bpy  # noqa: E402
 from lib import output  # noqa: E402
 from mathutils import Vector  # noqa: E402
-from models import ground, rocks, trees  # noqa: E402
+from models import edges, ground, rocks, trees  # noqa: E402
 
 MODELS = {
     "Oak": trees.oak,
@@ -37,11 +38,31 @@ MODELS = {
     "Patch3": ground.patch3,
     "Pebbles": ground.pebbles,
     "RiverBank": ground.river_bank,
+    "Hedge1": edges.hedge1,
+    "Hedge2": edges.hedge2,
+    "Hedge3": edges.hedge3,
+    "RidgeRock1": edges.ridge_rock1,
+    "RidgeRock2": edges.ridge_rock2,
+    "StoneWall1": edges.stone_wall1,
+    "StoneWall2": edges.stone_wall2,
+    "LogGatehouse": edges.log_gatehouse,
+    "StoneGatehouse": edges.stone_gatehouse,
 }
 
 KITS = {
     "pilot": ["Oak", "Pine", "Birch", "BarkBlock", "Rock1", "Rock2"],
     "ground": ["Patch1", "Patch2", "Patch3", "Pebbles", "RiverBank"],
+    "edges": [
+        "Hedge1",
+        "Hedge2",
+        "Hedge3",
+        "RidgeRock1",
+        "RidgeRock2",
+        "StoneWall1",
+        "StoneWall2",
+        "LogGatehouse",
+        "StoneGatehouse",
+    ],
 }
 KITS["all"] = list(MODELS)
 

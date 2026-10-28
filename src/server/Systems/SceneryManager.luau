@@ -1,6 +1,7 @@
 --!strict
 -- Scenery around the forest, only for looks (see STYLE_GUIDE.md):
---   * big blocky trees just outside the walls, so the edge of the forest looks like more forest
+--   * rows of big blocky trees just outside the walls, so the edge of the forest looks like
+--     more forest (the hedge in front of them is built by Build/Edges)
 --   * grey mountains with snowy tops far away on every side
 --   * green grass on the baseplate around everything
 -- None of it is tagged as a tree, so it can't be chopped and doesn't count for "% cleared".
@@ -27,13 +28,19 @@ end
 
 -- One big tree at (x, z), looking like the trees of the zone it stands next to.
 local function addBorderTree(x: number, z: number)
+	local cfg = Config.Scenery
 	-- Next to the camp (or behind it) they look like zone 1's trees; past the far wall, like the last zone's.
 	local zoneIndex = Zones.indexAt(Vector3.new(0, 0, z)) or (if z > Zones.getBounds(1).MinZ then 1 else Zones.count())
 	local treeType = Config.TreeTypes[Config.Zones[zoneIndex].TreeType]
-	local tree = Blocky.tree(Vector3.new(x, 0, z), treeType, random, Config.Scenery.BorderTreeScale)
+	local scale = random:NextNumber(cfg.BorderTreeScale[1], cfg.BorderTreeScale[2])
+	local tree = Blocky.tree(Vector3.new(x, 0, z), treeType, random, scale)
 	tree.Name = "BorderTree"
 	for _, part in tree:GetDescendants() do
-		if part:IsA("BasePart") then
+		if not part:IsA("BasePart") then
+			continue
+		elseif part.Name == "Root" then
+			part:Destroy() -- nobody sees them behind the hedge, and it saves parts
+		else
 			part.CanCollide = false
 		end
 	end
@@ -43,24 +50,27 @@ end
 local function addBorderTrees()
 	local cfg = Config.Scenery
 	local halfWidth, nearZ, farZ = forestEdges()
-	local distance = cfg.BorderTreeDistance
-	local spacing = cfg.BorderTreeSpacing
+	for row = 1, cfg.BorderTreeRows do
+		local distance = cfg.BorderTreeDistance + (row - 1) * cfg.BorderTreeRowGap
+		local spacing = cfg.BorderTreeSpacing * cfg.BorderTreeRowSpacing ^ (row - 1)
+		local start = (row - 1) * spacing / 2 -- each row starts half a gap later, so the trees don't line up
 
-	-- Along the left and right walls.
-	local z = nearZ
-	while z > farZ do
-		for _, side in { -1, 1 } do
-			local x = side * (halfWidth + distance + random:NextNumber(0, spacing / 2))
-			addBorderTree(x, z + random:NextNumber(-spacing / 3, spacing / 3))
+		-- Along the left and right walls (past the corners, so they're filled too).
+		local z = nearZ + distance - start
+		while z > farZ - distance do
+			for _, side in { -1, 1 } do
+				local x = side * (halfWidth + distance + random:NextNumber(0, spacing / 2))
+				addBorderTree(x, z + random:NextNumber(-spacing / 3, spacing / 3))
+			end
+			z -= spacing
 		end
-		z -= spacing
-	end
-	-- Behind the camp and past the far wall.
-	local x = -halfWidth
-	while x < halfWidth do
-		addBorderTree(x, nearZ + distance + random:NextNumber(0, spacing / 2))
-		addBorderTree(x, farZ - distance - random:NextNumber(0, spacing / 2))
-		x += spacing
+		-- Behind the camp and past the far wall.
+		local x = -halfWidth + start
+		while x < halfWidth do
+			addBorderTree(x, nearZ + distance + random:NextNumber(0, spacing / 2))
+			addBorderTree(x, farZ - distance - random:NextNumber(0, spacing / 2))
+			x += spacing
+		end
 	end
 end
 

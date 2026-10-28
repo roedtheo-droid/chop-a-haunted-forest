@@ -4,7 +4,7 @@
 -- No art needed: everything is Parts, colours and a little SurfaceGui. Trees use the Blender
 -- models instead once they're imported into Studio (see Build/Assets).
 -- Used by ForestSpawner, SceneryManager, SawmillManager, ToolShed, ZoneManager, CampManager,
--- TreeManager, LogManager and BossManager. It's not a system, so it has no init()/start().
+-- TreeManager, LogManager, BossManager and Edges. It's not a system, so it has no init()/start().
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -148,7 +148,7 @@ function Blocky.face(part: BasePart, face: Enum.NormalId, color: Color3?): Surfa
 end
 
 -- A plain coloured rectangle on a SurfaceGui, placed with scale (0 to 1) numbers.
-local function rect(parent: Instance, x: number, y: number, w: number, h: number, color: Color3): Frame
+function Blocky.rect(parent: Instance, x: number, y: number, w: number, h: number, color: Color3): Frame
 	local frame = Instance.new("Frame")
 	frame.Position = UDim2.fromScale(x, y)
 	frame.Size = UDim2.fromScale(w, h)
@@ -157,6 +157,7 @@ local function rect(parent: Instance, x: number, y: number, w: number, h: number
 	frame.Parent = parent
 	return frame
 end
+local rect = Blocky.rect
 
 -- Dark lines between the logs on some faces of a wall, so it looks like a log wall.
 function Blocky.logLines(part: BasePart, faces: { Enum.NormalId })

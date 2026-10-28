@@ -3,8 +3,8 @@
 -- fallen logs, campfires, lamp posts, fences, pumpkins, gravestones, reeds and lily pads.
 -- Every prop stands on flat ground: `base` is a spot on the ground (its Y is ignored).
 -- Rocks use the Blender rock models once they're imported into Studio (see Build/Assets).
--- Used by CampProps, Landmarks and LandmarkManager. Only for looks: nothing can be chopped.
--- It's not a system, so it has no init()/start().
+-- Used by CampProps, Landmarks, LandmarkManager, CampManager and Edges. Only for looks:
+-- nothing can be chopped. It's not a system, so it has no init()/start().
 
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -69,10 +69,18 @@ local function addLight(part: BasePart, color: Color3, range: number, brightness
 	return light
 end
 
--- A rock from one of the Blender rock models (Config.Models.Rocks), or nil if none is
--- imported yet. Returns the stone part.
-local function meshRock(parent: Instance, base: Vector3, size: number, mossy: boolean, random: Random, stone: Color3): BasePart?
-	local name = Assets.pick(Config.Models.Rocks, random)
+-- A rock from one of the Blender rock models `models`, or nil if none is imported yet.
+-- Returns the stone part.
+local function meshRock(
+	parent: Instance,
+	base: Vector3,
+	size: number,
+	mossy: boolean,
+	random: Random,
+	stone: Color3,
+	models: { string }
+): BasePart?
+	local name = Assets.pick(models, random)
 	local model = if name then Assets.model(name) else nil
 	if not model then
 		return nil
@@ -106,9 +114,18 @@ local function meshRock(parent: Instance, base: Vector3, size: number, mossy: bo
 end
 
 -- A grey rock with a smaller one leaning on it, and maybe moss on top. Returns the big one.
-function Props.rock(parent: Instance, base: Vector3, size: number, mossy: boolean, random: Random, color: Color3?): BasePart
+-- It's one of the Blender `models` (Config.Models.Rocks if not given) when they're imported.
+function Props.rock(
+	parent: Instance,
+	base: Vector3,
+	size: number,
+	mossy: boolean,
+	random: Random,
+	color: Color3?,
+	models: { string }?
+): BasePart
 	local stone = color or STONE
-	local fromModel = meshRock(parent, base, size, mossy, random, stone)
+	local fromModel = meshRock(parent, base, size, mossy, random, stone, models or Config.Models.Rocks)
 	if fromModel then
 		return fromModel
 	end

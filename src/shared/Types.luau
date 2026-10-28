@@ -20,6 +20,19 @@ export type ToolConfig = {
 	Price: number, -- coins in the Tool Shed (0 = you start with it)
 }
 
+-- How one chopping tool FEELS when it hits (see Config.ChopFeel and
+-- Client/Controllers/ChopEffectsController). Only looks and sounds: its damage is in ToolConfig.
+export type ChopFeelConfig = {
+	Sound: string, -- a name in Config.Sounds
+	Swing: string, -- your character's swing animation ("rbxassetid://...")
+	SwingSpeed: number, -- 1 = the animation's normal speed, 2 = twice as fast
+	SwingSize: number, -- 1 = a full chop; smaller is a smaller, shakier movement (the Chainsaw)
+	Chips: number, -- wood chips that fly out of the notch on each hit
+	ChipSize: number, -- how big each chip is, in studs
+	Wobble: number, -- degrees the crown sways when the tree is hit
+	CameraKick: number, -- studs your camera jolts on your own hits
+}
+
 -- Numbers for one upgrade (see Config.Upgrades).
 -- Prices[1] is the price of level 1, Prices[2] of level 2, and so on.
 -- The max level is the number of prices.

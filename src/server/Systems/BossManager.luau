@@ -376,7 +376,7 @@ local function emitSparks(part: BasePart)
 		emitter = newEmitter
 	end
 	if emitter then
-		emitter:Emit(Config.Tree.ChipsPerHit)
+		emitter:Emit(Config.Boss.SparksPerHit)
 	end
 end
 

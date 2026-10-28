@@ -11,6 +11,8 @@ local Tags = {
 	ElderHollow = "ElderHollow", -- the final boss (its trunk can't be chopped)
 	BossRoot = "BossRoot", -- one of the Elder Hollow's roots, its weak points
 	Spinner = "Spinner", -- a model that turns all the time, like a saw or a water wheel (see SpinnerController)
+	FogBank = "FogBank", -- a fog cloud in zone 2 that drifts slowly (see AmbientController)
+	Flicker = "Flicker", -- a lamp's light that flickers a little (see AmbientController)
 }
 
 return table.freeze(Tags)

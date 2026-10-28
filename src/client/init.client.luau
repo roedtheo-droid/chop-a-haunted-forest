@@ -31,6 +31,7 @@ local controllers: { Types.Module } = {
 	require(Controllers.KnockdownController),
 	require(Controllers.LanternController),
 	require(Controllers.SpinnerController),
+	require(Controllers.AmbientController),
 	require(Controllers.BossController),
 	require(Controllers.ForestClearedController),
 	require(Controllers.DebugController), -- Studio-only test buttons

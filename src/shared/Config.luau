@@ -332,6 +332,38 @@ local Config = {
 		},
 	},
 
+	-- The big things in each zone (see Server/Build/Landmarks). Positions are (X, 0, Z).
+	-- No trees grow (and no mimics hide) closer than ClearRadius to them.
+	Landmarks = {
+		-- Zone 1: Pale Pines
+		Lake = { Position = Vector3.new(-70, 0, 255), ClearRadius = 42 }, -- with a sandy beach, a dock and a rowboat
+		TentCamp = { Position = Vector3.new(80, 0, 300), ClearRadius = 20 }, -- a lumberjack camp
+		Meadow = { Position = Vector3.new(75, 0, 170), ClearRadius = 24 }, -- full of flowers
+		-- Zone 2: Fog Hollow
+		Swamp = { Position = Vector3.new(80, 0, -20), ClearRadius = 22 },
+		SmallSwamp = { Position = Vector3.new(-62, 0, -100), ClearRadius = 17 },
+		Windmill = { Position = Vector3.new(85, 0, -150), ClearRadius = 18 }, -- an old ruin
+		-- Zone 3: Graveyard Grove
+		Graveyard = { Position = Vector3.new(80, 0, -320), ClearRadius = 32 },
+		Crypt = { Position = Vector3.new(-75, 0, -400), ClearRadius = 17 },
+	},
+
+	-- Little things along the path and around the zones (see Server/Systems/LandmarkManager).
+	-- Only for looks: you can't chop them.
+	Props = {
+		PathSpacing = 14, -- studs between props along the path
+		PathOffset = 5.4, -- how far from the middle of the path (the path is 8 wide, trees stay 7 away)
+		LampEvery = 3, -- in zones 2 and 3, every 3rd prop along the path is a lamp post
+		GateGap = 14, -- no props this close to a gate or the bridge
+		FogBanks = 9, -- drifting fog in zone 2
+		FogDrift = 14, -- studs each fog bank drifts to each side
+		FogDriftSpeed = 0.12, -- how fast it drifts (lower = slower)
+		Flicker = 0.3, -- how much the crooked lamps in zone 3 flicker (0 = steady)
+		WindmillSpin = 0.15, -- the broken windmill's sails turn very slowly (radians per second)
+		BossStones = 11, -- tall stones in a ring around the boss's clearing
+		BossStoneRadius = 34,
+	},
+
 	-- Gates between zones
 	Gates = {
 		Width = 16,

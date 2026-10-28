@@ -21,6 +21,7 @@ local systems: { Types.Module } = {
 	require(Systems.ZoneManager), -- before anything that looks for the ground (it builds the zone floors)
 	require(Systems.CampManager), -- the camp, river, bridge and path (and moves spawn into the camp)
 	require(Systems.SceneryManager), -- trees outside the walls, mountains (only for looks)
+	require(Systems.LandmarkManager), -- the lake, swamps, graveyard... and props along the path (only for looks)
 	require(Systems.ForestSpawner),
 	require(Systems.MimicManager), -- after ForestSpawner (it picks mimics from the spawned trees)
 	require(Systems.BossManager), -- after ZoneManager (the boss counts as one of its zone's trees)

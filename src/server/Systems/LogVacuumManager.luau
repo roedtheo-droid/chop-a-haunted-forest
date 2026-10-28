@@ -68,7 +68,8 @@ local function vacuumFor(player: Player)
 		if free <= 0 then
 			break
 		end
-		if log:IsA("BasePart") and not log:GetAttribute("Pulling") then
+		-- Logs still popping out of their tree land first, so the pop looks right on every screen.
+		if log:IsA("BasePart") and not log:GetAttribute("Pulling") and not LogManager.isPopping(log) then
 			if (log.Position - root.Position).Magnitude <= Config.LogVacuum.Radius then
 				pull(player, log, root.Position)
 				free -= 1

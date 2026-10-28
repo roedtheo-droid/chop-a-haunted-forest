@@ -1,6 +1,6 @@
 --!strict
 -- World sounds and particle bursts, in one place. Other systems just say what and where:
---   EffectsManager.playSound("TreeFall", position)
+--   EffectsManager.playSound("BossSlam", position)
 --   EffectsManager.burst("Dust", position)
 -- The server makes them, so every player near the spot hears and sees them.
 -- Which sound and how it looks are in Config.Sounds and Config.Particles.

@@ -118,8 +118,11 @@ local function leaveStump(tree: Model, trunk: BasePart, charred: boolean)
 	end
 end
 
--- Tip the tree over (`away` is the way it falls), then drop logs and remove it.
+-- The tree falls over (`away` is the way it falls), then the logs pop out and it's removed.
 -- Mimics don't leave a stump: they pulled their roots out when they woke up.
+-- The server doesn't move the tree: every player's computer animates the crack, fall and
+-- bounce itself (Client/Controllers/ChopEffectsController), so it's smooth on every screen.
+-- The server only waits for it to land, then drops the logs and removes the tree.
 local function fellTree(tree: Model, trunk: BasePart, away: Vector3, withStump: boolean)
 	-- Remove the tag first, so nobody can hit it while it falls.
 	CollectionService:RemoveTag(tree, Tags.Tree)
@@ -135,44 +138,22 @@ local function fellTree(tree: Model, trunk: BasePart, away: Vector3, withStump: 
 		end
 	end
 
-	local startPivot = tree:GetPivot()
-	local base = startPivot.Position
-
-	-- Rotating "up" around this axis by 90 degrees points the tree along `away`.
-	local axis = Vector3.yAxis:Cross(away)
-	local rotation = CFrame.fromAxisAngle(axis, math.rad(90))
-	local endPivot = CFrame.new(base) * rotation * startPivot.Rotation
-
-	-- TweenService can't move a whole Model, so we tween a number from 0 to 1
-	-- and move the model ourselves each time the number changes.
-	local alpha = Instance.new("NumberValue")
-	alpha.Value = 0
-	alpha.Changed:Connect(function(value: number)
-		tree:PivotTo(startPivot:Lerp(endPivot, value))
-	end)
-
-	local tween = TweenService:Create(
-		alpha,
-		TweenInfo.new(Config.Tree.FallTime, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
-		{ Value = 1 }
-	)
-	tween.Completed:Connect(function()
-		alpha:Destroy()
-		-- A crash where the tree hits the ground. (Each player draws the dust: Client/Controllers/ChopEffectsController.)
-		local landing = base + away * trunk.Size.Y * 0.6 -- Size.Y is the trunk's height
-		EffectsManager.playSound("TreeFall", landing)
+	local cfg = Config.Tree
+	local base = tree:GetPivot().Position
+	task.delay(cfg.CrackTime + cfg.FallTime, function()
+		-- It has landed: the logs pop out of the fallen trunk.
 		LogManager.spawnLogs(
 			base,
 			away,
-			Config.Tree.LogsPerTree,
+			cfg.LogsPerTree,
 			getNumberAttribute(tree, "LogValue"),
 			tree:GetAttribute("Cursed") == true
 		)
-		task.delay(Config.Tree.RemoveDelay, function()
+		-- It lies there for a moment, then fades away on every screen.
+		task.delay(cfg.RemoveDelay + cfg.FadeTime, function()
 			tree:Destroy()
 		end)
 	end)
-	tween:Play()
 end
 
 -- A sleeping mimic was hit with the Torch: it catches fire, chars black and crumbles away.
@@ -311,8 +292,6 @@ local function onSwing(player: Player, target: unknown)
 	tree:SetAttribute("HP", hp)
 	local notch = cutNotch(tree, trunk, root.Position)
 	local falling = if hp <= 0 then fallDirection(tree, root.Position) else nil
-	-- Every player draws the chips and plays the sound themselves (Client/Controllers/ChopEffectsController).
-	treeHitRemote:FireAllClients(tree, notch.Position, notch.LookVector, toolId, player, falling)
 
 	if falling then
 		local wasMimic = MimicManager.isMimic(tree)
@@ -324,7 +303,14 @@ local function onSwing(player: Player, target: unknown)
 			RunManager.record(player, "MimicsChopped", 1)
 			notifyRemote:FireAllClients(`{player.DisplayName} chopped down a mimic!`)
 		end
-	elseif MimicManager.isMimic(tree) then
+	end
+
+	-- Every player draws the hit (and the fall) themselves: Client/Controllers/ChopEffectsController.
+	-- Sent after fellTree, so every player already has the stump and the "Felled" mark when
+	-- the tree starts to fall on their screen.
+	treeHitRemote:FireAllClients(tree, notch.Position, notch.LookVector, toolId, player, falling)
+
+	if not falling and MimicManager.isMimic(tree) then
 		MimicManager.wake(tree, player) -- does nothing if it's already awake
 	end
 end

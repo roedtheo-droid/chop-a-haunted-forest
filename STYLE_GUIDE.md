@@ -93,6 +93,10 @@ Samme kantede stil hele vejen, bare mørkere.
 - **Stammer, stubbe og bossen:** stammerne på jorden, stubbene og Elder Hollows stamme, krone og
   rødder er Blender-modeller med bark-riller. De har præcis samme størrelse som de gamle blokke, så
   ringene på enderne og alt spillet gør med dem (samle op, rødder der bliver tyndere) virker som før.
+- **Værktøjsskuret og savværkerne:** Blender-modeller med bjælkevægge, tagspån, skorsten, vinduer med
+  blomsterkasser og møbler (komfur, lænestol, tønder, kasser, bænk, hængelamper; savbord, rundsav,
+  vandhjul, savbukke og brændestabel). De gamle Parts ligger usynligt under og klarer kollisioner, lys
+  og røg. De slidte savværker i zone 2 og 3 er de samme modeller i mørkere farver.
 - **Jorden:** bløde pletter (`Patch`) i lysere/mørkere græs, mos, mudder og visne blade, og ved
   zone-grænserne fletter de to zoners farver ind i hinanden. Stien har en mørkere jordkant og småsten.
   Floden har sandbanker med sten, en mørkere bund, siv og åkander.

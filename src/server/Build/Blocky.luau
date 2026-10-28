@@ -237,6 +237,33 @@ function Blocky.collider(part: BasePart)
 	end
 end
 
+-- Put `skin` (a Blender model in `group`, see Assets.placed) over the rest of `group`: the
+-- parts version of the same thing (a building, a stove...). Those parts turn invisible but
+-- keep doing their job: solid ones still stop players, and lights and smoke on them still
+-- work. `looks` colours the model's parts by name; only Solid ones stop players and the
+-- camera (so it can't swing through a wall to the outside).
+function Blocky.dress(group: Instance, skin: Model, looks: { [string]: Types.SkinLook })
+	for _, part in group:GetDescendants() do
+		if part:IsA("BasePart") and not part:IsDescendantOf(skin) then
+			Blocky.collider(part)
+			part.CanQuery = part.CanCollide -- invisible decorations don't catch clicks
+		end
+	end
+	for _, part in skin:GetChildren() do
+		if part:IsA("BasePart") then
+			local look = looks[part.Name]
+			if look then
+				part.Color = look.Color
+				part.Material = look.Material
+			end
+			local solid = look ~= nil and look.Solid == true
+			part.CanCollide = solid
+			part.CanQuery = solid
+			part.CanTouch = false
+		end
+	end
+end
+
 -- Dark lines between the logs on some faces of a wall, so it looks like a log wall.
 function Blocky.logLines(part: BasePart, faces: { Enum.NormalId })
 	for _, face in faces do

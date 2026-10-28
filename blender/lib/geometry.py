@@ -80,6 +80,14 @@ def wedge(size, bevel=0.0):
     return bm
 
 
+def cylinder(radius, length, sides=12):
+    """A round post `length` long along Z, centred on the origin, with `sides` flat sides
+    (barrels, pipes, wheels' hubs...). Turn it to lie along X or Y."""
+    bm = bmesh.new()
+    bmesh.ops.create_cone(bm, cap_ends=True, cap_tris=False, segments=sides, radius1=radius, radius2=radius, depth=length)
+    return bm
+
+
 def cap(source, min_up=0.85, lift=0.05, thickness=0.14):
     """A thin layer copied from the upward-facing faces of `source` (a bmesh, not changed),
     lifted a hair above them: moss or snow that follows the shape exactly."""

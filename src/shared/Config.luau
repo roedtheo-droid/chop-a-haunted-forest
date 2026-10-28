@@ -472,6 +472,26 @@ local Config = {
 		Log = "Log",
 		Stump = "Stump",
 		Boss = { Trunk = "ElderTrunk", Crown = "ElderCrown", Root = "ElderRoot" },
+		-- The Tool Shed and the sawmills (Server/Build/ToolShed and SawmillBuilding). Their
+		-- models are made for Shop.BuildingSize 56 x 18 x 38 with a 12 x 13 door, and for
+		-- Sawmill.BuildingSize 20 x 11 x 14. If you change those, the game says so in the
+		-- Output and builds that building from parts instead.
+		Buildings = {
+			ToolShedShell = "ToolShedShell",
+			Stove = "Stove",
+			Armchair = "Armchair",
+			Barrel = "Barrel",
+			Crate = "Crate",
+			UpgradeBench = "UpgradeBench",
+			HangingLamp = "HangingLamp",
+			SawmillShed = "SawmillShed",
+			SawTable = "SawTable",
+			SawBlade = "SawBlade", -- resized to Sawmill.SawSize
+			WaterWheel = "WaterWheel", -- resized to Sawmill.WheelRadius
+			Workshop = "Workshop",
+			LogPile = "LogPile",
+		},
+		FitTolerance = 0.05, -- how far (5%) a model's size may be off before the parts are used
 	},
 
 	-- Little things scattered over each zone's ground (see Server/Build/Details): grass and

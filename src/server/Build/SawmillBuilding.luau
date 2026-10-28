@@ -6,6 +6,10 @@
 -- computer turns them (see Client/SpinnerController).
 -- Zones 2 and 3 get the same sawmill, only darker and more worn (Config.Sawmill.Wear).
 -- Only for looks: SawmillManager builds the pad and does the selling.
+-- When the Blender models are imported (Config.Models.Buildings), the shed, the saw's table,
+-- the saw, the water wheel, the workshop and the log pile are those models, each over its
+-- parts version: the parts turn invisible but still do the bumping, the light and the smoke
+-- (see Blocky.dress). The lamp post by the pad is Props.lampPost.
 -- It's not a system, so it has no init()/start().
 
 local CollectionService = game:GetService("CollectionService")
@@ -13,7 +17,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Tags = require(ReplicatedStorage.Shared.Tags)
+local Types = require(ReplicatedStorage.Shared.Types)
+local Assets = require(script.Parent.Assets)
 local Blocky = require(script.Parent.Blocky)
+local Props = require(script.Parent.Props)
 
 local WALL = 1
 local FLOOR_TOP = 0.4 -- the same height as the top of the pad
@@ -25,13 +32,18 @@ local WHEEL_PIECES = 10
 local STONE = Color3.fromRGB(143, 150, 163)
 local DARK_METAL = Color3.fromRGB(70, 70, 78)
 local LAMP_COLOR = Color3.fromRGB(255, 215, 120)
+local MODELS = Config.Models.Buildings
 
 local SawmillBuilding = {}
 
--- Set at the start of build(): where the sawmill stands, the model everything goes in,
--- and its colours (darker in the worn sawmills).
+-- Set at the start of build(): where the sawmill stands, the whole sawmill, the group the
+-- next parts go in (see group()), whether the shed model is used (then the other models
+-- are too, because the sawmill is the size they're made for), and its colours (darker in
+-- the worn sawmills).
 local origin: CFrame
+local sawmill: Model
 local model: Model
+local dressed = false
 local wood: Color3
 local darkWood: Color3
 local roofColor: Color3
@@ -51,16 +63,48 @@ local function at(x: number, y: number, z: number): CFrame
 	return CFrame.new(x, y, z)
 end
 
+-- Start a group for the parts of one thing (the shed, the saw's table...), so its Blender
+-- model can go over it. piece() and decor() put their parts in the newest group.
+local function group(name: string)
+	model = Instance.new("Model")
+	model.Name = name
+	model.Parent = sawmill
+end
+
+-- Put Blender model `name` over `into` (the newest group if not given), with its origin at
+-- `frame` from the middle of the sawmill's floor plan. Only once the shed is dressed.
+-- Returns the model, or nil (then the parts stay as they are).
+local function dress(name: string, frame: CFrame, looks: { [string]: Types.SkinLook }, into: Model?): Model?
+	if not dressed then
+		return nil
+	end
+	local parent = into or model
+	local skin = Assets.placed(parent, name, origin * frame)
+	if skin then
+		Blocky.dress(parent, skin, looks)
+	end
+	return skin
+end
+
+-- Make a spinner's model `size` big, measured on its part `name` (its height, Y).
+local function resize(skin: Model, name: string, size: number)
+	local part = skin:FindFirstChild(name)
+	if part and part:IsA("BasePart") and part.Size.Y > 0 then
+		skin:ScaleTo(skin:GetScale() * size / part.Size.Y)
+	end
+end
+
 -- A model that keeps turning around its main part's X axis (a cylinder's axis).
 local function makeSpinner(spinner: Model, axis: BasePart, speed: number)
 	spinner.PrimaryPart = axis
 	spinner:SetAttribute("SpinSpeed", speed)
 	CollectionService:AddTag(spinner, Tags.Spinner)
-	spinner.Parent = model
+	spinner.Parent = sawmill
 end
 
 -- The floor, the three log walls, the open front, the roof, the sign and the chimney.
 local function buildShed()
+	group("Shed")
 	local cfg = Config.Sawmill
 	local size = cfg.BuildingSize
 	local w, h, d = size.X, size.Y, size.Z
@@ -84,7 +128,6 @@ local function buildShed()
 	piece("FrontBeam", Vector3.new(w, 1.4, 1.4), at(0, h - 0.7, d / 2 - 0.7), darkWood, Enum.Material.Wood)
 
 	Blocky.roof(origin.Position + Vector3.new(0, h, 0), w, d, cfg.RoofHeight, roofColor, model)
-	Blocky.sign("SELL LOGS", origin * at(0, h + 1.9, d / 2 + 1.4), 12, 3, nil, model)
 
 	-- A lantern hanging from the front beam.
 	decor("LampChain", Vector3.new(0.2, 1.2, 0.2), at(0, h - 2, d / 2 - 0.7), DARK_METAL, Enum.Material.Metal)
@@ -109,6 +152,57 @@ local function buildShed()
 	smoke.Parent = chimney
 end
 
+-- Is the shed model made for this size of sawmill (Config.Sawmill)? Checked on its floor and
+-- the height of its walls.
+local function shedFits(shed: Model): boolean
+	local size = Config.Sawmill.BuildingSize
+	local floor = shed:FindFirstChild("Floor")
+	if not (floor and floor:IsA("BasePart")) then
+		return false
+	end
+	local wallTop = 0
+	for _, part in shed:GetChildren() do
+		if part:IsA("BasePart") and part.Name == "Wall" then
+			wallTop = math.max(wallTop, part.Position.Y + part.Size.Y / 2 - origin.Position.Y)
+		end
+	end
+	return Assets.near(floor.Size.X, size.X) and Assets.near(floor.Size.Z, size.Z) and Assets.near(wallTop, size.Y)
+end
+
+-- The SawmillShed model over the shed's parts, if it's imported and fits. Its walls and
+-- roof are solid, so the camera can't swing through them.
+local function dressShed()
+	local shed = Assets.placed(model, MODELS.SawmillShed, origin)
+	if not shed then
+		return
+	end
+	if not shedFits(shed) then
+		warn("[SawmillBuilding] The sawmill models are made for a 20 x 11 x 14 sawmill (Config.Sawmill changed?): using parts")
+		shed:Destroy()
+		return
+	end
+	Blocky.dress(model, shed, {
+		Floor = { Color = Blocky.shade(wood, 0.1), Material = Enum.Material.WoodPlanks },
+		Wall = { Color = wood, Material = Enum.Material.Wood, Solid = true },
+		Gable = { Color = wood, Material = Enum.Material.Wood, Solid = true },
+		Roof = { Color = roofColor, Material = Enum.Material.WoodPlanks, Solid = true },
+		Post = { Color = darkWood, Material = Enum.Material.Wood },
+		Trim = { Color = darkWood, Material = Enum.Material.Wood },
+		Corner = { Color = Blocky.shade(wood, 0.25), Material = Enum.Material.Wood },
+		Chimney = { Color = STONE, Material = Enum.Material.Slate },
+		Lamp = { Color = LAMP_COLOR, Material = Enum.Material.Neon },
+		Iron = { Color = DARK_METAL, Material = Enum.Material.Metal },
+	})
+	dressed = true
+end
+
+-- The "SELL LOGS" sign above the open front.
+local function buildSign()
+	group("Sign")
+	local size = Config.Sawmill.BuildingSize
+	Blocky.sign("SELL LOGS", origin * at(0, size.Y + 1.9, size.Z / 2 + 1.4), 12, 3, nil, model)
+end
+
 -- The big round saw on its table, with a log waiting to be cut and the conveyor belt
 -- that brings logs in from the pad.
 local function buildSaw()
@@ -118,6 +212,7 @@ local function buildSaw()
 	local tableBack, tableFront = -d / 2 + 2, 2
 	local tableLength = tableFront - tableBack
 	local tableZ = (tableBack + tableFront) / 2
+	group("SawTable")
 	piece("SawTable", Vector3.new(3.4, TABLE_TOP - FLOOR_TOP, tableLength), at(0, (TABLE_TOP + FLOOR_TOP) / 2, tableZ), darkWood, Enum.Material.Wood)
 	piece("SawTableTop", Vector3.new(3.8, 0.3, tableLength + 0.2), at(0, TABLE_TOP + 0.15, tableZ), Blocky.shade(wood, 0.15), Enum.Material.WoodPlanks)
 
@@ -142,6 +237,14 @@ local function buildSaw()
 			saw
 		)
 		tooth.CanCollide = false
+	end
+	local sawSkin = dress(MODELS.SawBlade, center, {
+		Blade = { Color = Config.Style.Metal, Material = Enum.Material.Metal },
+		Teeth = { Color = Blocky.shade(Config.Style.Metal, 0.2), Material = Enum.Material.Metal },
+		Hub = { Color = DARK_METAL, Material = Enum.Material.Metal },
+	}, saw)
+	if sawSkin then
+		resize(sawSkin, "Blade", cfg.SawSize)
 	end
 	makeSpinner(saw, blade, cfg.SawSpin)
 
@@ -173,10 +276,21 @@ local function buildSaw()
 	end
 	local ridingLog = decor("Log", Vector3.new(1.4, 1.4, 2.6), at(0, beltTop + 0.7, beltZ), wood, Enum.Material.Wood)
 	Blocky.rings(ridingLog, Enum.NormalId.Back)
+	dress(MODELS.SawTable, CFrame.identity, {
+		Table = { Color = darkWood, Material = Enum.Material.Wood },
+		Top = { Color = Blocky.shade(wood, 0.15), Material = Enum.Material.WoodPlanks },
+		Belt = { Color = Color3.fromRGB(45, 45, 50), Material = Enum.Material.Fabric },
+		Rail = { Color = Config.Style.HazardYellow, Material = Enum.Material.Metal },
+		Metal = { Color = Config.Style.Metal, Material = Enum.Material.Metal },
+		Iron = { Color = DARK_METAL, Material = Enum.Material.Metal },
+		Log = { Color = wood, Material = Enum.Material.Wood },
+		Rings = { Color = Config.Style.InnerWood, Material = Enum.Material.Wood },
+	})
 end
 
 -- Inside, by the walls: two sawhorses with a plank, a stack of cut boards and a hand saw on the wall.
 local function buildWorkshop()
+	group("Workshop")
 	local size = Config.Sawmill.BuildingSize
 	local w, d = size.X, size.Z
 	local x = -w / 2 + 3.5
@@ -199,10 +313,16 @@ local function buildWorkshop()
 	local backZ = -d / 2 + WALL + 0.1
 	decor("HandSaw", Vector3.new(3, 1, 0.1), at(5, 6, backZ), Config.Style.Metal, Enum.Material.Metal)
 	decor("HandSawGrip", Vector3.new(1, 1.2, 0.2), at(6.9, 6.1, backZ), darkWood, Enum.Material.Wood)
+	dress(MODELS.Workshop, CFrame.identity, {
+		Wood = { Color = darkWood, Material = Enum.Material.Wood },
+		Board = { Color = Config.Style.InnerWood, Material = Enum.Material.WoodPlanks },
+		Metal = { Color = Config.Style.Metal, Material = Enum.Material.Metal },
+	})
 end
 
 -- A pile of logs against the left wall, outside.
 local function buildLogPile()
+	group("LogPile")
 	local w = Config.Sawmill.BuildingSize.X
 	local x = -w / 2 - 3
 	for row, count in { 3, 2, 1 } do
@@ -215,20 +335,21 @@ local function buildLogPile()
 	for _, side in { -1, 1 } do
 		decor("Stake", Vector3.new(0.4, 3.6, 0.4), at(x + side * 3, 1.8, 1), darkWood, Enum.Material.Wood)
 	end
+	dress(MODELS.LogPile, at(x, 0, 1), {
+		Log = { Color = wood, Material = Enum.Material.Wood },
+		Rings = { Color = Config.Style.InnerWood, Material = Enum.Material.Wood },
+		Wood = { Color = darkWood, Material = Enum.Material.Wood },
+	})
 end
 
--- A lamp post next to the pad.
+-- A lamp post next to the pad, its lantern hanging over towards the pad (the LampPost
+-- model from the path when it's imported).
 local function buildLampPost()
+	group("LampPost")
 	local cfg = Config.Sawmill
 	local x = -cfg.PadSize / 2 - 2.5
 	local z = cfg.BuildingSize.Z / 2 + cfg.PadSize / 2 + 1
-	piece("LampPost", Vector3.new(0.6, 8, 0.6), at(x, 4, z), darkWood, Enum.Material.Wood)
-	decor("LampArm", Vector3.new(1.8, 0.4, 0.4), at(x + 0.9, 7.8, z), darkWood, Enum.Material.Wood)
-	local lamp = decor("Lamp", Vector3.new(0.9, 1.1, 0.9), at(x + 1.6, 7, z), LAMP_COLOR, Enum.Material.Neon)
-	local light = Instance.new("PointLight")
-	light.Color = LAMP_COLOR
-	light.Range = 14
-	light.Parent = lamp
+	Props.lampPost(model, (origin * at(x, 0, z)).Position, Vector3.xAxis, LAMP_COLOR, false, Random.new(0))
 end
 
 -- How far to the right of the sawmill's middle (X) its water wheel and stream are.
@@ -245,6 +366,7 @@ local function buildWaterWheel(riverZ: number?, wear: number)
 	local wheelY = radius + 0.1 -- the bottom paddles dip into the water
 
 	-- The stream (or pond) under the wheel, with wooden edges.
+	group("Stream")
 	local nearZ = radius + 1.5
 	local farZ = -radius - 1.5
 	local edgeFarZ = farZ
@@ -315,6 +437,16 @@ local function buildWaterWheel(riverZ: number?, wear: number)
 			part.CanCollide = false
 		end
 	end
+	local wheelSkin = dress(MODELS.WaterWheel, at(wheelX, wheelY, 0), {
+		Rim = { Color = wood, Material = Enum.Material.Wood },
+		Paddle = { Color = Blocky.shade(wood, 0.15), Material = Enum.Material.WoodPlanks },
+		Spoke = { Color = darkWood, Material = Enum.Material.Wood },
+		Hub = { Color = darkWood, Material = Enum.Material.Wood },
+		Shaft = { Color = DARK_METAL, Material = Enum.Material.Metal },
+	}, wheel)
+	if wheelSkin then
+		resize(wheelSkin, "Spoke", radius * 2 - 0.4) -- its upright spoke
+	end
 	makeSpinner(wheel, hub, cfg.WheelSpin)
 
 	-- A post holding the outer end of the axle.
@@ -324,6 +456,7 @@ end
 -- The worn sawmills (zones 2 and 3) have a hole in the side wall with a board nailed over
 -- it, and loose planks leaning on the back.
 local function addWear()
+	group("Wear")
 	local size = Config.Sawmill.BuildingSize
 	local w, d = size.X, size.Z
 	decor("Hole", Vector3.new(0.1, 1.8, 2.4), at(-w / 2 - 0.05, 4, -4.5), Color3.fromRGB(25, 20, 18), Enum.Material.SmoothPlastic)
@@ -335,22 +468,26 @@ local function addWear()
 	end
 end
 
--- Builds the sawmill facing +Z with the middle of its floor at `ground`, into `parent`.
--- `wear` (0 to 1) makes it darker and more worn. Pass `riverZ` when it stands by the river.
 -- Where (X) the stream under the water wheel is, for a sawmill whose middle is at `centerX`.
 -- The camp's river banks leave a gap there (see CampManager).
 function SawmillBuilding.streamX(centerX: number): number
 	return centerX + wheelOffset()
 end
 
+-- Builds the sawmill facing +Z with the middle of its floor at `ground`, into `parent`.
+-- `wear` (0 to 1) makes it darker and more worn. Pass `riverZ` when it stands by the river.
 function SawmillBuilding.build(ground: Vector3, wear: number, riverZ: number?, parent: Model)
 	local style = Config.Style
 	origin = CFrame.new(ground)
+	sawmill = parent
 	model = parent
+	dressed = false
 	wood = Blocky.shade(style.Wood, -wear)
 	darkWood = Blocky.shade(style.DarkWood, -wear)
 	roofColor = Blocky.shade(style.Roof, -wear)
 	buildShed()
+	dressShed()
+	buildSign()
 	buildSaw()
 	buildWorkshop()
 	buildLogPile()

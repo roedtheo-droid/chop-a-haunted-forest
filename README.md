@@ -75,6 +75,8 @@ When the models change (a new step adds some), delete the old `AllModels` in `Ma
 - landmarks: `Tent`, `Dock`, `Rowboat`, `WindmillTower`, `WindmillSails`, `IronFence`, `Crypt`, `BossStone1`, `BossStone2`
 - camp: `Bridge`, `Well`, `QuestBoard`, `Campfire`, `Bench`, `Signpost`, `SignArrow`
 - logs and the boss: `Log`, `Stump`, `ElderTrunk`, `ElderCrown`, `ElderRoot`
+- the Tool Shed: `ToolShedShell`, `Stove`, `Armchair`, `Barrel`, `Crate`, `UpgradeBench`, `HangingLamp`
+- the sawmills: `SawmillShed`, `SawTable`, `SawBlade`, `WaterWheel`, `Workshop`, `LogPile`
 
 When you press Play, the Output window says which models the game found
 (`[Assets] Using the Blender model "Oak"`) and which ones are missing.
@@ -86,7 +88,7 @@ blender --background --python blender/build.py -- all bundle
 ```
 
 or with Blender's Python package instead (`pip install bpy`, needs Python 3.13): `python blender/build.py all bundle`.
-(`pilot`, `trees`, `ground`, `edges`, `outside`, `props`, `details`, `landmarks`, `camp` or `logs` instead of `all` builds just those models;
+(`pilot`, `trees`, `ground`, `edges`, `outside`, `props`, `details`, `landmarks`, `camp`, `logs` or `buildings` instead of `all` builds just those models;
 `bundle` makes `AllModels.fbx`.)
 
 Then import the changed files again (delete the old copy in `MapAssets` first).

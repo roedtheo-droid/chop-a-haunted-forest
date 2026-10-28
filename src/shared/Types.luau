@@ -80,6 +80,13 @@ export type PropModelConfig = {
 	Width: number, -- how wide that part is at the size of the parts version, in studs
 }
 
+-- How Blocky.dress colours one kind of part of a Blender model (by its name).
+export type SkinLook = {
+	Color: Color3,
+	Material: Enum.Material,
+	Solid: boolean?, -- stops players and the camera (the walls and roofs of a building)
+}
+
 -- One kind of little thing scattered over a zone's ground (see Config.Details).
 export type DetailConfig = {
 	Model: string, -- the Blender model (see blender/models/details.py)

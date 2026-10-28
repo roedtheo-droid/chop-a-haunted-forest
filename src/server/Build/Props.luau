@@ -5,7 +5,7 @@
 -- Rocks, bushes, logs, lamp posts, fences, pumpkins, gravestones, reeds, lily pads and
 -- mushroom clusters use the Blender models once they're imported into Studio (see
 -- Build/Assets and Config.Models.Props), at the same size and spot as the parts versions.
--- Used by CampProps, Landmarks, LandmarkManager, CampManager and Edges. Only for looks:
+-- Used by CampProps, Landmarks, LandmarkManager, CampManager, Edges and SawmillBuilding. Only for looks:
 -- nothing can be chopped. It's not a system, so it has no init()/start().
 
 local CollectionService = game:GetService("CollectionService")

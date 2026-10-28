@@ -9,7 +9,8 @@
 -- stay safe in the place, and only the server can see them (players get the built copies).
 --
 -- Used by Blocky (trees, the chop notch, and Blocky.block for logs, stumps and the boss),
--- Props, Details, Landmarks, CampProps, Ground, CampManager, Edges and SceneryManager.
+-- Props, Details, Landmarks, CampProps, Ground, CampManager, Edges, SceneryManager, ToolShed
+-- and SawmillBuilding.
 -- It's not a system, so it has no init()/start().
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -156,6 +157,37 @@ local ROLES = {
 	"Frame",
 	"Stump",
 	"Crown",
+	"Pivot",
+	"Foundation",
+	"Floor",
+	"Wall",
+	"Corner",
+	"Doorway",
+	"Gable",
+	"Glass",
+	"FlowerBox",
+	"Awning",
+	"Porch",
+	"Chimney",
+	"Stove",
+	"Fire",
+	"Pipe",
+	"Arm",
+	"Barrel",
+	"Hoop",
+	"Crate",
+	"Top",
+	"Sack",
+	"Boot",
+	"Grinder",
+	"Table",
+	"Belt",
+	"Blade",
+	"Teeth",
+	"Rim",
+	"Paddle",
+	"Spoke",
+	"Shaft",
 }
 
 -- Blender can't give two objects the same name, so they're numbered ("LeafBlock_2"), and
@@ -275,6 +307,25 @@ function Assets.prop(parent: Instance, prop: Types.PropModelConfig, scale: numbe
 	Assets.fit(model, part, prop.Width * scale, frame.Position, frame.Rotation)
 	model.Parent = parent
 	return model
+end
+
+-- The building models (blender/models/buildings.py) each have a tiny "Pivot" box, this big:
+-- its bottom middle is the spot the model is built around.
+local PIVOT_SIZE = 0.2
+
+-- A copy of building model `name` in `parent`, at the size it was made (or `scale` times
+-- that), with its pivot spot on `frame` (a spot, turned). nil if it isn't imported.
+function Assets.placed(parent: Instance, name: string, frame: CFrame, scale: number?): Model?
+	local model = Assets.prop(parent, { Model = name, Part = "Pivot", Width = PIVOT_SIZE }, scale or 1, frame)
+	if model then
+		Assets.remove(model, "Pivot")
+	end
+	return model
+end
+
+-- Is a model's size `actual` close enough (Config.Models.FitTolerance) to the `wanted` one?
+function Assets.near(actual: number, wanted: number): boolean
+	return math.abs(actual - wanted) <= math.abs(wanted) * Config.Models.FitTolerance
 end
 
 -- Colour every part of `model` called `name`. Solid ones stop players. Returns the last one.

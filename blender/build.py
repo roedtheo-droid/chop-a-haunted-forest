@@ -17,6 +17,8 @@ Kits (what to build):
     landmarks  Tent, Dock, Rowboat, WindmillTower, WindmillSails, IronFence, Crypt, BossStone1-2
     camp    Bridge, Well, QuestBoard, Campfire, Bench, Signpost, SignArrow
     logs    Log, Stump, ElderTrunk, ElderCrown, ElderRoot
+    buildings  the Tool Shed and the sawmills: ToolShedShell, Stove, Armchair, Barrel, Crate,
+            UpgradeBench, HangingLamp, SawmillShed, SawTable, SawBlade, WaterWheel, Workshop, LogPile
     all     every model
 You can also name single models: python blender/build.py Oak Rock2
 And "bundle" packs every model into one file, blender/export/AllModels.fbx, so Studio needs
@@ -34,7 +36,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import bpy  # noqa: E402
 from lib import output  # noqa: E402
 from mathutils import Vector  # noqa: E402
-from models import camp, details, edges, ground, landmarks, logs, outside, props, rocks, trees  # noqa: E402
+from models import buildings, camp, details, edges, ground, landmarks, logs, outside, props, rocks, trees  # noqa: E402
 
 MODELS = {
     "Oak": trees.oak,
@@ -105,6 +107,19 @@ MODELS = {
     "ElderTrunk": logs.elder_trunk,
     "ElderCrown": logs.elder_crown,
     "ElderRoot": logs.elder_root,
+    "ToolShedShell": buildings.tool_shed_shell,
+    "Stove": buildings.stove,
+    "Armchair": buildings.armchair,
+    "Barrel": buildings.barrel,
+    "Crate": buildings.crate,
+    "UpgradeBench": buildings.upgrade_bench,
+    "HangingLamp": buildings.hanging_lamp,
+    "SawmillShed": buildings.sawmill_shed,
+    "SawTable": buildings.saw_table,
+    "SawBlade": buildings.saw_blade,
+    "WaterWheel": buildings.water_wheel,
+    "Workshop": buildings.workshop,
+    "LogPile": buildings.log_pile,
 }
 
 KITS = {
@@ -149,6 +164,21 @@ KITS = {
     ],
     "camp": ["Bridge", "Well", "QuestBoard", "Campfire", "Bench", "Signpost", "SignArrow"],
     "logs": ["Log", "Stump", "ElderTrunk", "ElderCrown", "ElderRoot"],
+    "buildings": [
+        "ToolShedShell",
+        "Stove",
+        "Armchair",
+        "Barrel",
+        "Crate",
+        "UpgradeBench",
+        "HangingLamp",
+        "SawmillShed",
+        "SawTable",
+        "SawBlade",
+        "WaterWheel",
+        "Workshop",
+        "LogPile",
+    ],
 }
 KITS["all"] = list(MODELS)
 

@@ -9,6 +9,7 @@ Kits (what to build):
     pilot   the first test models: Oak, Pine, Birch, BarkBlock, Rock1, Rock2
     ground  ground patches, pebbles and river banks: Patch1-3, Pebbles, RiverBank
     edges   the forest's edges: Hedge1-3, RidgeRock1-2, StoneWall1-2, LogGatehouse, StoneGatehouse
+    outside the view outside the forest: Mountains1-2, Hill1-2
     all     every model
 You can also name single models: python blender/build.py Oak Rock2
 
@@ -24,7 +25,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import bpy  # noqa: E402
 from lib import output  # noqa: E402
 from mathutils import Vector  # noqa: E402
-from models import edges, ground, rocks, trees  # noqa: E402
+from models import edges, ground, outside, rocks, trees  # noqa: E402
 
 MODELS = {
     "Oak": trees.oak,
@@ -47,6 +48,10 @@ MODELS = {
     "StoneWall2": edges.stone_wall2,
     "LogGatehouse": edges.log_gatehouse,
     "StoneGatehouse": edges.stone_gatehouse,
+    "Mountains1": outside.mountains1,
+    "Mountains2": outside.mountains2,
+    "Hill1": outside.hill1,
+    "Hill2": outside.hill2,
 }
 
 KITS = {
@@ -63,6 +68,7 @@ KITS = {
         "LogGatehouse",
         "StoneGatehouse",
     ],
+    "outside": ["Mountains1", "Mountains2", "Hill1", "Hill2"],
 }
 KITS["all"] = list(MODELS)
 

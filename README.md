@@ -46,10 +46,11 @@ Tip: Rojo copies code *into* Studio. If you edit a script inside Studio, Rojo wi
 
 ## Blender models
 
-The trees, rocks, ground, the forest's edges and (later) everything else are 3D models made by Python scripts in the
-`blender/` folder. The finished files are already in `blender/export/` (`.fbx`), with a
-picture of each one in `blender/previews/`. Rojo can't copy models into Studio, so you import
-each one yourself, **once**. Until you do, the game simply builds the old blocky version.
+The trees, rocks, ground, the forest's edges, the view outside and (later) everything else
+are 3D models made by Python scripts in the `blender/` folder. The finished files are already
+in `blender/export/` (`.fbx`), with a picture of each one in `blender/previews/`. Rojo can't
+copy models into Studio, so you import each one yourself, **once**. Until you do, the game
+simply builds the old blocky version.
 
 **Import a model:**
 
@@ -60,6 +61,7 @@ each one yourself, **once**. Until you do, the game simply builds the old blocky
    - trees and rocks: `Oak`, `Pine`, `Birch`, `BarkBlock`, `Rock1`, `Rock2`
    - ground and river: `Patch1`, `Patch2`, `Patch3`, `Pebbles`, `RiverBank`
    - edges and gates: `Hedge1`, `Hedge2`, `Hedge3`, `RidgeRock1`, `RidgeRock2`, `StoneWall1`, `StoneWall2`, `LogGatehouse`, `StoneGatehouse`
+   - outside: `Mountains1`, `Mountains2`, `Hill1`, `Hill2`
 5. Save the place (File > Save). The models live in the place file, not in GitHub.
 
 When you press Play, the Output window says which models the game found
@@ -72,7 +74,7 @@ blender --background --python blender/build.py -- all
 ```
 
 or with Blender's Python package instead (`pip install bpy`, needs Python 3.13): `python blender/build.py all`.
-(`pilot`, `ground` or `edges` instead of `all` builds just those models.)
+(`pilot`, `ground`, `edges` or `outside` instead of `all` builds just those models.)
 
 Then import the changed files again (delete the old copy in `MapAssets` first).
 

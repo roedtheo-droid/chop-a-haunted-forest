@@ -68,8 +68,9 @@ def render_preview(name, size=640, height=None, samples=48, sky=(0.62, 0.78, 0.9
     middle = (low + high) / 2
     extent = max(high.x - low.x, high.y - low.y, high.z - low.z)
 
-    # Ground: a big flat grass disc just under the model.
-    bpy.ops.mesh.primitive_cylinder_add(vertices=48, radius=extent * 3, depth=0.1, location=(middle.x, middle.y, low.z - 0.05))
+    # Ground: a big flat grass disc just under the model (a hair lower, so a model's flat
+    # bottom, like a hill's sunk edge, doesn't flicker against it).
+    bpy.ops.mesh.primitive_cylinder_add(vertices=48, radius=extent * 3, depth=0.1, location=(middle.x, middle.y, low.z - 0.1))
     ground = bpy.context.active_object
     ground.data.materials.append(geometry.material((0.42, 0.68, 0.30)))
 
@@ -79,6 +80,7 @@ def render_preview(name, size=640, height=None, samples=48, sky=(0.62, 0.78, 0.9
     cam = bpy.data.objects.new("Camera", cam_data)
     scene.collection.objects.link(cam)
     distance = extent * 2.4
+    cam_data.clip_end = distance * 3  # big models (mountains) are further away than Blender's default
     direction = Vector((math.sin(math.radians(28)), -math.cos(math.radians(28)), 0.42)).normalized()
     cam.location = middle + direction * distance
     look = (middle - cam.location).normalized()

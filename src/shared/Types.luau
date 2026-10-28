@@ -113,6 +113,10 @@ export type ZoneLookConfig = {
 	Haze: number, -- 0 to 10, how washed out the distance looks
 	Saturation: number, -- -1 to 1: how strong the colours are (0 = normal, above 0 = more cartoony)
 	Tint: Color3, -- the whole screen is tinted a little towards this colour (white = no tint)
+	CloudCover: number, -- 0 = a clear sky, 1 = the whole sky is cloud
+	CloudDensity: number, -- 0 = thin, wispy clouds, 1 = thick ones
+	CloudColor: Color3,
+	SunRays: number, -- 0 to 1: soft beams of light when you look towards the sun
 	Ambience: SoundConfig, -- a quiet background sound that loops while you're in the zone
 }
 

@@ -141,6 +141,91 @@ def ridge(length, profile, sections=4, wobble=0.0, rise_jitter=0.0, rng=None):
     return bm
 
 
+def peak(radius, height, sides=5, jitter=0.15, lean=(0.0, 0.0), snow=0.0, rng=None):
+    """A chunky mountain peak standing on z = 0: a jagged base with `sides` corners, a jagged
+    ring part way up (turned half a step, so the slopes break into many facets) and a point at
+    the top, moved sideways by `lean` (a share of the radius).
+    Returns (rock, cap): with `snow` (the share of the height, from the top, that's white) the
+    cap is a snow layer over the faces above the snowline, a hair outside them; else None."""
+    rng = rng or random.Random(5)
+    bm = bmesh.new()
+    turn = rng.uniform(0, 2 * math.pi)
+    apex = Vector((lean[0] * radius, lean[1] * radius, height))
+    mid_z = height * rng.uniform(0.42, 0.55)
+    share = mid_z / height
+    base, mid = [], []
+    for i in range(sides):
+        a = turn + (i + rng.uniform(-0.2, 0.2)) / sides * 2 * math.pi
+        r = radius * (1 + rng.uniform(-jitter, jitter))
+        base.append(bm.verts.new((math.cos(a) * r, math.sin(a) * r, 0)))
+    for i in range(sides):
+        a = turn + (i + 0.5 + rng.uniform(-0.15, 0.15)) / sides * 2 * math.pi
+        r = radius * (1 - share) * rng.uniform(0.95, 1.2)
+        centre = apex * share
+        mid.append(bm.verts.new((centre.x + math.cos(a) * r, centre.y + math.sin(a) * r, mid_z + rng.uniform(-0.05, 0.05) * height)))
+    top = bm.verts.new(apex)
+    for i in range(sides):
+        j = (i + 1) % sides
+        bm.faces.new((base[i], base[j], mid[i]))
+        bm.faces.new((mid[i], base[j], mid[j]))
+        bm.faces.new((mid[i], mid[j], top))
+    bm.faces.new(list(reversed(base)))
+    bmesh.ops.recalc_face_normals(bm, faces=list(bm.faces))
+
+    if snow <= 0:
+        return bm, None
+    # The snowline crosses each edge from the ring to the top at a slightly different height,
+    # so it's jagged. Its points lie on the mountain's faces, so the cap is then grown a little
+    # around a point inside the peak, to sit just outside them.
+    line = max(height * (1 - snow), mid_z + 0.05 * height)
+    ring = []
+    for vert in mid:
+        z = line + rng.uniform(-0.06, 0.06) * height
+        u = min(max((z - vert.co.z) / (height - vert.co.z), 0.05), 0.9)
+        ring.append(vert.co.lerp(apex, u))
+    centre = (sum(ring, Vector()) / len(ring) + apex) / 2
+    cap_bm = bmesh.new()
+    cap_ring = [cap_bm.verts.new(centre + (point - centre) * 1.025) for point in ring]
+    cap_top = cap_bm.verts.new(centre + (apex - centre) * 1.025)
+    for i in range(sides):
+        cap_bm.faces.new((cap_ring[i], cap_ring[(i + 1) % sides], cap_top))
+    cap_bm.faces.new(list(reversed(cap_ring)))
+    bmesh.ops.recalc_face_normals(cap_bm, faces=list(cap_bm.faces))
+    return bm, cap_bm
+
+
+def terrain(width, depth, height_at, columns=12, rows=7, wobble=0.25, sink=0.6, rng=None):
+    """A bumpy sheet of ground `width` by `depth`, centred on the origin: its height at (x, y)
+    is height_at(x, y), minus `sink`, so where that is 0 it's under the ground and the hill's
+    edge is wherever it comes up. The corners are nudged a little (`wobble`, a share of a
+    cell), and the cells are split into triangles the two ways in turn, so it looks faceted."""
+    rng = rng or random.Random(11)
+    bm = bmesh.new()
+    grid = []
+    for r in range(rows + 1):
+        line = []
+        for c in range(columns + 1):
+            x = -width / 2 + width * c / columns
+            y = -depth / 2 + depth * r / rows
+            if 0 < c < columns and 0 < r < rows:
+                x += rng.uniform(-wobble, wobble) * width / columns
+                y += rng.uniform(-wobble, wobble) * depth / rows
+            line.append(bm.verts.new((x, y, height_at(x, y) - sink)))
+        grid.append(line)
+    for r in range(rows):
+        for c in range(columns):
+            a, b, cc, d = grid[r][c], grid[r][c + 1], grid[r + 1][c + 1], grid[r + 1][c]
+            # Corners in counter-clockwise order seen from above, so every face points up.
+            if (r + c) % 2 == 0:
+                bm.faces.new((a, b, cc))
+                bm.faces.new((a, cc, d))
+            else:
+                bm.faces.new((a, b, d))
+                bm.faces.new((b, cc, d))
+    bm.normal_update()
+    return bm
+
+
 def place(location=(0, 0, 0), turn_z=0.0, tilt_x=0.0, tilt_y=0.0, orbit_z=0.0):
     """A matrix that tilts (degrees around X and Y), turns (degrees around Z), moves to
     `location`, and then swings around the middle of the model (degrees around Z), like the

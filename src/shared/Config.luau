@@ -214,6 +214,10 @@ local zones: { Types.ZoneConfig } = {
 			Haze = 0,
 			Saturation = 0.2,
 			Tint = Color3.fromRGB(255, 250, 240),
+			CloudCover = 0.55, -- fluffy white clouds and a little sunshine through the trees
+			CloudDensity = 0.3,
+			CloudColor = Color3.fromRGB(255, 255, 255),
+			SunRays = 0.1,
 			Ambience = { Id = "rbxassetid://9112832288", Volume = 0.25 }, -- light birds, mountain air
 		},
 	},
@@ -239,6 +243,10 @@ local zones: { Types.ZoneConfig } = {
 			Haze = 3,
 			Saturation = -0.1,
 			Tint = Color3.fromRGB(235, 242, 242),
+			CloudCover = 0.85, -- a heavy grey sky, no sun
+			CloudDensity = 0.6,
+			CloudColor = Color3.fromRGB(185, 190, 192),
+			SunRays = 0,
 			Ambience = { Id = "rbxassetid://9120505513", Volume = 0.35 }, -- thin trickles and drips, echoing
 		},
 	},
@@ -264,6 +272,10 @@ local zones: { Types.ZoneConfig } = {
 			Haze = 1.5,
 			Saturation = 0,
 			Tint = Color3.fromRGB(240, 220, 255),
+			CloudCover = 0.7, -- purple dusk clouds, a last bit of low sun
+			CloudDensity = 0.45,
+			CloudColor = Color3.fromRGB(125, 105, 140),
+			SunRays = 0.04,
 			Ambience = { Id = "rbxassetid://9114625552", Volume = 0.3 }, -- spooky, eerie wind
 		},
 	},
@@ -330,6 +342,8 @@ local Config = {
 		StoneWalls = { "StoneWall1", "StoneWall2" }, -- the crumbling wall at a gate with Border = "StoneWall"
 		-- By the Gatehouse in Gates.Looks.
 		Gatehouses = { Log = "LogGatehouse", Stone = "StoneGatehouse" } :: { [string]: string },
+		Mountains = { "Mountains1", "Mountains2" }, -- mountain ranges far away (see Scenery)
+		Hills = { "Hill1", "Hill2" }, -- rolling hills with little trees, behind the border trees
 	},
 
 	-- What you see at the forest's edges, in front of the invisible walls (see Server/Build/Edges).
@@ -485,6 +499,7 @@ local Config = {
 		BloomIntensity = 0.4, -- a soft glow around bright things
 		BloomSize = 24,
 		BloomThreshold = 0.95,
+		SunRaySpread = 0.3, -- how wide the sun's rays fan out (0 to 1); how strong they are is in each zone's Look
 	},
 
 	-- The intro when you join (see Client/Controllers/IntroController): the camera flies over
@@ -501,8 +516,8 @@ local Config = {
 		-- to looking at LookTo, over Time seconds.
 		Shots = {
 			{ -- the camp: spawn, the Tool Shed and the sawmill
-				From = Vector3.new(-70, 40, 545),
-				To = Vector3.new(60, 32, 535),
+				From = Vector3.new(-70, 40, 510),
+				To = Vector3.new(60, 32, 502),
 				LookFrom = Vector3.new(-10, 4, 455),
 				LookTo = Vector3.new(10, 4, 440),
 				Time = 4,
@@ -531,7 +546,7 @@ local Config = {
 		},
 		-- Behind the title, the camera circles slowly around this spot over the camp.
 		OrbitCenter = Vector3.new(0, 4, 455),
-		OrbitRadius = 80,
+		OrbitRadius = 55, -- small enough that the camera stays inside the camp, clear of the big trees behind it
 		OrbitHeight = 42,
 		OrbitSpeed = 0.06, -- radians per second (lower = slower)
 		SwoopTime = 1.6, -- seconds the camera takes to swoop down behind your character after PLAY
@@ -573,20 +588,36 @@ local Config = {
 	-- Scenery around the forest, only for looks: you can't chop it (see Server/Systems/SceneryManager).
 	Scenery = {
 		FenceColor = Color3.fromRGB(120, 78, 45), -- wooden fences (see Build/Props)
-		OutsideGround = Color3.fromRGB(85, 160, 55), -- the baseplate around the forest
+		OutsideGround = Color3.fromRGB(85, 160, 55), -- the grass around the forest (the baseplate and the big tiles below)
 		BorderTreeSpacing = 14, -- studs between the big trees just outside the walls
 		BorderTreeDistance = 10, -- studs from the wall to the first row of them
 		BorderTreeRows = 2, -- rows of them, one behind the other
 		BorderTreeRowGap = 16, -- studs between the rows
 		BorderTreeRowSpacing = 1.4, -- each row further out has its trees this much further apart
 		BorderTreeScale = { 1.4, 2.1 }, -- smallest and biggest: bigger than forest trees, so they show above the hedge
-		MountainCount = 34,
-		MountainDistance = 320, -- studs from the forest's edge to the nearest mountains
-		MountainMinSize = 100,
-		MountainMaxSize = 180,
+		-- Rolling hills with little trees, behind the border trees
+		HillCount = 24, -- all the way around the forest
+		HillDistance = { 60, 100 }, -- studs from the forest's edge to the middle of each hill
+		HillWidth = { 100, 160 },
+		HillSink = 1, -- hills sit this far down, so their flat edge is under the grass
+		HillColor = Color3.fromRGB(85, 150, 55),
+		FarTreeColor = Color3.fromRGB(48, 100, 50), -- the little trees on the hills
+		-- Mountain ranges in two rings: a near one, and a far one that's paler and bluer, so it
+		-- looks further away.
+		MountainCount = 18,
+		MountainDistance = 320, -- studs from the forest's edge to the near ring
+		MountainWidth = { 220, 330 }, -- how wide each range is
 		MountainColor = Color3.fromRGB(110, 120, 138),
 		SnowColor = Color3.fromRGB(245, 248, 252),
-		SnowCap = 0.3, -- the top 30% of each mountain is snow
+		FarMountainCount = 14,
+		FarMountainDistance = 560,
+		FarMountainWidth = { 320, 480 },
+		FarMountainColor = Color3.fromRGB(150, 165, 188),
+		FarSnowColor = Color3.fromRGB(226, 234, 245),
+		SnowCap = 0.3, -- without the models: the top 30% of each (block) mountain is snow
+		-- Big flat ground tiles under everything (3 x 3 of them, each 2048 studs, as big as a part
+		-- can be), so you never see the edge of the baseplate behind the far mountains.
+		OutsideTiles = 3,
 	},
 
 	Sounds = sounds,

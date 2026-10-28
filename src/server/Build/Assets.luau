@@ -8,7 +8,7 @@
 -- stay safe in the place, and only the server can see them (players get the built copies).
 --
 -- Used by Blocky (trees and the chop notch), Props (rocks and pebbles), Ground, CampManager
--- (the river banks) and Edges.
+-- (the river banks), Edges and SceneryManager (hills and mountains).
 -- It's not a system, so it has no init()/start().
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -61,6 +61,10 @@ local ROLES = {
 	"Stone",
 	"Hedge",
 	"Log",
+	"Mountain",
+	"Snow",
+	"Hill",
+	"Grove",
 }
 
 -- Blender can't give two objects the same name, so they're numbered ("LeafBlock_2"), and

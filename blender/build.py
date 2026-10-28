@@ -8,6 +8,7 @@ or with Blender itself:
 Kits (what to build):
     pilot   the first test models: Oak, Pine, Birch, BarkBlock, Rock1, Rock2
     ground  ground patches, pebbles and river banks: Patch1-3, Pebbles, RiverBank
+    trees   more tree shapes: Oak2, Pine2, Birch2, Willow1-2, DeadOak1-2
     edges   the forest's edges: Hedge1-3, RidgeRock1-2, StoneWall1-2, LogGatehouse, StoneGatehouse
     outside the view outside the forest: Mountains1-2, Hill1-2
     all     every model
@@ -34,6 +35,13 @@ MODELS = {
     "Pine": trees.pine,
     "Birch": trees.birch,
     "BarkBlock": trees.bark_block,
+    "Oak2": trees.oak2,
+    "Pine2": trees.pine2,
+    "Birch2": trees.birch2,
+    "Willow1": trees.willow1,
+    "Willow2": trees.willow2,
+    "DeadOak1": trees.dead_oak1,
+    "DeadOak2": trees.dead_oak2,
     "Rock1": rocks.rock1,
     "Rock2": rocks.rock2,
     "Patch1": ground.patch1,
@@ -58,6 +66,7 @@ MODELS = {
 
 KITS = {
     "pilot": ["Oak", "Pine", "Birch", "BarkBlock", "Rock1", "Rock2"],
+    "trees": ["Oak2", "Pine2", "Birch2", "Willow1", "Willow2", "DeadOak1", "DeadOak2"],
     "ground": ["Patch1", "Patch2", "Patch3", "Pebbles", "RiverBank"],
     "edges": [
         "Hedge1",

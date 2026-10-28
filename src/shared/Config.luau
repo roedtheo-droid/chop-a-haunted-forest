@@ -140,10 +140,11 @@ local treeTypes: { [string]: Types.TreeTypeConfig } = {
 		LeafBlocks = 4,
 		BirchChance = 0.3,
 		BirchColor = Color3.fromRGB(235, 232, 222),
-		-- Blender models (see Models below): 60% oaks and 40% pines, and the birches use the
-		-- Birch model. Until they're imported into Studio, these trees are built from parts.
-		Shapes = { Oak = 0.6, Pine = 0.4 },
-		BirchShape = "Birch",
+		-- Blender models (see Models below): 60% oaks and 40% pines, two shapes of each, and
+		-- the birches use the two birch shapes. Until they're imported into Studio, these
+		-- trees are built from parts.
+		Shapes = { Oak = 0.3, Oak2 = 0.3, Pine = 0.2, Pine2 = 0.2 },
+		BirchShapes = { Birch = 0.5, Birch2 = 0.5 },
 	},
 	-- Fog Hollow: the same trees, but greyer and gloomier.
 	Willow = {
@@ -160,6 +161,9 @@ local treeTypes: { [string]: Types.TreeTypeConfig } = {
 		LeafBlocks = 4,
 		BirchChance = 0.2,
 		BirchColor = Color3.fromRGB(205, 208, 200),
+		-- Blender models: willows with long hanging strands, and pale birches.
+		Shapes = { Willow1 = 0.5, Willow2 = 0.5 },
+		BirchShapes = { Birch = 0.5, Birch2 = 0.5 },
 	},
 	-- Graveyard Grove: dead, crooked trees with a few dark leaves and bare branches.
 	DeadOak = {
@@ -174,19 +178,26 @@ local treeTypes: { [string]: Types.TreeTypeConfig } = {
 		},
 		LeafBlocks = 2,
 		Branches = 2,
+		-- Blender models: bare, forked branches with a few dark leaves.
+		Shapes = { DeadOak1 = 0.5, DeadOak2 = 0.5 },
 	},
 }
 
 -- Tree shapes made in Blender (see Models below). TrunkWidth is the trunk's width at Scale 1:
 -- keep it the same as in blender/models/trees.py, or the trees come out the wrong size.
+-- Pines stay green (no autumn colours), a little darker than the oaks.
+local pineGreens = { Color3.fromRGB(47, 107, 42), Color3.fromRGB(58, 127, 51), Color3.fromRGB(70, 138, 56) }
 local treeShapes: { [string]: Types.TreeShapeConfig } = {
 	Oak = { TrunkWidth = 3 },
-	Pine = {
-		TrunkWidth = 2.2,
-		-- Pines stay green (no autumn colours), a little darker than the oaks.
-		LeafColors = { Color3.fromRGB(47, 107, 42), Color3.fromRGB(58, 127, 51), Color3.fromRGB(70, 138, 56) },
-	},
+	Oak2 = { TrunkWidth = 3 },
+	Pine = { TrunkWidth = 2.2, LeafColors = pineGreens },
+	Pine2 = { TrunkWidth = 2.2, LeafColors = pineGreens },
 	Birch = { TrunkWidth = 2.4 },
+	Birch2 = { TrunkWidth = 2.4 },
+	Willow1 = { TrunkWidth = 3.2 },
+	Willow2 = { TrunkWidth = 3.2 },
+	DeadOak1 = { TrunkWidth = 3 },
+	DeadOak2 = { TrunkWidth = 3 },
 }
 
 -- The zones, in order from spawn. Clearing every tree in a zone opens the gate to the next one.
@@ -317,6 +328,13 @@ local Config = {
 		StartZ = 520, -- the back edge of the camp, behind spawn. Zone 1 starts Camp.Length further on.
 		MinSpacing = 10, -- minimum distance between two trees
 		EdgeMargin = 8, -- no trees closer than this to a wall
+		-- Groves and clearings: trees grow thicker in some places and thinner in others (the
+		-- same number of trees, just not spread evenly), and each zone has a few open clearings.
+		GroveSize = 70, -- studs across a grove (and the thin patches between them)
+		GroveContrast = 1.6, -- how much thicker the groves are than the thin patches (0 = even)
+		GroveMinChance = 0.12, -- even the thinnest patch keeps some trees
+		Clearings = 3, -- open clearings in each zone
+		ClearingRadius = { 12, 20 },
 		-- The walls are invisible: you see hedges, rocks and gatehouses in front of them instead
 		-- (see Edges below). 30 is too high to jump over, even from the top of a ridge rock.
 		WallHeight = 30,
@@ -426,7 +444,7 @@ local Config = {
 	-- The path bends smoothly through the points (see Zones.getPathPoints).
 	Path = {
 		Width = 8,
-		TreeClearance = 7, -- no trees closer than this to the middle of the path
+		TreeClearance = 9, -- no trees closer than this to the middle of the path
 		Color = Color3.fromRGB(210, 173, 115),
 		Smoothness = 6, -- pieces between two points: more = rounder bends (and more parts)
 		EdgeWidth = 1.2, -- a darker strip of dirt along each side
@@ -468,9 +486,12 @@ local Config = {
 	-- Little things along the path and around the zones (see Server/Systems/LandmarkManager).
 	-- Only for looks: you can't chop them.
 	Props = {
-		PathSpacing = 14, -- studs between props along the path
-		PathOffset = 5.4, -- how far from the middle of the path (the path is 8 wide, trees stay 7 away)
-		LampEvery = 3, -- in zones 2 and 3, every 3rd prop along the path is a lamp post
+		-- Props along the path come in little groups, with empty stretches in between.
+		GroupSpacing = { 35, 50 }, -- studs between groups (picked at random each time)
+		GroupSize = { 2, 4 }, -- props in a group
+		GroupSpread = 4, -- how far (studs) a group's props spread along the path
+		PathOffset = 5.4, -- how far from the middle of the path (the path is 8 wide, trees stay 9 away)
+		LampSpacing = 42, -- in zones 2 and 3, a lamp post every this many studs, on alternate sides
 		GateGap = 14, -- no props this close to a gate or the bridge
 		FogBanks = 9, -- drifting fog in zone 2
 		FogDrift = 14, -- studs each fog bank drifts to each side
@@ -769,6 +790,7 @@ local Config = {
 	Tree = {
 		TrunkHeight = 14,
 		TrunkWidth = 3,
+		SizeSpread = 0.15, -- each tree is up to 15% bigger or smaller, so they don't look copied
 		LeavesSize = 10, -- the biggest leaf block (the others are a bit smaller)
 		LeafMaterial = Enum.Material.SmoothPlastic,
 		RootCount = 4, -- little blocks that flare out at the bottom of the trunk

@@ -8,6 +8,8 @@
 --   TrunkWidth    its full trunk width (TreeManager shrinks the trunk as HP goes down)
 --   Cursed        true for the rare purple trees with extra valuable logs
 -- Some trees also get a small knot on the trunk (see addKnot).
+-- The trees aren't spread evenly: they grow thicker in groves, thinner between them, and not
+-- at all in a few open clearings (see Config.Forest). Each zone still gets all its trees.
 
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -21,12 +23,20 @@ local ZoneManager = require(script.Parent.ZoneManager)
 local Blocky = require(script.Parent.Parent.Build.Blocky)
 
 local MAX_ATTEMPTS_PER_TREE = 50
+local EVEN_ATTEMPTS = 10 -- the last tries for each tree ignore the groves, so it always finds a spot
 local KNOT_COLOR = Color3.fromRGB(60, 40, 28)
+
+-- An open patch in a zone where no trees grow.
+type Clearing = {
+	Center: Vector2,
+	Radius: number,
+}
 
 local ForestSpawner = {}
 
 local treesFolder: Folder
 local random = Random.new()
+local clearings: { Clearing } = {} -- every zone's clearings
 
 -- Find the ground height at (x, z) by casting a ray straight down.
 local function groundHeightAt(x: number, z: number): number
@@ -101,25 +111,66 @@ function ForestSpawner.addKnot(tree: Model): BasePart?
 	return knot
 end
 
+-- A few open clearings in the zone, each fully inside it.
+local function addClearings(bounds: Zones.Bounds)
+	local cfg = Config.Forest
+	for _ = 1, cfg.Clearings do
+		local radius = random:NextNumber(cfg.ClearingRadius[1], cfg.ClearingRadius[2])
+		local margin = cfg.EdgeMargin + radius
+		table.insert(clearings, {
+			Center = Vector2.new(
+				random:NextNumber(bounds.MinX + margin, bounds.MaxX - margin),
+				random:NextNumber(bounds.MinZ + margin, bounds.MaxZ - margin)
+			),
+			Radius = radius,
+		})
+	end
+end
+
+-- Is (x, z) in one of the open clearings? MimicManager uses it too, so a mimic doesn't dig
+-- itself in where no tree would grow.
+function ForestSpawner.isInClearing(x: number, z: number): boolean
+	for _, clearing in clearings do
+		if (Vector2.new(x, z) - clearing.Center).Magnitude < clearing.Radius then
+			return true
+		end
+	end
+	return false
+end
+
+-- How likely a tree is to grow at `spot`: high in a grove, low in the thin patches between.
+-- math.noise gives smooth hills and valleys of numbers across the map, so the groves are
+-- blobs, not single trees. `offset` makes each zone's (and each server's) groves different.
+local function groveChance(spot: Vector2, offset: number): number
+	local cfg = Config.Forest
+	local noise = math.noise(spot.X / cfg.GroveSize + offset, spot.Y / cfg.GroveSize, offset)
+	return math.clamp(0.5 + noise * cfg.GroveContrast, cfg.GroveMinChance, 1)
+end
+
 -- Pick random spots inside the zone: away from the walls, the zone's sawmill, the path, the
--- boss's clearing, the landmarks and each other.
+-- boss's clearing, the landmarks, the open clearings and each other, and more of them in the groves.
 local function pickPositions(index: number): { Vector2 }
 	local zone = Config.Zones[index]
 	local bounds = Zones.getBounds(index)
 	local margin = Config.Forest.EdgeMargin
 	local sawmill = Vector2.new(zone.Sawmill.X, zone.Sawmill.Z)
 	local positions: { Vector2 } = {}
+	local offset = random:NextNumber(0, 1000)
+	addClearings(bounds)
 
 	for _ = 1, zone.TreeCount do
-		for _ = 1, MAX_ATTEMPTS_PER_TREE do
+		for attempt = 1, MAX_ATTEMPTS_PER_TREE do
 			local candidate = Vector2.new(
 				random:NextNumber(bounds.MinX + margin, bounds.MaxX - margin),
 				random:NextNumber(bounds.MinZ + margin, bounds.MaxZ - margin)
 			)
-			local ok = (candidate - sawmill).Magnitude >= zone.ClearRadius
+			local chance = if attempt > MAX_ATTEMPTS_PER_TREE - EVEN_ATTEMPTS then 1 else groveChance(candidate, offset)
+			local ok = random:NextNumber() < chance
+				and (candidate - sawmill).Magnitude >= zone.ClearRadius
 				and Zones.distanceToPath(candidate.X, candidate.Y) >= Config.Path.TreeClearance
 				and not Boss.isInClearing(Vector3.new(candidate.X, 0, candidate.Y))
 				and not Zones.isNearLandmark(candidate.X, candidate.Y)
+				and not ForestSpawner.isInClearing(candidate.X, candidate.Y)
 			if ok then
 				for _, other in positions do
 					if (other - candidate).Magnitude < Config.Forest.MinSpacing then

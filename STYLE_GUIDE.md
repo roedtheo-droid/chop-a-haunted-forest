@@ -78,6 +78,10 @@ Samme kantede stil hele vejen, bare mørkere.
   `Mountain`, `Snow`, `Hill`, `Grove`.
   Nummerér med `_1`, `_2`...
 - **Stammen er altid en firkantet, lige blok** med bark-riller, så hakket kan skæres i den.
+- **Træerne:** to former af hver slags (eg, gran, birk) i Pale Pines, piletræer med lange hængende
+  grene i Fog Hollow og døde, forgrenede ege med få mørke blade i Graveyard Grove. Hvert træ er op
+  til 15% større eller mindre. Træerne står tættere i lunde og tyndere imellem, med et par åbne
+  lysninger, og ting langs stien står i små grupper med tomme stykker imellem.
 - **Jorden:** bløde pletter (`Patch`) i lysere/mørkere græs, mos, mudder og visne blade, og ved
   zone-grænserne fletter de to zoners farver ind i hinanden. Stien har en mørkere jordkant og småsten.
   Floden har sandbanker med sten, en mørkere bund, siv og åkander.

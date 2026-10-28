@@ -292,7 +292,8 @@ end
 -- When the tree type has Blender models (Shapes) and they're imported, it's one of those instead.
 function Blocky.tree(base: Vector3, treeType: Types.TreeTypeConfig, random: Random, extraScale: number?): Model
 	local cfg = Config.Tree
-	local scale = treeType.Scale * (extraScale or 1)
+	-- Every tree is a little bigger or smaller than the next, so they don't look copied.
+	local scale = treeType.Scale * (extraScale or 1) * (1 + random:NextNumber(-cfg.SizeSpread, cfg.SizeSpread))
 	local birch = random:NextNumber() < (treeType.BirchChance or 0)
 	-- Birches are a bit taller and thinner.
 	local height = cfg.TrunkHeight * scale * (if birch then 1.15 else 1)
@@ -300,7 +301,7 @@ function Blocky.tree(base: Vector3, treeType: Types.TreeTypeConfig, random: Rand
 	local barkColor = if birch and treeType.BirchColor then treeType.BirchColor else pick(treeType.TrunkColors, random)
 	local origin = CFrame.new(base)
 
-	local shapeName = if birch then treeType.BirchShape else pickShape(treeType.Shapes, random)
+	local shapeName = pickShape(if birch then treeType.BirchShapes else treeType.Shapes, random)
 	if shapeName then
 		local model = meshTree(shapeName, base, treeType, random, scale, barkColor, birch)
 		if model then

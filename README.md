@@ -66,6 +66,7 @@ When the models change (a new step adds some), delete the old `AllModels` in `Ma
 `MapAssets`. Its name must match the file name. A model on its own wins over the same model in
 `AllModels`. The models so far:
 - trees and rocks: `Oak`, `Pine`, `Birch`, `BarkBlock`, `Rock1`, `Rock2`
+- more trees: `Oak2`, `Pine2`, `Birch2`, `Willow1`, `Willow2`, `DeadOak1`, `DeadOak2`
 - ground and river: `Patch1`, `Patch2`, `Patch3`, `Pebbles`, `RiverBank`
 - edges and gates: `Hedge1`, `Hedge2`, `Hedge3`, `RidgeRock1`, `RidgeRock2`, `StoneWall1`, `StoneWall2`, `LogGatehouse`, `StoneGatehouse`
 - outside: `Mountains1`, `Mountains2`, `Hill1`, `Hill2`
@@ -80,7 +81,7 @@ blender --background --python blender/build.py -- all bundle
 ```
 
 or with Blender's Python package instead (`pip install bpy`, needs Python 3.13): `python blender/build.py all bundle`.
-(`pilot`, `ground`, `edges` or `outside` instead of `all` builds just those models; `bundle` makes `AllModels.fbx`.)
+(`pilot`, `trees`, `ground`, `edges` or `outside` instead of `all` builds just those models; `bundle` makes `AllModels.fbx`.)
 
 Then import the changed files again (delete the old copy in `MapAssets` first).
 

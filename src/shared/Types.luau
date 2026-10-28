@@ -64,7 +64,7 @@ export type TreeTypeConfig = {
 	-- Blender models (Config.Models.Trees) for this tree type, and how often each is picked
 	-- (like { Oak = 0.6, Pine = 0.4 }). Not set: the tree is built from parts.
 	Shapes: { [string]: number }?,
-	BirchShape: string?, -- the Blender model this type's birches use
+	BirchShapes: { [string]: number }?, -- the same, for this type's birches
 }
 
 -- One tree shape made in Blender (see Config.Models.Trees and blender/models/trees.py).

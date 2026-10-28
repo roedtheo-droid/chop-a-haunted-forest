@@ -169,7 +169,10 @@ game builds the old parts version.
 5a. Tree variety (two shapes of each, willows, dead oaks), groves and clearings, path
     props in small groups. (done, tested)
 5b. Ground details (grass tufts, flowers, ferns, mushrooms, dead leaves) and prop models.
-6. Buildings, landmarks, logs and the boss as models.
+    (done, tested)
+6a. Landmarks and camp props as models.
+6b. Logs, stumps and the Elder Hollow as models.
+6c. The Tool Shed and the sawmills as models.
 
 ## After the MVP (ideas, not scheduled)
 - Lobby with party pads: step on a pad, pick the map and party size (1–4),

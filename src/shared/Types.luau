@@ -73,6 +73,24 @@ export type TreeShapeConfig = {
 	LeafColors: { Color3 }?, -- its own leaf colours (not set: the tree type's LeafColors)
 }
 
+-- A prop made in Blender (see Config.Models.Props and blender/models/props.py).
+export type PropModelConfig = {
+	Model: string, -- its name in ServerStorage > MapAssets
+	Part: string, -- the part the game sizes it by
+	Width: number, -- how wide that part is at the size of the parts version, in studs
+}
+
+-- One kind of little thing scattered over a zone's ground (see Config.Details).
+export type DetailConfig = {
+	Model: string, -- the Blender model (see blender/models/details.py)
+	Part: string, -- the part it's sized by (its bottom stands on the ground)
+	Count: number, -- how many in the zone
+	Size: { number }, -- smallest and biggest width of that part, in studs
+	Colors: { Color3 }, -- each one picks a colour for its parts
+	StemColor: Color3?, -- for parts named Stem and Dot (flowers, mushrooms)
+	Glow: boolean?, -- glowing (Neon), and no white dots
+}
+
 -- How one gate between two zones looks (see Config.Gates.Looks and Server/Build/Edges).
 export type GateLookConfig = {
 	Door: "Wood" | "Iron", -- wooden planks, or iron bars you can see through

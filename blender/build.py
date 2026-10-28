@@ -11,6 +11,9 @@ Kits (what to build):
     trees   more tree shapes: Oak2, Pine2, Birch2, Willow1-2, DeadOak1-2
     edges   the forest's edges: Hedge1-3, RidgeRock1-2, StoneWall1-2, LogGatehouse, StoneGatehouse
     outside the view outside the forest: Mountains1-2, Hill1-2
+    props   props along the path: BerryBush, FallenLog, LampPost, FenceSection, Pumpkin,
+            Gravestone1-3, Reeds, LilyPad
+    details little things on the ground: GrassTuft, Flowers, Fern, Mushrooms, DeadLeaves, Bones
     all     every model
 You can also name single models: python blender/build.py Oak Rock2
 And "bundle" packs every model into one file, blender/export/AllModels.fbx, so Studio needs
@@ -28,7 +31,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import bpy  # noqa: E402
 from lib import output  # noqa: E402
 from mathutils import Vector  # noqa: E402
-from models import edges, ground, outside, rocks, trees  # noqa: E402
+from models import details, edges, ground, outside, props, rocks, trees  # noqa: E402
 
 MODELS = {
     "Oak": trees.oak,
@@ -62,6 +65,22 @@ MODELS = {
     "Mountains2": outside.mountains2,
     "Hill1": outside.hill1,
     "Hill2": outside.hill2,
+    "BerryBush": props.berry_bush,
+    "FallenLog": props.fallen_log,
+    "LampPost": props.lamp_post,
+    "FenceSection": props.fence_section,
+    "Pumpkin": props.pumpkin,
+    "Gravestone1": props.gravestone1,
+    "Gravestone2": props.gravestone2,
+    "Gravestone3": props.gravestone3,
+    "Reeds": props.reeds,
+    "LilyPad": props.lily_pad,
+    "GrassTuft": details.grass_tuft,
+    "Flowers": details.flowers,
+    "Fern": details.fern,
+    "Mushrooms": details.mushrooms,
+    "DeadLeaves": details.dead_leaves,
+    "Bones": details.bones,
 }
 
 KITS = {
@@ -80,6 +99,19 @@ KITS = {
         "StoneGatehouse",
     ],
     "outside": ["Mountains1", "Mountains2", "Hill1", "Hill2"],
+    "props": [
+        "BerryBush",
+        "FallenLog",
+        "LampPost",
+        "FenceSection",
+        "Pumpkin",
+        "Gravestone1",
+        "Gravestone2",
+        "Gravestone3",
+        "Reeds",
+        "LilyPad",
+    ],
+    "details": ["GrassTuft", "Flowers", "Fern", "Mushrooms", "DeadLeaves", "Bones"],
 }
 KITS["all"] = list(MODELS)
 

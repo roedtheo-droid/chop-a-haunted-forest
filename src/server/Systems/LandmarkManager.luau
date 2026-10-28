@@ -7,6 +7,7 @@
 --     posts at even steps along the path (crooked, flickering ones in zone 3)
 --   * fog banks drifting slowly through zone 2 (every player's computer moves them,
 --     see Client/AmbientController)
+--   * little things on the ground all over each zone (see Build/Details)
 -- None of it can be chopped, and no trees grow on the landmarks (see Zones.isNearLandmark).
 
 local CollectionService = game:GetService("CollectionService")
@@ -17,6 +18,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Tags = require(ReplicatedStorage.Shared.Tags)
 local Zones = require(ReplicatedStorage.Shared.Zones)
 local Blocky = require(script.Parent.Parent.Build.Blocky)
+local Details = require(script.Parent.Parent.Build.Details)
 local Landmarks = require(script.Parent.Parent.Build.Landmarks)
 local Props = require(script.Parent.Parent.Build.Props)
 
@@ -229,6 +231,7 @@ function LandmarkManager.init()
 	decoratePath()
 	addFogBanks()
 	folder.Parent = workspace
+	Details.build(workspace) -- grass, flowers, ferns, dead leaves... on the ground
 end
 
 function LandmarkManager.start() end

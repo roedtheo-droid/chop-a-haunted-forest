@@ -299,6 +299,67 @@ local gateLooks: { Types.GateLookConfig } = {
 	{ Door = "Iron", Gatehouse = "Stone", Border = "StoneWall", LampColor = Color3.fromRGB(255, 140, 60), Flicker = true },
 }
 
+-- Little things on each zone's ground, one list per zone (see Types.DetailConfig and
+-- Details below).
+local zoneDetails: { { Types.DetailConfig } } = {
+	{ -- Pale Pines
+		{
+			Model = "GrassTuft",
+			Part = "Grass",
+			Count = 150,
+			Size = { 0.8, 1.4 },
+			Colors = { Color3.fromRGB(95, 170, 60), Color3.fromRGB(80, 150, 50), Color3.fromRGB(120, 180, 70) },
+		},
+		{
+			Model = "Flowers",
+			Part = "Stem",
+			Count = 50,
+			Size = { 1.2, 1.8 },
+			Colors = {
+				Color3.fromRGB(255, 215, 70),
+				Color3.fromRGB(250, 250, 245),
+				Color3.fromRGB(240, 150, 200),
+				Color3.fromRGB(170, 130, 230),
+			},
+			StemColor = Color3.fromRGB(60, 140, 50),
+		},
+	},
+	{ -- Fog Hollow
+		{
+			Model = "Fern",
+			Part = "Frond",
+			Count = 90,
+			Size = { 3, 4.5 },
+			Colors = { Color3.fromRGB(70, 120, 70), Color3.fromRGB(85, 130, 80), Color3.fromRGB(60, 100, 65) },
+		},
+		{
+			Model = "Mushrooms",
+			Part = "Stem",
+			Count = 30,
+			Size = { 1.2, 1.8 },
+			Colors = { Color3.fromRGB(140, 255, 120) },
+			StemColor = Color3.fromRGB(240, 228, 205),
+			Glow = true,
+		},
+	},
+	{ -- Graveyard Grove
+		{
+			Model = "DeadLeaves",
+			Part = "Leaf",
+			Count = 110,
+			Size = { 2.6, 3.6 },
+			Colors = { Color3.fromRGB(92, 47, 43), Color3.fromRGB(120, 70, 35), Color3.fromRGB(70, 50, 40) },
+		},
+		{
+			Model = "Bones",
+			Part = "Bone",
+			Count = 12,
+			Size = { 1.6, 2.2 },
+			Colors = { Color3.fromRGB(225, 218, 195) },
+		},
+	},
+}
+
 -- Tutorial quests, in order. They teach new players the core loop.
 local quests: { Types.QuestConfig } = {
 	{ Event = "FellTree", Goal = 1, Text = "Chop down a tree" },
@@ -362,6 +423,35 @@ local Config = {
 		Gatehouses = { Log = "LogGatehouse", Stone = "StoneGatehouse" } :: { [string]: string },
 		Mountains = { "Mountains1", "Mountains2" }, -- mountain ranges far away (see Scenery)
 		Hills = { "Hill1", "Hill2" }, -- rolling hills with little trees, behind the border trees
+		-- Props along the path and in the landmarks (see Server/Build/Props). Width: how wide
+		-- Part is at the size of the parts version (keep it the same as blender/models/props.py).
+		Props = {
+			BerryBush = { Model = "BerryBush", Part = "Bush", Width = 4.2 },
+			FallenLog = { Model = "FallenLog", Part = "Log", Width = 8 }, -- the game picks each log's length
+			LampPost = { Model = "LampPost", Part = "Post", Width = 0.77 },
+			Fence = { Model = "FenceSection", Part = "Post", Width = 0.71 }, -- one post and its rails
+			Pumpkin = { Model = "Pumpkin", Part = "Pumpkin", Width = 2.2 },
+			Reeds = { Model = "Reeds", Part = "Reed", Width = 2.2 },
+			LilyPad = { Model = "LilyPad", Part = "Pad", Width = 1.8 },
+			Mushrooms = { Model = "Mushrooms", Part = "Stem", Width = 1.34 },
+		},
+		-- A slab, a cross and a pillar (Props.gravestone's kind 1, 2 and 3).
+		Gravestones = {
+			{ Model = "Gravestone1", Part = "Stone", Width = 2.6 },
+			{ Model = "Gravestone2", Part = "Stone", Width = 2.6 },
+			{ Model = "Gravestone3", Part = "Stone", Width = 2.6 },
+		},
+	},
+
+	-- Little things scattered over each zone's ground (see Server/Build/Details): grass and
+	-- flowers, ferns and glowing mushrooms, dead leaves and bones. Only for looks: you walk
+	-- through them and clicks go through them. Fewer of them = faster on phones.
+	Details = {
+		PathGap = 6.5, -- studs from the middle of the path (it's 8 wide, plus its dirt edge)
+		EdgeGap = 4, -- studs from the walls
+		BorderGap = 10, -- studs from a border between two zones (the gatehouses, ridge and wall)
+		FallbackShare = 0.4, -- without the models: only this share of them, made of a few parts each
+		Zones = zoneDetails, -- what's on each zone's ground (at the top of this file)
 	},
 
 	-- What you see at the forest's edges, in front of the invisible walls (see Server/Build/Edges).

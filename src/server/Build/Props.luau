@@ -2,7 +2,9 @@
 -- Small props made of blocky parts (see STYLE_GUIDE.md): rocks, mushrooms, berry bushes,
 -- fallen logs, campfires, lamp posts, fences, pumpkins, gravestones, reeds and lily pads.
 -- Every prop stands on flat ground: `base` is a spot on the ground (its Y is ignored).
--- Rocks use the Blender rock models once they're imported into Studio (see Build/Assets).
+-- Rocks, bushes, logs, lamp posts, fences, pumpkins, gravestones, reeds, lily pads and
+-- mushroom clusters use the Blender models once they're imported into Studio (see
+-- Build/Assets and Config.Models.Props), at the same size and spot as the parts versions.
 -- Used by CampProps, Landmarks, LandmarkManager, CampManager and Edges. Only for looks:
 -- nothing can be chopped. It's not a system, so it has no init()/start().
 
@@ -11,6 +13,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Tags = require(ReplicatedStorage.Shared.Tags)
+local Types = require(ReplicatedStorage.Shared.Types)
 local Assets = require(script.Parent.Assets)
 local Blocky = require(script.Parent.Blocky)
 
@@ -58,6 +61,38 @@ end
 local function facing(base: Vector3, direction: Vector3): CFrame
 	local spot = Vector3.new(base.X, GROUND, base.Z)
 	return CFrame.lookAt(spot, spot + Vector3.new(direction.X, 0, direction.Z))
+end
+
+-- The Blender prop `prop`, sized by its part (so that part is `scale` times its usual width)
+-- and standing at `frame` (a spot on the ground, turned). nil if it isn't imported yet: then
+-- the caller builds the parts version.
+local function meshProp(parent: Instance, prop: Types.PropModelConfig, scale: number, frame: CFrame): Model?
+	local model = Assets.model(prop.Model)
+	if not model then
+		return nil
+	end
+	local part = model:FindFirstChild(prop.Part)
+	if not (part and part:IsA("BasePart")) then
+		model:Destroy()
+		return nil
+	end
+	Assets.fit(model, part, prop.Width * scale, frame.Position, frame.Rotation)
+	model.Parent = parent
+	return model
+end
+
+-- Colour every part of `model` called `name`. Solid ones stop players. Returns the last one.
+local function paint(model: Model, name: string, color: Color3, material: Enum.Material, solid: boolean): BasePart?
+	local found: BasePart? = nil
+	for _, part in model:GetChildren() do
+		if part:IsA("BasePart") and part.Name == name then
+			part.Color = color
+			part.Material = material
+			part.CanCollide = solid
+			found = part
+		end
+	end
+	return found
 end
 
 local function addLight(part: BasePart, color: Color3, range: number, brightness: number): PointLight
@@ -205,6 +240,26 @@ end
 
 -- A few mushrooms together around `bottom`. Glowing ones give off a faint green light.
 function Props.mushrooms(parent: Instance, bottom: CFrame, glow: boolean, random: Random)
+	local frame = bottom * CFrame.Angles(0, random:NextNumber(0, math.pi * 2), 0)
+	local model = meshProp(parent, Config.Models.Props.Mushrooms, random:NextNumber(0.85, 1.15), frame)
+	if model then
+		paint(model, "Stem", CREAM, Enum.Material.SmoothPlastic, false)
+		local cap = paint(
+			model,
+			"Cap",
+			if glow then GLOW_GREEN else MUSHROOM_RED,
+			if glow then Enum.Material.Neon else Enum.Material.SmoothPlastic,
+			false
+		)
+		local dots = paint(model, "Dot", CREAM, Enum.Material.SmoothPlastic, false)
+		if glow and dots then
+			dots:Destroy()
+		end
+		if glow and cap then
+			addLight(cap, GLOW_GREEN, 9, 0.8)
+		end
+		return
+	end
 	local caps: { Part } = {}
 	for index = 1, 3 do
 		local angle = index * 2.1 + random:NextNumber(0, 0.6)
@@ -219,6 +274,12 @@ end
 -- A round green bush with red berries.
 function Props.berryBush(parent: Instance, base: Vector3, random: Random)
 	local turn = above(base, 0) * CFrame.Angles(0, random:NextNumber(0, math.pi), 0)
+	local model = meshProp(parent, Config.Models.Props.BerryBush, random:NextNumber(0.9, 1.1), turn)
+	if model then
+		paint(model, "Bush", Blocky.shade(LEAF, random:NextNumber(-0.05, 0.05)), Enum.Material.Grass, false)
+		paint(model, "Berry", BERRY, Enum.Material.SmoothPlastic, false)
+		return
+	end
 	local blocks = {
 		decor(parent, "Bush", Vector3.new(2.6, 2, 2.4), turn * CFrame.new(0, 1, 0), Blocky.shade(LEAF, random:NextNumber(-0.05, 0.05)), Enum.Material.Grass),
 		decor(parent, "Bush", Vector3.new(1.8, 1.6, 1.8), turn * CFrame.new(1.2, 0.8, 0.5), Blocky.shade(LEAF, 0.1), Enum.Material.Grass),
@@ -241,6 +302,29 @@ end
 function Props.fallenLog(parent: Instance, base: Vector3, angle: number, birch: boolean, random: Random)
 	local bark = if birch then (Config.TreeTypes.Birch.BirchColor or CREAM) else Config.Style.Wood
 	local length = random:NextNumber(6, 9)
+	local prop = Config.Models.Props.FallenLog
+	-- The model's log lies along its X, the parts log along Z: a quarter turn less.
+	local model = meshProp(parent, prop, length / prop.Width, above(base, 0) * CFrame.Angles(0, angle - math.pi / 2, 0))
+	if model then
+		local log = paint(model, "Log", bark, Enum.Material.Wood, true)
+		paint(model, "Rings", Config.Style.InnerWood, Enum.Material.Wood, false)
+		paint(model, "Moss", MOSS, Enum.Material.Grass, false)
+		if birch and log then
+			-- Dark marks on the top and sides. The log is Size.Z thick, lying on its bottom.
+			local thick = log.Size.Z
+			local middle = log.CFrame * CFrame.new(0, -log.Size.Y / 2 + thick / 2, 0)
+			for _ = 1, 6 do
+				local x = random:NextNumber(-length / 2 + 0.5, length / 2 - 0.5)
+				local side = random:NextInteger(1, 3)
+				local spot = if side == 1
+					then CFrame.new(x, thick / 2 + 0.03, random:NextNumber(-0.2, 0.2) * thick)
+					else CFrame.new(x, random:NextNumber(-0.2, 0.2) * thick, (if side == 2 then 1 else -1) * (thick / 2 + 0.03))
+				local size = if side == 1 then Vector3.new(0.18, 0.05, 0.4 * thick) else Vector3.new(0.18, 0.4 * thick, 0.05)
+				decor(parent, "BirchMark", size, middle * spot, Config.Style.BirchMark, Enum.Material.SmoothPlastic)
+			end
+		end
+		return
+	end
 	local log = piece(parent, "FallenLog", Vector3.new(1.8, 1.8, length), above(base, 0.85) * CFrame.Angles(0, angle, 0), bark, Enum.Material.Wood)
 	Blocky.rings(log, Enum.NormalId.Front)
 	Blocky.rings(log, Enum.NormalId.Back)
@@ -308,6 +392,16 @@ function Props.lampPost(parent: Instance, base: Vector3, direction: Vector3, col
 	local lean = if crooked then CFrame.Angles(random:NextNumber(-0.15, 0.15), 0, random:NextNumber(-0.15, 0.15)) else CFrame.identity
 	local frame = facing(base, direction) * lean
 	local wood = if crooked then Blocky.shade(Config.Style.DarkWood, -0.35) else Config.Style.DarkWood
+	local model = meshProp(parent, Config.Models.Props.LampPost, 1, frame)
+	if model then
+		paint(model, "Post", wood, Enum.Material.Wood, true)
+		paint(model, "Iron", DARK_METAL, Enum.Material.Metal, false)
+		local glass = paint(model, "Lantern", color, Enum.Material.Neon, false)
+		if glass then
+			return addLight(glass, color, 18, 1)
+		end
+		model:Destroy() -- no lantern in it: build the parts version instead
+	end
 	piece(parent, "LampPost", Vector3.new(0.6, 9, 0.6), frame * CFrame.new(0, 4.5, 0), wood, Enum.Material.Wood)
 	decor(parent, "LampArm", Vector3.new(0.4, 0.4, 2.2), frame * CFrame.new(0, 8.6, -0.9), wood, Enum.Material.Wood)
 	decor(parent, "LampCap", Vector3.new(1.2, 0.3, 1.2), frame * CFrame.new(0, 8.1, -1.8), DARK_METAL, Enum.Material.Metal)
@@ -322,6 +416,26 @@ function Props.fence(parent: Instance, from: Vector3, to: Vector3, broken: boole
 	local length = Vector3.new(to.X - from.X, 0, to.Z - from.Z).Magnitude
 	local spacing = 3
 	local posts = math.max(1, math.floor(length / spacing))
+	if Assets.has(Config.Models.Props.Fence.Model) then
+		-- One FenceSection per post: the post, and its two rails running on to the next post.
+		for index = 0, posts do
+			local lean = if broken
+				then CFrame.Angles(random:NextNumber(-0.25, 0.25), 0, random:NextNumber(-0.2, 0.2))
+				else CFrame.identity
+			local section = meshProp(parent, Config.Models.Props.Fence, 1, frame * CFrame.new(0, 0, -index * spacing) * lean)
+			if section then
+				paint(section, "Post", color, Enum.Material.Wood, false)
+				paint(section, "Rail", Blocky.shade(color, 0.1), Enum.Material.WoodPlanks, false)
+				for _, rail in section:GetChildren() do
+					-- The last post has no rails after it, and a broken fence is missing some.
+					if rail.Name == "Rail" and (index == posts or (broken and random:NextNumber() < 0.35)) then
+						rail:Destroy()
+					end
+				end
+			end
+		end
+		return
+	end
 	for index = 0, posts do
 		local lean = if broken then CFrame.Angles(random:NextNumber(-0.3, 0.3), 0, random:NextNumber(-0.25, 0.25)) else CFrame.identity
 		local height = if broken and random:NextNumber() < 0.3 then 1.8 else 3
@@ -344,10 +458,43 @@ function Props.fence(parent: Instance, from: Vector3, to: Vector3, broken: boole
 	end
 end
 
+-- A carved, glowing face on the front of a pumpkin: `front` is the middle of its front
+-- side, facing out (-Z).
+local function pumpkinFace(parent: Instance, front: CFrame, scale: number)
+	local size = Vector3.new(1.6, 1.2, 0.05) * scale
+	local face = decor(parent, "PumpkinFace", size, front, PUMPKIN, Enum.Material.SmoothPlastic)
+	face.Transparency = 1
+	local gui = Blocky.face(face, Enum.NormalId.Front)
+	gui.LightInfluence = 0 -- it glows: the sun doesn't darken it
+	local function hole(x: number, y: number, w: number, h: number, rotation: number)
+		local frameUi = Instance.new("Frame")
+		frameUi.AnchorPoint = Vector2.new(0.5, 0.5)
+		frameUi.Position = UDim2.fromScale(x, y)
+		frameUi.Size = UDim2.fromScale(w, h)
+		frameUi.Rotation = rotation
+		frameUi.BorderSizePixel = 0
+		frameUi.BackgroundColor3 = PUMPKIN_GLOW
+		frameUi.Parent = gui
+	end
+	hole(0.27, 0.3, 0.2, 0.26, 45)
+	hole(0.73, 0.3, 0.2, 0.26, 45)
+	hole(0.5, 0.72, 0.6, 0.18, 0)
+	addLight(face, PUMPKIN_GLOW, 10, 0.8)
+end
+
 -- A pumpkin facing `direction`. A lit one has a glowing face.
 function Props.pumpkin(parent: Instance, base: Vector3, direction: Vector3, lit: boolean, random: Random)
 	local scale = random:NextNumber(0.8, 1.3)
 	local frame = facing(base, direction) * CFrame.Angles(0, random:NextNumber(-0.4, 0.4), 0)
+	local model = meshProp(parent, Config.Models.Props.Pumpkin, scale, frame)
+	if model then
+		local body = paint(model, "Pumpkin", PUMPKIN, Enum.Material.SmoothPlastic, true)
+		paint(model, "Stem", Color3.fromRGB(90, 110, 50), Enum.Material.Wood, false)
+		if lit and body then
+			pumpkinFace(parent, frame * CFrame.new(0, body.Position.Y - frame.Position.Y, -body.Size.Z / 2 - 0.03), scale)
+		end
+		return
+	end
 	local body = piece(parent, "Pumpkin", Vector3.new(2.2, 1.7, 2.2) * scale, frame * CFrame.new(0, 0.85 * scale, 0), PUMPKIN, Enum.Material.SmoothPlastic)
 	local rib = Blocky.shade(PUMPKIN, -0.15)
 	decor(parent, "PumpkinRib", Vector3.new(2.3, 1.5, 0.4) * scale, body.CFrame, rib, Enum.Material.SmoothPlastic)
@@ -355,24 +502,7 @@ function Props.pumpkin(parent: Instance, base: Vector3, direction: Vector3, lit:
 	decor(parent, "PumpkinStem", Vector3.new(0.35, 0.6, 0.35) * scale, body.CFrame * CFrame.new(0, 1.05 * scale, 0), Color3.fromRGB(90, 110, 50), Enum.Material.Wood)
 	if lit then
 		-- The face goes on the front rib, which sticks out past the body.
-		local front = decor(parent, "PumpkinFace", Vector3.new(1.6, 1.2, 0.05) * scale, body.CFrame * CFrame.new(0, 0, -1.16 * scale), PUMPKIN, Enum.Material.SmoothPlastic)
-		front.Transparency = 1
-		local gui = Blocky.face(front, Enum.NormalId.Front)
-		gui.LightInfluence = 0 -- it glows: the sun doesn't darken it
-		local function hole(x: number, y: number, w: number, h: number, rotation: number)
-			local frameUi = Instance.new("Frame")
-			frameUi.AnchorPoint = Vector2.new(0.5, 0.5)
-			frameUi.Position = UDim2.fromScale(x, y)
-			frameUi.Size = UDim2.fromScale(w, h)
-			frameUi.Rotation = rotation
-			frameUi.BorderSizePixel = 0
-			frameUi.BackgroundColor3 = PUMPKIN_GLOW
-			frameUi.Parent = gui
-		end
-		hole(0.27, 0.3, 0.2, 0.26, 45)
-		hole(0.73, 0.3, 0.2, 0.26, 45)
-		hole(0.5, 0.72, 0.6, 0.18, 0)
-		addLight(front, PUMPKIN_GLOW, 10, 0.8)
+		pumpkinFace(parent, body.CFrame * CFrame.new(0, 0, -1.16 * scale), scale)
 	end
 end
 
@@ -382,6 +512,16 @@ function Props.gravestone(parent: Instance, base: Vector3, direction: Vector3, k
 	local frame = facing(base, direction)
 	local lean = CFrame.Angles(random:NextNumber(-0.12, 0.12), 0, random:NextNumber(-0.12, 0.12))
 	local stone = Blocky.shade(GRAVE_STONE, random:NextNumber(-0.1, 0.05))
+	local models = Config.Models.Gravestones
+	-- The whole grave leans a little less than the parts version's stone (its mound leans too).
+	local tilt = CFrame.Angles(0, 0, random:NextNumber(-0.06, 0.06))
+	local model = meshProp(parent, models[math.clamp(kind, 1, #models)], 1, frame * tilt)
+	if model then
+		paint(model, "Stone", stone, Enum.Material.Slate, true)
+		paint(model, "Moss", MOSS, Enum.Material.Grass, false)
+		paint(model, "Mound", DIRT, Enum.Material.Ground, false)
+		return
+	end
 	piece(parent, "GraveBase", Vector3.new(2.6, 0.4, 1.2), frame * CFrame.new(0, 0.2, 0), Blocky.shade(stone, -0.1), Enum.Material.Slate)
 	local top = frame * CFrame.new(0, 0.4, 0) * lean
 	if kind == 1 then
@@ -403,6 +543,13 @@ end
 
 -- A clump of reeds, some with brown cattails on top.
 function Props.reeds(parent: Instance, base: Vector3, random: Random)
+	local frame = above(base, 0) * CFrame.Angles(0, random:NextNumber(0, math.pi * 2), 0)
+	local model = meshProp(parent, Config.Models.Props.Reeds, random:NextNumber(0.85, 1.15), frame)
+	if model then
+		paint(model, "Reed", Blocky.shade(REED, random:NextNumber(-0.1, 0.1)), Enum.Material.Grass, false)
+		paint(model, "Cattail", CATTAIL, Enum.Material.Fabric, false)
+		return
+	end
 	for index = 1, 6 do
 		local height = random:NextNumber(2.5, 4)
 		local spot = Vector3.new(base.X + random:NextNumber(-1.2, 1.2), 0, base.Z + random:NextNumber(-1.2, 1.2))
@@ -423,6 +570,22 @@ end
 -- A lily pad floating on water whose top is `waterTop` studs above the ground.
 -- Sometimes with a pink flower on it.
 function Props.lilyPad(parent: Instance, base: Vector3, waterTop: number, flower: boolean, random: Random)
+	local frame = above(base, waterTop) * CFrame.Angles(0, random:NextNumber(0, math.pi * 2), 0)
+	local model = meshProp(parent, Config.Models.Props.LilyPad, random:NextNumber(0.8, 1.2), frame)
+	if model then
+		paint(model, "Pad", LILY, Enum.Material.SmoothPlastic, false)
+		paint(model, "Flower", LILY_FLOWER, Enum.Material.SmoothPlastic, false)
+		paint(model, "Middle", YELLOW, Enum.Material.SmoothPlastic, false)
+		for _, part in model:GetChildren() do
+			if part:IsA("BasePart") then
+				part.CanQuery = false
+				if not flower and (part.Name == "Flower" or part.Name == "Middle") then
+					part:Destroy()
+				end
+			end
+		end
+		return
+	end
 	local pad = decor(
 		parent,
 		"LilyPad",

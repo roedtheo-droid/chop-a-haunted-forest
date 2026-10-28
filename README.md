@@ -70,6 +70,8 @@ When the models change (a new step adds some), delete the old `AllModels` in `Ma
 - ground and river: `Patch1`, `Patch2`, `Patch3`, `Pebbles`, `RiverBank`
 - edges and gates: `Hedge1`, `Hedge2`, `Hedge3`, `RidgeRock1`, `RidgeRock2`, `StoneWall1`, `StoneWall2`, `LogGatehouse`, `StoneGatehouse`
 - outside: `Mountains1`, `Mountains2`, `Hill1`, `Hill2`
+- props: `BerryBush`, `FallenLog`, `LampPost`, `FenceSection`, `Pumpkin`, `Gravestone1`, `Gravestone2`, `Gravestone3`, `Reeds`, `LilyPad`
+- ground details: `GrassTuft`, `Flowers`, `Fern`, `Mushrooms`, `DeadLeaves`, `Bones`
 
 When you press Play, the Output window says which models the game found
 (`[Assets] Using the Blender model "Oak"`) and which ones are missing.
@@ -81,7 +83,8 @@ blender --background --python blender/build.py -- all bundle
 ```
 
 or with Blender's Python package instead (`pip install bpy`, needs Python 3.13): `python blender/build.py all bundle`.
-(`pilot`, `trees`, `ground`, `edges` or `outside` instead of `all` builds just those models; `bundle` makes `AllModels.fbx`.)
+(`pilot`, `trees`, `ground`, `edges`, `outside`, `props` or `details` instead of `all` builds just those models;
+`bundle` makes `AllModels.fbx`.)
 
 Then import the changed files again (delete the old copy in `MapAssets` first).
 

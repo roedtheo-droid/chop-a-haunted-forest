@@ -82,6 +82,10 @@ Samme kantede stil hele vejen, bare mørkere.
   grene i Fog Hollow og døde, forgrenede ege med få mørke blade i Graveyard Grove. Hvert træ er op
   til 15% større eller mindre. Træerne står tættere i lunde og tyndere imellem, med et par åbne
   lysninger, og ting langs stien står i små grupper med tomme stykker imellem.
+- **Små ting på jorden:** græstotter og blomster i Pale Pines, bregner og selvlysende svampe i Fog
+  Hollow, visne blade og et par knogler i Graveyard Grove. Man går igennem dem. Props (buske,
+  stammer, lygtepæle, hegn, græskar, gravsten, siv, åkander) er Blender-modeller i samme størrelse
+  som Parts-versionerne.
 - **Jorden:** bløde pletter (`Patch`) i lysere/mørkere græs, mos, mudder og visne blade, og ved
   zone-grænserne fletter de to zoners farver ind i hinanden. Stien har en mørkere jordkant og småsten.
   Floden har sandbanker med sten, en mørkere bund, siv og åkander.

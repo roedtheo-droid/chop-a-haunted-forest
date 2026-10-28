@@ -170,7 +170,7 @@ game builds the old parts version.
     props in small groups. (done, tested)
 5b. Ground details (grass tufts, flowers, ferns, mushrooms, dead leaves) and prop models.
     (done, tested)
-6a. Landmarks and camp props as models.
+6a. Landmarks and camp props as models. (done, tested)
 6b. Logs, stumps and the Elder Hollow as models.
 6c. The Tool Shed and the sawmills as models.
 

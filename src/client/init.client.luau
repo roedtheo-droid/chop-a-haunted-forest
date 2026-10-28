@@ -35,6 +35,7 @@ local controllers: { Types.Module } = {
 	require(Controllers.BossController),
 	require(Controllers.ForestClearedController),
 	require(Controllers.DebugController), -- Studio-only test buttons
+	require(Controllers.IntroController), -- last: it hides the screens the others made until you press PLAY
 }
 
 -- Step 1: set up every controller.

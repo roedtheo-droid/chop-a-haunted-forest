@@ -222,11 +222,18 @@ function ChopController.start()
 	end)
 
 	-- Load the swing now, so the very first swing doesn't wait for it.
-	local swings: { string } = {}
+	-- PreloadAsync needs Animation objects: a plain id would be loaded as a picture, and fail.
+	local ids: { string } = {}
 	for _, feel in Config.ChopFeel do
-		if not table.find(swings, feel.Swing) then
-			table.insert(swings, feel.Swing)
+		if not table.find(ids, feel.Swing) then
+			table.insert(ids, feel.Swing)
 		end
+	end
+	local swings: { Instance } = {}
+	for _, id in ids do
+		local animation = Instance.new("Animation")
+		animation.AnimationId = id
+		table.insert(swings, animation)
 	end
 	ContentProvider:PreloadAsync(swings)
 end

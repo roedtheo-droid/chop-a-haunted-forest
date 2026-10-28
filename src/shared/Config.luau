@@ -83,9 +83,10 @@ local sounds: { [string]: Types.SoundConfig } = {
 	ChopAxe = { Id = "rbxassetid://9113974103", Volume = 0.6 }, -- slam into a wooden box
 	ChopSteelAxe = { Id = "rbxassetid://9120965080", Volume = 0.6 }, -- wood splintering
 	ChopChainsaw = { Id = "rbxassetid://133850299035625", Volume = 0.45, MinGap = 0.3 }, -- chainsaw bite
+	TreeCrack = { Id = "rbxassetid://9120801590", Volume = 0.5, Range = 100 }, -- wood breaking, as a felled tree starts to tip
+	TreeFall = { Id = "rbxassetid://9120957463", Volume = 0.7, Range = 120 }, -- heavy wooden crash when it lands
 
 	-- World sounds: everyone near the spot hears them (made by the server, see EffectsManager).
-	TreeFall = { Id = "rbxassetid://9120957463", Volume = 0.7, Range = 120 }, -- heavy wooden crash
 	MimicWake = { Id = "rbxassetid://9125475729", Volume = 0.9, Range = 120 }, -- creature growl and hiss
 	Burn = { Id = "rbxassetid://9114446277", Volume = 0.7 }, -- fire whoosh
 	GateOpen = { Id = "rbxassetid://9118644695", Volume = 1, Range = 300 }, -- heavy blocks scraping
@@ -388,10 +389,13 @@ local Config = {
 		ShakeDistance = 45, -- your camera shakes when a tree lands this close to you
 		ShakeStrength = 0.25, -- studs the camera moves at most
 		ShakeTime = 0.3,
-		DustCubes = 14, -- grey cubes in the puff where a tree lands
+		DustCubes = 15, -- grey cubes in the puffs along a tree that lands (shared by 3 puffs)
 		DustSize = 1.4,
 		DustTime = 0.9,
 		DustColor = Color3.fromRGB(205, 190, 165),
+		LeafCubes = 10, -- leaf cubes that fly off the crown when a tree lands
+		LeafCubeSize = 0.9,
+		LeafTime = 1.2,
 	},
 
 	-- The glowing line to the nearest tree when a zone is almost cleared
@@ -513,8 +517,16 @@ local Config = {
 		NotchFirstHit = 0.15, -- how deep the first hit cuts, as a part of the trunk's width
 		NotchMaxDepth = 0.6, -- how deep the notch is at 0 HP, as a part of the trunk's width
 		NotchOpening = 1.2, -- the notch's height at the bark, compared to how deep it is
-		FallTime = 1.2, -- seconds the fall animation takes
-		RemoveDelay = 1.5, -- seconds a fallen tree lies there before it disappears
+		-- A felled tree cracks, falls, bounces, lies there and fades away. Every player's
+		-- computer animates it (see Client/Controllers/ChopEffectsController).
+		CrackTime = 0.35, -- seconds it shudders and creaks before it tips over
+		CrackLean = 3, -- degrees it leans while it cracks
+		FallTime = 1.1, -- seconds it takes to fall (slow at first, then faster)
+		BounceAngle = 6, -- degrees it bounces back up when it hits the ground
+		BounceTime = 0.3,
+		RemoveDelay = 1.5, -- seconds a fallen tree lies there before it fades away
+		FadeTime = 0.5, -- seconds it takes to sink into the ground and fade
+		SinkDepth = 1.5, -- studs it sinks while it fades
 		LogsPerTree = 3,
 		StumpHeight = 1.2, -- the stump a felled tree leaves behind
 	},
@@ -550,6 +562,11 @@ local Config = {
 		PickupDistance = 8, -- how close you must be to see "Pick up"
 		Length = 4,
 		Thickness = 1.2,
+		Scatter = 3, -- logs land up to this many studs to the side of the fallen trunk
+		-- Logs pop out of the fallen trunk in a little arc (every player's computer animates it).
+		PopStart = 1.5, -- studs above the ground they start, inside the fallen trunk
+		PopHeight = 3, -- how high the arc goes
+		PopTime = 0.55, -- seconds from popping out to lying still (the Log Vacuum waits this long)
 	},
 
 	-- Coins (per player, reset every run, not saved)

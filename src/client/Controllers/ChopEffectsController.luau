@@ -4,7 +4,8 @@
 --   * the tool's chop sound, a little higher or lower each time
 --   * little wood cubes fly out of the notch with a small puff and flash, and the crown wobbles
 --   * your camera jolts a little on your own hits
---   * a puff of dust and a camera shake where a falling tree lands
+--   * a felled tree cracks, falls, bounces and fades away, with dust, flying leaves, a crash
+--     and a camera shake where it lands, and its logs pop out of the fallen trunk
 -- How many chips and how hard things shake depends on the tool (Config.ChopFeel).
 -- Your own hits don't wait for the server: ChopController calls showMyHit the moment your
 -- swing lands, so chopping feels instant.
@@ -26,6 +27,7 @@ local Types = require(ReplicatedStorage.Shared.Types)
 
 local cfg = Config.ChopEffects
 local Style = Config.Style
+local CRACK_SHUDDER = math.rad(1) -- how much a cracking tree shakes, besides leaning over
 
 type Wobble = {
 	Leaves: BasePart,
@@ -36,12 +38,35 @@ type Wobble = {
 	Applied: CFrame, -- the turn we added last frame, so we can take it off again
 }
 
+-- A felled tree falling over on our screen.
+type Fall = {
+	Start: CFrame, -- where the tree's pivot (the bottom of its trunk) was before it fell
+	Axis: Vector3, -- turning around this tips the top over the way it falls
+	Away: Vector3, -- the way it falls, flat on the ground
+	Height: number, -- the trunk's height
+	Started: number,
+	Near: boolean, -- close enough to see the dust and leaves where it lands
+	Landed: boolean,
+	Fade: { [BasePart]: number }?, -- each part's own transparency, once it starts to fade
+}
+
+-- A log popping out of a fallen tree on our screen.
+type Pop = {
+	Log: BasePart,
+	From: Vector3, -- inside the fallen trunk
+	To: CFrame, -- where the server put it
+	Spin: Vector3, -- the axis it spins around while it flies
+	Started: number,
+}
+
 local ChopEffectsController = {}
 
 local player = Players.LocalPlayer
 local random = Random.new()
 local folder: Folder -- everything we make here goes in this folder, which only this player has
 local wobbles: { [Model]: Wobble } = {}
+local falls: { [Model]: Fall } = {}
+local pops: { Pop } = {}
 local chipCount = 0
 local shakeUntil = 0
 local shakeStrength = 0
@@ -76,6 +101,10 @@ local function plainPart(name: string, size: Vector3, cframe: CFrame, color: Col
 	part.CanTouch = false
 	part.CanQuery = false -- so clicks go through to the trees behind
 	return part
+end
+
+local function pitchJitter(): number
+	return 1 + random:NextNumber(-cfg.PitchJitter, cfg.PitchJitter)
 end
 
 -- Shake the camera for `duration` seconds, by at most `strength` studs.
@@ -127,7 +156,7 @@ local function playChopSound(feel: Types.ChopFeelConfig, position: Vector3, hitt
 		end
 		played[feel.Sound] = now
 	end
-	Fx.playSound(sound, position, 1 + random:NextNumber(-cfg.PitchJitter, cfg.PitchJitter))
+	Fx.playSound(sound, position, pitchJitter())
 end
 
 -- Little wood cubes that fly out of the notch, bounce on the ground and fade away.
@@ -236,12 +265,25 @@ local function wobble(tree: Model, trunk: BasePart, outward: Vector3, degrees: n
 	}
 end
 
+-- Stop a wobble and put the crown back where it belongs.
+local function stopWobble(tree: Model)
+	local state = wobbles[tree]
+	if state then
+		state.Leaves.CFrame = state.Applied:Inverse() * state.Leaves.CFrame
+		wobbles[tree] = nil
+	end
+end
+
 local function updateWobbles()
 	local now = os.clock()
 	for tree, state in wobbles do
 		local leaves = state.Leaves
-		if not leaves.Parent or tree:GetAttribute("Felled") then
-			wobbles[tree] = nil -- it's falling: the server moves it now, so let go
+		if not leaves.Parent then
+			wobbles[tree] = nil
+			continue
+		end
+		if tree:GetAttribute("Felled") then
+			stopWobble(tree) -- it's about to fall: the fall moves the whole tree now
 			continue
 		end
 		local t = math.min((now - state.Started) / cfg.WobbleTime, 1)
@@ -281,12 +323,12 @@ local function playHit(
 end
 
 ---------------------------------------------------------------------------
--- Dust and camera shake (when a tree falls)
+-- A felled tree: crack, fall, bounce, land and fade
 ---------------------------------------------------------------------------
 
--- A puff of grey-brown cubes that grow, drift out and fade where the tree lands.
-local function dustPuff(position: Vector3)
-	for _ = 1, cfg.DustCubes do
+-- A puff of grey-brown cubes that grow, drift out and fade.
+local function dustPuff(position: Vector3, count: number)
+	for _ = 1, count do
 		local size = cfg.DustSize * random:NextNumber(0.6, 1.2)
 		local cube = plainPart(
 			"Dust",
@@ -313,19 +355,195 @@ local function dustPuff(position: Vector3)
 	end
 end
 
-local function onTreeFalling(tree: Model, trunk: BasePart, away: Vector3)
-	local base = tree:GetPivot().Position
-	local height = trunk.Size.Y -- the trunk is a block: Size.Y is its height
-	-- The same spot the server uses for the crash sound.
-	local landing = base + away * height * 0.6
-	task.delay(Config.Tree.FallTime, function()
-		dustPuff(landing)
-		local distance = distanceTo(landing)
-		if distance <= cfg.ShakeDistance then
-			-- Stronger the closer you are.
-			shakeCamera(cfg.ShakeStrength * (1 - distance / cfg.ShakeDistance * 0.6), cfg.ShakeTime)
+-- Leaf cubes in the crown's colour fly up and out when it hits the ground, then fade.
+local function leafBurst(crown: BasePart)
+	local size = crown.Size.X
+	for _ = 1, cfg.LeafCubes do
+		local cubeSize = cfg.LeafCubeSize * random:NextNumber(0.6, 1.2)
+		local start = crown.Position
+			+ Vector3.new(random:NextNumber(-0.4, 0.4) * size, random:NextNumber(0, 0.4) * size, random:NextNumber(-0.4, 0.4) * size)
+		local cube = plainPart(
+			"Leaf",
+			Vector3.one * cubeSize,
+			CFrame.new(start) * CFrame.Angles(random:NextNumber(0, 6), random:NextNumber(0, 6), 0),
+			crown.Color:Lerp(Color3.new(1, 1, 1), random:NextNumber(0, 0.15))
+		)
+		cube.Anchored = true
+		cube.CanCollide = false
+		cube.Material = crown.Material
+		cube.Parent = folder
+
+		local angle = random:NextNumber(0, math.pi * 2)
+		local drift = Vector3.new(math.cos(angle), 0, math.sin(angle)) * random:NextNumber(2, 5)
+			+ Vector3.new(0, random:NextNumber(1, 3), 0)
+		local duration = cfg.LeafTime * random:NextNumber(0.7, 1.2)
+		TweenService:Create(cube, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			CFrame = (cube.CFrame + drift) * CFrame.Angles(random:NextNumber(-2, 2), random:NextNumber(-2, 2), 0),
+			Size = cube.Size * 0.5,
+			Transparency = 1,
+		}):Play()
+		Debris:AddItem(cube, duration)
+	end
+end
+
+-- The moment a falling tree hits the ground.
+local function land(tree: Model, fall: Fall)
+	local base = fall.Start.Position
+	local landing = base + fall.Away * fall.Height * 0.6
+	Fx.playSound(Config.Sounds.TreeFall, landing, pitchJitter())
+	if not fall.Near then
+		return
+	end
+	-- Dust all along the trunk...
+	for _, along in { 0.3, 0.6, 0.9 } do
+		dustPuff(base + fall.Away * fall.Height * along, math.ceil(cfg.DustCubes / 3))
+	end
+	-- ...leaves flying off the crown...
+	local crown = tree:FindFirstChild("Leaves")
+	if crown and crown:IsA("BasePart") then
+		leafBurst(crown)
+	end
+	-- ...and the ground shakes if you're close, stronger the closer you are.
+	local distance = distanceTo(landing)
+	if distance <= cfg.ShakeDistance then
+		shakeCamera(cfg.ShakeStrength * (1 - distance / cfg.ShakeDistance * 0.6), cfg.ShakeTime)
+	end
+end
+
+-- Fade every part of the tree towards invisible (`amount` 0 to 1).
+local function fadeTree(tree: Model, fall: Fall, amount: number)
+	local own = fall.Fade
+	if not own then
+		local start: { [BasePart]: number } = {}
+		for _, descendant in tree:GetDescendants() do
+			if descendant:IsA("BasePart") then
+				start[descendant] = descendant.Transparency
+			elseif descendant:IsA("SurfaceGui") then
+				descendant.Enabled = false -- pictures on parts (birch marks, the notch) don't fade with them
+			end
 		end
-	end)
+		fall.Fade = start
+		own = start
+	end
+	for part, transparency in own do
+		part.Transparency = transparency + (1 - transparency) * amount
+	end
+end
+
+-- A felled tree starts to fall on our screen. The server doesn't move it at all.
+local function startFall(tree: Model, trunk: BasePart, away: Vector3, near: boolean)
+	if falls[tree] then
+		return
+	end
+	stopWobble(tree)
+	local start = tree:GetPivot()
+	falls[tree] = {
+		Start = start,
+		Axis = Vector3.yAxis:Cross(away), -- turning "up" around this by 90 degrees points it along `away`
+		Away = away,
+		Height = trunk.Size.Y, -- the trunk is a block: Size.Y is its height
+		Started = os.clock(),
+		Near = near,
+		Landed = false,
+		Fade = nil,
+	}
+	Fx.playSound(Config.Sounds.TreeCrack, start.Position + Vector3.new(0, Config.Tree.NotchHeight, 0), pitchJitter())
+end
+
+local function updateFalls(now: number)
+	local timing = Config.Tree
+	local lean = math.rad(timing.CrackLean)
+	for model, fall in falls do
+		if not model.Parent then
+			falls[model] = nil -- the server removed it
+			continue
+		end
+		local t = now - fall.Started
+		local angle: number
+		local sink = 0
+		if t < timing.CrackTime then
+			-- It creaks: it shudders and starts to lean over.
+			local u = t / timing.CrackTime
+			angle = lean * u + CRACK_SHUDDER * math.sin(t * 60) * (1 - u)
+		elseif t < timing.CrackTime + timing.FallTime then
+			-- It falls: slowly at first, then faster and faster.
+			local u = (t - timing.CrackTime) / timing.FallTime
+			angle = lean + (math.pi / 2 - lean) * u * u
+		else
+			if not fall.Landed then
+				fall.Landed = true
+				land(model, fall)
+			end
+			local after = t - timing.CrackTime - timing.FallTime
+			-- A little bounce off the ground...
+			local bounce = math.min(after / timing.BounceTime, 1)
+			angle = math.pi / 2 - math.rad(timing.BounceAngle) * math.sin(bounce * math.pi)
+			-- ...then it lies there for a moment, sinks into the ground and fades away.
+			if after >= timing.RemoveDelay then
+				local fade = math.min((after - timing.RemoveDelay) / timing.FadeTime, 1)
+				sink = timing.SinkDepth * fade
+				fadeTree(model, fall, fade)
+				if fade >= 1 then
+					falls[model] = nil -- invisible now; the server removes it any moment
+				end
+			end
+		end
+		model:PivotTo(
+			CFrame.new(fall.Start.Position - Vector3.yAxis * sink) * CFrame.fromAxisAngle(fall.Axis, angle) * fall.Start.Rotation
+		)
+	end
+end
+
+---------------------------------------------------------------------------
+-- Logs popping out of a fallen tree
+---------------------------------------------------------------------------
+
+local function onLogAdded(log: Instance)
+	if not log:IsA("BasePart") then
+		return
+	end
+	local from = log:GetAttribute("PopFrom")
+	local spawnedAt = log:GetAttribute("SpawnedAt")
+	if typeof(from) ~= "Vector3" or typeof(spawnedAt) ~= "number" then
+		return
+	end
+	-- Old logs (lying there since before you joined) stay where they are.
+	if workspace:GetServerTimeNow() - spawnedAt > Config.Logs.PopTime or distanceTo(log.Position) > cfg.EffectsDistance then
+		return
+	end
+	table.insert(pops, {
+		Log = log,
+		From = from,
+		To = log.CFrame,
+		Spin = Vector3.new(random:NextNumber(-1, 1), random:NextNumber(-1, 1), random:NextNumber(-1, 1)).Unit,
+		Started = os.clock(),
+	})
+	log.CFrame = CFrame.new(from)
+end
+
+local function updatePops(now: number)
+	local popTime = Config.Logs.PopTime
+	local height = Config.Logs.PopHeight
+	for index = #pops, 1, -1 do
+		local pop = pops[index]
+		local log = pop.Log
+		local t = (now - pop.Started) / popTime
+		if not log.Parent or log:GetAttribute("Pulling") then
+			table.remove(pops, index) -- picked up, or the Log Vacuum has it: the server moves it now
+		elseif t >= 1 then
+			log.CFrame = pop.To -- exactly where the server put it
+			table.remove(pops, index)
+		elseif t < 0.8 then
+			-- An arc out of the trunk, spinning, then landing in exactly the server's rotation.
+			local u = t / 0.8
+			local position = pop.From:Lerp(pop.To.Position, u) + Vector3.yAxis * height * 4 * u * (1 - u)
+			log.CFrame = CFrame.new(position) * CFrame.fromAxisAngle(pop.Spin, (1 - u) * math.pi * 2) * pop.To.Rotation
+		else
+			-- A small hop where it lands.
+			local v = (t - 0.8) / 0.2
+			log.CFrame = pop.To + Vector3.yAxis * height * 0.15 * 4 * v * (1 - v)
+		end
+	end
 end
 
 ---------------------------------------------------------------------------
@@ -357,9 +575,10 @@ local function onTreeHit(target: unknown, position: unknown, outward: unknown, t
 	end
 	local tree = target :: Model
 	local trunk = getTrunk(tree)
-	if not trunk or distanceTo(position) > cfg.EffectsDistance then
+	if not trunk then
 		return
 	end
+	local near = distanceTo(position) <= cfg.EffectsDistance
 	local who: Player? = nil
 	if typeof(hitter) == "Instance" and (hitter :: Instance):IsA("Player") then
 		who = hitter :: Player
@@ -367,11 +586,12 @@ local function onTreeHit(target: unknown, position: unknown, outward: unknown, t
 
 	-- Your own hits were already drawn the moment your swing landed (see showMyHit).
 	local shown = shownAt[tree]
-	if not (who == player and shown and os.clock() - shown < cfg.ShownWindow) then
+	if near and not (who == player and shown and os.clock() - shown < cfg.ShownWindow) then
 		playHit(tree, trunk, position, outward, toolId, who, typeof(falling) == "Vector3")
 	end
+	-- Every player animates the fall, even far away, because the server doesn't move the tree.
 	if typeof(falling) == "Vector3" then
-		onTreeFalling(tree, trunk, falling)
+		startFall(tree, trunk, falling, near)
 	end
 end
 
@@ -386,16 +606,27 @@ function ChopEffectsController.start()
 
 	RunService.RenderStepped:Connect(updateWobbles)
 	RunService:BindToRenderStep("ChopCameraShake", Enum.RenderPriority.Camera.Value + 1, updateShake)
+	RunService.Heartbeat:Connect(function()
+		local now = os.clock()
+		updateFalls(now)
+		updatePops(now)
+	end)
 
 	Players.PlayerRemoving:Connect(function(leaving: Player)
 		lastSound[leaving] = nil
 	end)
+
+	-- Logs are made by the server (Server/Systems/LogManager) in this folder.
+	local logs = workspace:WaitForChild("Logs")
+	logs.ChildAdded:Connect(onLogAdded)
 
 	-- Load the chop sounds now, so even the very first hit plays without a delay.
 	local sounds: { string } = {}
 	for _, feel in Config.ChopFeel do
 		table.insert(sounds, Config.Sounds[feel.Sound].Id)
 	end
+	table.insert(sounds, Config.Sounds.TreeCrack.Id)
+	table.insert(sounds, Config.Sounds.TreeFall.Id)
 	ContentProvider:PreloadAsync(sounds)
 end
 

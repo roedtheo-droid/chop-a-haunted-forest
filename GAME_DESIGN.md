@@ -157,6 +157,17 @@ mimics first and burn them safely with a torch.
 11. Juicy chopping: (a) swing animation and instant hit effects, (b) tree fall,
     landing and popping logs.
 
+## Map 2.0 (a nicer, more detailed map made with Blender models)
+Models come from the scripts in `blender/` (see README "Blender models"); without them the
+game builds the old parts version.
+1. Blender pipeline + pilot: Oak, Pine, Birch, bark block, rocks. (done, tested)
+2. Ground, smooth path and river banks. (done, tested)
+3. Edges: invisible walls, hedge, ridge, stone wall, gatehouses, two rows of
+   border trees; bigger Tool Shed. (done, tested)
+4. The view outside: mountain ranges, hills with trees, clouds and sun rays.
+5. Trees, groves and clearings, ground details, less clutter along the path.
+6. Buildings, landmarks, logs and the boss as models.
+
 ## After the MVP (ideas, not scheduled)
 - Lobby with party pads: step on a pad, pick the map and party size (1–4),
   then everyone teleports in together.

@@ -122,6 +122,23 @@ local function buildTool(toolId: string): Tool
 	return tool
 end
 
+-- The look of a tool (its handle and head, anchored, in a Model) without the Tool itself,
+-- for hanging on the Tool Shed wall (see Build/ToolShed). Its pivot is the handle.
+function ToolManager.buildDisplay(toolId: string): Model
+	local tool = buildTool(toolId)
+	local display = Instance.new("Model")
+	display.Name = tool.Name
+	for _, part in tool:GetChildren() do
+		if part:IsA("BasePart") then
+			part.Anchored = true
+			part.Parent = display
+		end
+	end
+	tool:Destroy()
+	display.PrimaryPart = display:FindFirstChild("Handle") :: BasePart
+	return display
+end
+
 function ToolManager.owns(player: Player, toolId: string): boolean
 	return player:GetAttribute(Shop.ownsAttribute(toolId)) == true
 end

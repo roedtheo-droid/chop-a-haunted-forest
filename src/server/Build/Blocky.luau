@@ -1,8 +1,8 @@
 --!strict
 -- Helpers that build the blocky, cartoony look (see STYLE_GUIDE.md) out of plain parts:
--- trees, log cabins, gable roofs, wooden signs, striped pad edges and wood rings.
+-- trees, log cabins and log walls, gable roofs, wooden signs, striped pad edges and wood rings.
 -- No art needed: everything is Parts, colours and a little SurfaceGui.
--- Used by ForestSpawner, SceneryManager, SawmillManager, ShopManager, ZoneManager, CampManager,
+-- Used by ForestSpawner, SceneryManager, SawmillManager, ToolShed, ZoneManager, CampManager,
 -- TreeManager, LogManager and BossManager. It's not a system, so it has no init()/start().
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -120,6 +120,16 @@ local function rect(parent: Instance, x: number, y: number, w: number, h: number
 	frame.BackgroundColor3 = color
 	frame.Parent = parent
 	return frame
+end
+
+-- Dark lines between the logs on some faces of a wall, so it looks like a log wall.
+function Blocky.logLines(part: BasePart, faces: { Enum.NormalId })
+	for _, face in faces do
+		local gui = Blocky.face(part, face)
+		for line = 1, LOG_LINES do
+			rect(gui, 0, line / (LOG_LINES + 1), 1, 0.025, Config.Style.DarkWood)
+		end
+	end
 end
 
 -- The light inside of a tree with growth rings: for stump tops and the ends of logs.

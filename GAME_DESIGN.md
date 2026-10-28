@@ -164,7 +164,8 @@ game builds the old parts version.
 2. Ground, smooth path and river banks. (done, tested)
 3. Edges: invisible walls, hedge, ridge, stone wall, gatehouses, two rows of
    border trees; bigger Tool Shed. (done, tested)
-4. The view outside: mountain ranges, hills with trees, clouds and sun rays.
+4. The view outside: mountain ranges, hills with trees, clouds and sun rays; all models in
+   one file (AllModels.fbx) so Studio needs one import. (done, tested)
 5. Trees, groves and clearings, ground details, less clutter along the path.
 6. Buildings, landmarks, logs and the boss as models.
 

@@ -92,15 +92,16 @@ local function buildWalls(parent: Instance)
 	local cfg = Config.Forest
 	local height = cfg.WallHeight
 	local thick = cfg.WallThickness
-	local first = Zones.getBounds(1)
+	-- The walls go around the camp too (it's in front of zone 1).
+	local camp = Zones.getCampBounds()
 	local last = Zones.getBounds(Zones.count())
-	local nearZ, farZ = first.MaxZ, last.MinZ
+	local nearZ, farZ = camp.MaxZ, last.MinZ
 	local halfWidth = cfg.Width / 2
 	local length = nearZ - farZ
 	local middleZ = (nearZ + farZ) / 2
 	local y = height / 2
 
-	-- Left, right, back (behind spawn) and far end: a thick green hedge, so the forest's edge
+	-- Left, right, back (behind the camp) and far end: a thick green hedge, so the forest's edge
 	-- looks like more forest (SceneryManager puts big trees just behind it).
 	local outer = {
 		makePart("LeftWall", Vector3.new(thick, height, length), Vector3.new(-halfWidth - thick / 2, y, middleZ), parent),

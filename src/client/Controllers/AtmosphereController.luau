@@ -72,6 +72,9 @@ end
 local function update()
 	local root = getRoot()
 	local zone = if root then Zones.indexAt(root.Position) else nil
+	if root and not zone and Zones.isInCamp(root.Position) then
+		zone = 1 -- the camp has zone 1's sunny look
+	end
 	if not zone or zone == currentZone then
 		return -- same zone as before (or between zones): keep the look we have
 	end

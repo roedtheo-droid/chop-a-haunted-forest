@@ -20,14 +20,15 @@ local folder: Folder
 -- The forest's outside edges (outside the walls).
 local function forestEdges(): (number, number, number)
 	local halfWidth = Config.Forest.Width / 2 + Config.Forest.WallThickness
-	local nearZ = Zones.getBounds(1).MaxZ + Config.Forest.WallThickness
+	local nearZ = Zones.getCampBounds().MaxZ + Config.Forest.WallThickness
 	local farZ = Zones.getBounds(Zones.count()).MinZ - Config.Forest.WallThickness
 	return halfWidth, nearZ, farZ
 end
 
 -- One big tree at (x, z), looking like the trees of the zone it stands next to.
 local function addBorderTree(x: number, z: number)
-	local zoneIndex = Zones.indexAt(Vector3.new(0, 0, z)) or (if z > 0 then 1 else Zones.count())
+	-- Next to the camp (or behind it) they look like zone 1's trees; past the far wall, like the last zone's.
+	local zoneIndex = Zones.indexAt(Vector3.new(0, 0, z)) or (if z > Zones.getBounds(1).MinZ then 1 else Zones.count())
 	local treeType = Config.TreeTypes[Config.Zones[zoneIndex].TreeType]
 	local tree = Blocky.tree(Vector3.new(x, 0, z), treeType, random, Config.Scenery.BorderTreeScale)
 	tree.Name = "BorderTree"
@@ -54,7 +55,7 @@ local function addBorderTrees()
 		end
 		z -= spacing
 	end
-	-- Behind spawn and past the far wall.
+	-- Behind the camp and past the far wall.
 	local x = -halfWidth
 	while x < halfWidth do
 		addBorderTree(x, nearZ + distance + random:NextNumber(0, spacing / 2))

@@ -174,17 +174,17 @@ local treeTypes: { [string]: Types.TreeTypeConfig } = {
 }
 
 -- The zones, in order from spawn. Clearing every tree in a zone opens the gate to the next one.
--- Zone 1 starts behind spawn (Forest.StartZ) and each next zone is further along -Z.
+-- The camp (with spawn) comes first, then zone 1, and each next zone is further along -Z.
 local zones: { Types.ZoneConfig } = {
 	{
 		Name = "Pale Pines",
-		Length = 160,
-		TreeCount = 30,
+		Length = 260,
+		TreeCount = 60,
 		TreeType = "Birch",
 		GroundColor = Color3.fromRGB(90, 170, 60),
 		GroundMaterial = Enum.Material.Grass,
-		Sawmill = Vector3.new(0, 0, -20), -- next to spawn and the Tool Shed
-		ClearRadius = 40, -- keeps spawn, the sawmill and the Tool Shed free of trees
+		Sawmill = Vector3.new(50, 0, 410), -- in the camp, by the river
+		ClearRadius = 30, -- no trees this close to the sawmill
 		MimicPercent = 5, -- this % of the zone's trees are secretly mimics
 		-- A sunny, cartoony midday: bright colours, soft shadows, almost no fog.
 		Look = {
@@ -203,12 +203,12 @@ local zones: { Types.ZoneConfig } = {
 	},
 	{
 		Name = "Fog Hollow",
-		Length = 180,
-		TreeCount = 40,
+		Length = 300,
+		TreeCount = 90,
 		TreeType = "Willow",
 		GroundColor = Color3.fromRGB(95, 125, 80),
 		GroundMaterial = Enum.Material.Grass,
-		Sawmill = Vector3.new(-40, 0, -110), -- just inside the gate, off to the left
+		Sawmill = Vector3.new(-90, 0, 80), -- just inside the gate, off to the left
 		ClearRadius = 30,
 		MimicPercent = 10,
 		-- Thick grey fog: you can only see a short way ahead.
@@ -228,12 +228,12 @@ local zones: { Types.ZoneConfig } = {
 	},
 	{
 		Name = "Graveyard Grove",
-		Length = 200,
-		TreeCount = 50,
+		Length = 340,
+		TreeCount = 120,
 		TreeType = "DeadOak",
 		GroundColor = Color3.fromRGB(60, 48, 52),
 		GroundMaterial = Enum.Material.Mud,
-		Sawmill = Vector3.new(-40, 0, -290),
+		Sawmill = Vector3.new(-90, 0, -220),
 		ClearRadius = 30,
 		MimicPercent = 15,
 		-- Dusk: dark and gloomy, with a purple haze. The Lantern's glow really helps here.
@@ -278,8 +278,8 @@ local Config = {
 
 	-- The forest: zones in a row with walls around them (see Shared/Zones.luau)
 	Forest = {
-		Width = 160, -- every zone is this wide (X axis)
-		StartZ = 80, -- the edge of zone 1 behind spawn (spawn is at Z = 0)
+		Width = 260, -- the camp and every zone are this wide (X axis)
+		StartZ = 520, -- the back edge of the camp, behind spawn. Zone 1 starts Camp.Length further on.
 		MinSpacing = 10, -- minimum distance between two trees
 		EdgeMargin = 8, -- no trees closer than this to a wall
 		WallHeight = 20, -- too high to jump over
@@ -288,6 +288,41 @@ local Config = {
 
 	Zones = zones,
 	TreeTypes = treeTypes,
+
+	-- The camp: a safe area before zone 1 with spawn, the Tool Shed and the first sawmill.
+	-- No trees grow here. A river with a bridge runs across its far end (see Server/Systems/CampManager).
+	Camp = {
+		Length = 150, -- studs from the back hedge to where zone 1 starts
+		Spawn = Vector3.new(0, 0, 480), -- where players appear
+		GroundColor = Color3.fromRGB(124, 196, 81), -- a bit brighter than zone 1
+		RiverWidth = 14,
+		RiverGap = 3, -- studs between the river and zone 1
+		RiverColor = Color3.fromRGB(90, 169, 230),
+		BridgeWidth = 16,
+	},
+
+	-- A dirt path from spawn through every gate to the boss. Trees don't grow on it.
+	-- Points are (X, Z) on the map, in order. The gates are at X = 0, so the path crosses there.
+	Path = {
+		Width = 8,
+		TreeClearance = 7, -- no trees closer than this to the middle of the path
+		Color = Color3.fromRGB(210, 173, 115),
+		Points = {
+			Vector2.new(0, 480),
+			Vector2.new(0, 370),
+			Vector2.new(14, 300),
+			Vector2.new(-22, 220),
+			Vector2.new(12, 150),
+			Vector2.new(0, 110),
+			Vector2.new(28, 40),
+			Vector2.new(-34, -40),
+			Vector2.new(22, -130),
+			Vector2.new(0, -190),
+			Vector2.new(-24, -280),
+			Vector2.new(32, -370),
+			Vector2.new(0, -428),
+		},
+	},
 
 	-- Gates between zones
 	Gates = {
@@ -347,7 +382,7 @@ local Config = {
 		BorderTreeSpacing = 14, -- studs between the big trees just outside the walls
 		BorderTreeDistance = 10, -- studs from the wall to those trees
 		BorderTreeScale = 1.7, -- they're bigger than forest trees, so they show above the walls
-		MountainCount = 20,
+		MountainCount = 34,
 		MountainDistance = 320, -- studs from the forest's edge to the nearest mountains
 		MountainMinSize = 100,
 		MountainMaxSize = 180,
@@ -469,8 +504,8 @@ local Config = {
 	-- It sleeps (and can't be hurt) until every other tree in its zone is cleared.
 	-- Then it slams the ground, and players break it by chopping its glowing roots.
 	Boss = {
-		Position = Vector3.new(0, 0, -415), -- where it stands (height is found automatically)
-		ClearRadius = 35, -- no trees grow (and no mimics hide) this close to it
+		Position = Vector3.new(0, 0, -470), -- where it stands (height is found automatically)
+		ClearRadius = 40, -- no trees grow (and no mimics hide) this close to it
 		TrunkHeight = 40,
 		TrunkWidth = 10,
 		CrownSize = 30, -- the ball of leaves on top
@@ -582,9 +617,9 @@ local Config = {
 		SellCooldown = 1, -- seconds between sells for one player (stops double-selling)
 	},
 
-	-- Tool Shed (placeholder building next to the sawmill)
+	-- Tool Shed (in the camp, across the path from the sawmill)
 	Shop = {
-		Position = Vector3.new(22, 0, -20), -- center of the building (height is found automatically)
+		Position = Vector3.new(-50, 0, 430), -- center of the building (height is found automatically)
 		BuildingSize = Vector3.new(10, 8, 8),
 		PromptDistance = 10, -- how close you must be to see "Open shop"
 		MaxBuyDistance = 20, -- the server refuses purchases from further away than this

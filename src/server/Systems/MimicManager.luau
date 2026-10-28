@@ -510,6 +510,7 @@ local function findSleepSpot(mimic: Mimic): Vector3
 			and spot.Z >= bounds.MinZ + margin
 			and spot.Z <= bounds.MaxZ - margin
 			and flatDistance(spot, zone.Sawmill) >= zone.ClearRadius
+			and Zones.distanceToPath(spot.X, spot.Z) >= Config.Path.TreeClearance
 			and not Boss.isInClearing(spot)
 			and isFreeSpot(spot, mimic.Tree)
 		then

@@ -2,7 +2,7 @@
 -- Helpers that build the blocky, cartoony look (see STYLE_GUIDE.md) out of plain parts:
 -- trees, log cabins, gable roofs, wooden signs, striped pad edges and wood rings.
 -- No art needed: everything is Parts, colours and a little SurfaceGui.
--- Used by ForestSpawner, SceneryManager, SawmillManager, ShopManager, ZoneManager,
+-- Used by ForestSpawner, SceneryManager, SawmillManager, ShopManager, ZoneManager, CampManager,
 -- TreeManager, LogManager and BossManager. It's not a system, so it has no init()/start().
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

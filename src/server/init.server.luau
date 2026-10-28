@@ -19,6 +19,7 @@ local systems: { Types.Module } = {
 	require(Systems.SaveManager), -- early, so players' saves start loading as soon as possible
 	require(Systems.QuestManager),
 	require(Systems.ZoneManager), -- before anything that looks for the ground (it builds the zone floors)
+	require(Systems.CampManager), -- the camp, river, bridge and path (and moves spawn into the camp)
 	require(Systems.SceneryManager), -- trees outside the walls, mountains (only for looks)
 	require(Systems.ForestSpawner),
 	require(Systems.MimicManager), -- after ForestSpawner (it picks mimics from the spawned trees)

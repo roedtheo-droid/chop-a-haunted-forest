@@ -100,8 +100,8 @@ function ForestSpawner.addKnot(tree: Model): BasePart?
 	return knot
 end
 
--- Pick random spots inside the zone: away from the walls, the zone's sawmill, the boss's
--- clearing and each other.
+-- Pick random spots inside the zone: away from the walls, the zone's sawmill, the path, the
+-- boss's clearing and each other.
 local function pickPositions(index: number): { Vector2 }
 	local zone = Config.Zones[index]
 	local bounds = Zones.getBounds(index)
@@ -116,6 +116,7 @@ local function pickPositions(index: number): { Vector2 }
 				random:NextNumber(bounds.MinZ + margin, bounds.MaxZ - margin)
 			)
 			local ok = (candidate - sawmill).Magnitude >= zone.ClearRadius
+				and Zones.distanceToPath(candidate.X, candidate.Y) >= Config.Path.TreeClearance
 				and not Boss.isInClearing(Vector3.new(candidate.X, 0, candidate.Y))
 			if ok then
 				for _, other in positions do

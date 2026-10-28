@@ -1,7 +1,8 @@
 --!strict
--- Where each zone is on the map, worked out from Config.Forest and Config.Zones.
--- Zones sit in a row: zone 1 is around spawn, zone 2 is behind it (towards -Z), and so on.
--- The server uses this to build walls and spawn trees; the client uses it for the HUD.
+-- Where the camp and each zone are on the map, worked out from Config.Forest, Config.Camp
+-- and Config.Zones. They sit in a row: first the camp (with spawn), then zone 1, then zone 2
+-- (towards -Z), and so on. The server uses this to build walls and spawn trees; the client
+-- uses it for the HUD.
 
 local Config = require(script.Parent.Config)
 
@@ -18,10 +19,17 @@ local Zones = {}
 -- The server creates it (see Server/Systems/ZoneManager); the client only reads it.
 Zones.StateFolderName = "ZoneState"
 
+local halfWidth = Config.Forest.Width / 2
+local campBounds: Bounds = {
+	MinX = -halfWidth,
+	MaxX = halfWidth,
+	MinZ = Config.Forest.StartZ - Config.Camp.Length,
+	MaxZ = Config.Forest.StartZ,
+}
+
 local allBounds: { Bounds } = {}
 do
-	local halfWidth = Config.Forest.Width / 2
-	local nearZ = Config.Forest.StartZ
+	local nearZ = campBounds.MinZ
 	for _, zone in Config.Zones do
 		table.insert(allBounds, {
 			MinX = -halfWidth,
@@ -33,6 +41,13 @@ do
 	end
 end
 
+local function isInside(position: Vector3, bounds: Bounds): boolean
+	return position.X >= bounds.MinX
+		and position.X <= bounds.MaxX
+		and position.Z >= bounds.MinZ
+		and position.Z <= bounds.MaxZ
+end
+
 function Zones.count(): number
 	return #allBounds
 end
@@ -41,19 +56,37 @@ function Zones.getBounds(index: number): Bounds
 	return allBounds[index]
 end
 
--- Which zone is this position in? nil if it's outside every zone.
+-- Which zone is this position in? nil if it's outside every zone (the camp isn't a zone).
 function Zones.indexAt(position: Vector3): number?
 	for index, bounds in allBounds do
-		if
-			position.X >= bounds.MinX
-			and position.X <= bounds.MaxX
-			and position.Z >= bounds.MinZ
-			and position.Z <= bounds.MaxZ
-		then
+		if isInside(position, bounds) then
 			return index
 		end
 	end
 	return nil
+end
+
+function Zones.getCampBounds(): Bounds
+	return campBounds
+end
+
+function Zones.isInCamp(position: Vector3): boolean
+	return isInside(position, campBounds)
+end
+
+-- How far (x, z) is from the middle of the dirt path (Config.Path), in studs.
+function Zones.distanceToPath(x: number, z: number): number
+	local point = Vector2.new(x, z)
+	local points = Config.Path.Points
+	local best = math.huge
+	for index = 1, #points - 1 do
+		local a, b = points[index], points[index + 1]
+		local along = b - a
+		-- How far along this piece of path the closest spot is, from 0 (at a) to 1 (at b).
+		local t = math.clamp((point - a):Dot(along) / along:Dot(along), 0, 1)
+		best = math.min(best, (point - (a + along * t)).Magnitude)
+	end
+	return best
 end
 
 return table.freeze(Zones)

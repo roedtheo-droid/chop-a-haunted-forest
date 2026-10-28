@@ -54,7 +54,7 @@ each one yourself, **once**. Until you do, the game simply builds the old blocky
 **Import a model:**
 
 1. In Studio, open the **File** menu and click **Import 3D**. Pick a file from `blender/export/` (for example `Oak.fbx`).
-2. In the import window, keep the settings as they are and click **Import**. (Don't worry about the size: the game resizes every model itself.)
+2. In the import window, keep the settings as they are and click **Import**. (Don't worry about the size: the game resizes every model itself. If there's a "Merge meshes" option, leave it off: the game needs the parts separate.)
 3. The model shows up in the Workspace. In the Explorer, find **ServerStorage**. The first time, add a **Folder** in it and name it `MapAssets`.
 4. Drag the imported model into `ServerStorage > MapAssets`. Its name must match the file name (`Oak`, `Pine`, `Birch`, `BarkBlock`, `Rock1`, `Rock2`). Rename it if Studio called it something else.
 5. Save the place (File > Save). The models live in the place file, not in GitHub.

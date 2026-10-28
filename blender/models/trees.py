@@ -9,7 +9,6 @@ looks for them by name, see src/server/Build/Assets.luau and Blocky.tree):
   LeafBlock_N  the other crown blocks (the game welds them to Leaves)
 """
 
-import math
 import random
 
 from lib import palette
@@ -21,7 +20,7 @@ def roots(collection, trunk_width, length, height, count=4):
     for i in range(count):
         root = Piece(f"Root_{i + 1}", palette.ROOT)
         reach = trunk_width / 2 + length
-        root.add(wedge((trunk_width * 0.45, reach, height), bevel=0.12), place((0, reach / 2, 0), turn_z=i * 360 / count))
+        root.add(wedge((trunk_width * 0.45, reach, height), bevel=0.12), place((0, reach / 2, 0), orbit_z=i * 360 / count))
         root.build(collection)
 
 
@@ -34,43 +33,39 @@ def oak(collection):
     branch = Piece("Branch_1", palette.BARK)
     branch.add(box((0.9, 0.9, 4.2), bevel=0.15), place((1.7, 0.2, 11.6), turn_z=10, tilt_y=38))
     branch.build(collection)
-    leaf_clump(Piece("Leaves", palette.OAK_LEAF), 10, (0, 0, 15.6), turn=20, bumps=4, rng=rng).build(collection)
+    leaf_clump(Piece("Leaves", palette.OAK_LEAF), 10, (0, 0, 15.6), turn=20, bumps=1, rng=rng).build(collection)
     blocks = [
-        (7.0, (4.3, 1.4, 15.2), 35),
-        (6.6, (-4.1, -1.9, 16.4), 10),
-        (6.0, (0.8, -4.3, 18.0), 52),
-        (5.4, (-1.4, 3.6, 20.2), 25),
+        (7.4, (4.4, 1.2, 15.0), 38),
+        (7.0, (-4.2, -1.8, 16.2), 8),
+        (6.4, (0.9, -4.4, 17.6), 52),
+        (6.0, (-1.6, 3.8, 19.6), 25),
+        (4.6, (1.2, 0.4, 21.6), 40),
     ]
     for i, (size, where, turn) in enumerate(blocks):
-        leaf_clump(Piece(f"LeafBlock_{i + 1}", palette.OAK_LEAF), size, where, turn=turn, bumps=3, rng=rng).build(collection)
+        leaf_clump(Piece(f"LeafBlock_{i + 1}", palette.OAK_LEAF), size, where, turn=turn, bumps=1, rng=rng).build(collection)
 
 
 def pine(collection):
-    """Pale Pines' namesake: a slim trunk under stacked, tapering tiers, each turned 45
-    degrees from the one below, with little drooping tufts under their corners."""
+    """Pale Pines' namesake: a slim trunk under five stacked, pointed tiers, each turned
+    45 degrees from the one below, so the outline looks like layers of branches."""
     rng = random.Random(23)
-    width, height = 2.2, 9.0
+    width, height = 2.2, 8.0
     bark(Piece("Trunk", palette.BARK), width, height, ridges=2, rng=rng).build(collection)
     roots(collection, width, 1.2, 1.2)
     tiers = [
         # width, bottom, height, turn
-        (11.0, 4.5, 4.0, 0),
-        (8.6, 8.0, 3.8, 45),
-        (6.2, 11.3, 3.5, 0),
-        (3.8, 14.4, 3.0, 45),
+        (10.0, 4.0, 3.8, 0),
+        (8.4, 7.0, 3.6, 45),
+        (6.8, 9.9, 3.3, 0),
+        (5.2, 12.5, 3.1, 45),
+        (3.6, 14.9, 2.8, 0),
     ]
     for i, (w, bottom, h, turn) in enumerate(tiers):
         piece = Piece("Leaves" if i == 0 else f"LeafBlock_{i}", palette.PINE_LEAF)
-        piece.add(box((w, w, h), bevel=0.3, taper=0.7), place((0, 0, bottom + h / 2), turn_z=turn))
-        tuft = w * 0.2
-        for corner in range(4):
-            angle = turn + 45 + corner * 90
-            reach = w * 0.42
-            x, y = math.cos(math.radians(angle)) * reach, math.sin(math.radians(angle)) * reach
-            piece.add(box((tuft, tuft, h * 0.42), bevel=tuft * 0.18, taper=1.15), place((x, y, bottom + h * 0.12), turn_z=angle + rng.uniform(-10, 10)))
+        piece.add(box((w, w, h), bevel=0.28, taper=0.6), place((0, 0, bottom + h / 2), turn_z=turn + rng.uniform(-4, 4)))
         piece.build(collection)
     top = Piece(f"LeafBlock_{len(tiers)}", palette.PINE_LEAF)
-    top.add(box((1.8, 1.8, 2.2), bevel=0.2, taper=0.35), place((0, 0, 17.4 + 1.1), turn_z=0))
+    top.add(box((1.9, 1.9, 2.6), bevel=0.2, taper=0.3), place((0, 0, 17.3 + 1.3), turn_z=45))
     top.build(collection)
 
 
@@ -80,14 +75,14 @@ def birch(collection):
     width, height = 2.4, 16.8
     bark(Piece("Trunk", palette.BIRCH), width, height, ridges=2, rng=rng).build(collection)
     roots(collection, width, 1.2, 1.3)
-    leaf_clump(Piece("Leaves", palette.BIRCH_LEAF), 7.5, (0, 0, 17.9), turn=15, bumps=4, rng=rng).build(collection)
+    leaf_clump(Piece("Leaves", palette.BIRCH_LEAF), 7.5, (0, 0, 17.9), turn=15, bumps=1, rng=rng).build(collection)
     blocks = [
-        (5.2, (2.9, 1.0, 19.4), 40),
-        (4.6, (-2.6, -1.2, 20.5), 5),
-        (3.6, (0.4, 0.6, 22.4), 30),
+        (5.4, (3.0, 1.0, 18.8), 40),
+        (5.0, (-2.8, -1.3, 19.8), 5),
+        (4.0, (0.4, 0.6, 22.0), 30),
     ]
     for i, (size, where, turn) in enumerate(blocks):
-        leaf_clump(Piece(f"LeafBlock_{i + 1}", palette.BIRCH_LEAF), size, where, turn=turn, bumps=2, rng=rng).build(collection)
+        leaf_clump(Piece(f"LeafBlock_{i + 1}", palette.BIRCH_LEAF), size, where, turn=turn, bumps=1, rng=rng).build(collection)
 
 
 def bark_block(collection):

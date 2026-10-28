@@ -80,10 +80,30 @@ def wedge(size, bevel=0.0):
     return bm
 
 
-def place(location=(0, 0, 0), turn_z=0.0, tilt_x=0.0, tilt_y=0.0):
-    """A matrix that tilts (degrees around X and Y), turns (degrees around Z) and then moves."""
+def cap(source, min_up=0.85, lift=0.05, thickness=0.14):
+    """A thin layer copied from the upward-facing faces of `source` (a bmesh, not changed),
+    lifted a hair above them: moss or snow that follows the shape exactly."""
+    bm = source.copy()
+    bm.normal_update()
+    bmesh.ops.delete(bm, geom=[f for f in bm.faces if f.normal.z < min_up], context="FACES")
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context="VERTS")
+    for v in bm.verts:
+        v.co.z += lift
+    extruded = bmesh.ops.extrude_face_region(bm, geom=list(bm.faces))
+    for item in extruded["geom"]:
+        if isinstance(item, bmesh.types.BMVert):
+            item.co.z -= thickness
+    bmesh.ops.recalc_face_normals(bm, faces=list(bm.faces))
+    return bm
+
+
+def place(location=(0, 0, 0), turn_z=0.0, tilt_x=0.0, tilt_y=0.0, orbit_z=0.0):
+    """A matrix that tilts (degrees around X and Y), turns (degrees around Z), moves to
+    `location`, and then swings around the middle of the model (degrees around Z), like the
+    hands of a clock: handy for things spread around a trunk."""
     return (
-        Matrix.Translation(Vector(location))
+        Matrix.Rotation(math.radians(orbit_z), 4, "Z")
+        @ Matrix.Translation(Vector(location))
         @ Matrix.Rotation(math.radians(turn_z), 4, "Z")
         @ Matrix.Rotation(math.radians(tilt_y), 4, "Y")
         @ Matrix.Rotation(math.radians(tilt_x), 4, "X")
@@ -217,16 +237,23 @@ def leaf_clump(piece, size, location, turn=0.0, bumps=4, rng=None):
     and top, so the crown looks leafy instead of perfectly square."""
     rng = rng or random.Random(5)
     piece.add(box((size, size, size), bevel=size * 0.12), place(location, turn_z=turn))
-    directions = [(1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1)]
-    rng.shuffle(directions)
-    for d in directions[:bumps]:
-        s = size * rng.uniform(0.38, 0.5)
-        offset = Vector(d) * (size / 2) + Vector((rng.uniform(-0.18, 0.18) * size * (1 - abs(d[0])),
-                                                  rng.uniform(-0.18, 0.18) * size * (1 - abs(d[1])),
-                                                  rng.uniform(-0.15, 0.1) * size * (1 - abs(d[2]))))
+    # The top always gets a clump; the sides get the rest, sitting high so they read as
+    # more leaves on the crown rather than knobs stuck to its sides.
+    sides = [(1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0)]
+    rng.shuffle(sides)
+    for d in [(0, 0, 1)] + sides[: max(bumps - 1, 0)]:
+        s = size * rng.uniform(0.52, 0.64)
+        sink = s * 0.28  # how far it sticks out of the main block
+        if d[2] == 1:
+            offset = Vector((rng.uniform(-0.15, 0.15) * size, rng.uniform(-0.15, 0.15) * size, size / 2 - s / 2 + sink))
+        else:
+            along = rng.uniform(-0.15, 0.15) * size
+            offset = Vector((d[0] * (size / 2 - s / 2 + sink) + abs(d[1]) * along,
+                             d[1] * (size / 2 - s / 2 + sink) + abs(d[0]) * along,
+                             rng.uniform(0.05, 0.22) * size))
         rotated = Matrix.Rotation(math.radians(turn), 3, "Z") @ offset
         piece.add(
-            box((s, s, s * 0.85), bevel=s * 0.14),
-            place(Vector(location) + rotated, turn_z=turn + rng.uniform(-15, 15)),
+            box((s, s, s * 0.9), bevel=s * 0.16),
+            place(Vector(location) + rotated, turn_z=turn + rng.uniform(-18, 18)),
         )
     return piece

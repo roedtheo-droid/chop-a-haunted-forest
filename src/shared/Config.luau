@@ -299,6 +299,14 @@ local Config = {
 		RiverGap = 3, -- studs between the river and zone 1
 		RiverColor = Color3.fromRGB(90, 169, 230),
 		BridgeWidth = 16,
+		-- The things in the camp (see Server/Build/CampProps). Positions are (X, 0, Z).
+		PlazaSize = 24, -- the square of stone tiles around spawn
+		Campfire = Vector3.new(30, 0, 466),
+		QuestBoard = Vector3.new(-14, 0, 462),
+		Well = Vector3.new(-30, 0, 494),
+		Signpost = Vector3.new(8, 0, 400), -- just before the bridge
+		Benches = { Vector3.new(-9, 0, 440), Vector3.new(9, 0, 440), Vector3.new(-9, 0, 420), Vector3.new(9, 0, 420) },
+		FlowerBeds = { Vector3.new(-16, 0, 497), Vector3.new(16, 0, 497), Vector3.new(-16, 0, 463), Vector3.new(16, 0, 463) },
 	},
 
 	-- A dirt path from spawn through every gate to the boss. Trees don't grow on it.
@@ -610,11 +618,18 @@ local Config = {
 		Starting = 0,
 	},
 
-	-- Sawmills (one placeholder building per zone; positions are in Zones above)
+	-- Sawmills (one per zone; positions are in Zones above). See Server/Build/SawmillBuilding.
 	Sawmill = {
-		BuildingSize = Vector3.new(14, 10, 8),
+		BuildingSize = Vector3.new(20, 11, 14), -- the open-fronted mill shed
+		RoofHeight = 6,
 		PadSize = 8, -- the "DROP LOGS" pad is this many studs wide and deep
 		SellCooldown = 1, -- seconds between sells for one player (stops double-selling)
+		SawSize = 6, -- how wide the big round saw is
+		WheelRadius = 5, -- the water wheel on the side
+		SawSpin = 6, -- how fast the saw turns (radians per second, only for looks)
+		WheelSpin = 0.7, -- how fast the water wheel turns
+		SpinDistance = 250, -- the saw and wheel only turn on your screen when you're this close
+		Wear = { 0, 0.15, 0.28 }, -- how much darker each zone's sawmill is: zones 2 and 3 are old and worn
 	},
 
 	-- Tool Shed (in the camp, across the path from the sawmill)

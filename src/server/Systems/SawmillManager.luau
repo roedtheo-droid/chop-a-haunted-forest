@@ -1,6 +1,6 @@
 --!strict
--- Builds a placeholder sawmill (a log cabin with a saw blade) in every zone, each with a
--- striped "DROP LOGS" pad and a big "SELL LOGS" sign.
+-- Builds a sawmill in every zone (the building is in Build/SawmillBuilding), each with a
+-- striped "DROP LOGS" pad in front.
 -- When a player steps on a pad, the SERVER takes all their logs and pays them coins.
 -- The client never says how many logs it has or what they're worth, so it can't fake the amount.
 
@@ -9,17 +9,18 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local Zones = require(ReplicatedStorage.Shared.Zones)
 local CoinManager = require(script.Parent.CoinManager)
 local EffectsManager = require(script.Parent.EffectsManager)
 local LogManager = require(script.Parent.LogManager)
 local QuestManager = require(script.Parent.QuestManager)
 local RunManager = require(script.Parent.RunManager)
 local Blocky = require(script.Parent.Parent.Build.Blocky)
+local SawmillBuilding = require(script.Parent.Parent.Build.SawmillBuilding)
 
 local PAD_COLOR = Color3.fromRGB(196, 138, 85) -- light wooden planks
 local PAD_THICKNESS = 0.4
 local STRIPE_WIDTH = 0.8 -- the yellow and black edge around the pad
-local SAW_SIZE = 5
 
 local SawmillManager = {}
 
@@ -72,7 +73,7 @@ local function onPadTouched(hit: BasePart)
 	QuestManager.report(player, "SellLogs")
 end
 
-local function build(center: Vector3): BasePart
+local function build(center: Vector3, index: number): BasePart
 	local cfg = Config.Sawmill
 	local groundY = groundHeightAt(center.X, center.Z)
 	local ground = Vector3.new(center.X, groundY, center.Z)
@@ -80,29 +81,9 @@ local function build(center: Vector3): BasePart
 
 	local model = Instance.new("Model")
 	model.Name = "Sawmill"
-
-	local building = Blocky.cabin("Building", ground, size, 1, model)
-
-	-- A big saw blade on the side wall, so you can tell it's a sawmill.
-	local saw = Blocky.part(
-		"Saw",
-		Vector3.new(0.4, SAW_SIZE, SAW_SIZE),
-		CFrame.new(building.Position + Vector3.new(size.X / 2 + 0.2, 0, 0)),
-		Config.Style.Metal,
-		Enum.Material.Metal,
-		model
-	)
-	saw.Shape = Enum.PartType.Cylinder -- a cylinder's flat sides face along X
-
-	-- A "SELL LOGS" sign on the front wall, above the door.
-	Blocky.sign(
-		"SELL LOGS",
-		CFrame.new(ground + Vector3.new(0, size.Y * 0.84, size.Z / 2 + 0.3)),
-		size.X * 0.75,
-		size.Y * 0.24,
-		nil,
-		model
-	)
+	-- The sawmill in the camp stands by the river, so its water wheel's stream runs into it.
+	local riverZ = if Zones.isInCamp(ground) then Zones.getRiverZ() else nil
+	SawmillBuilding.build(ground, cfg.Wear[index] or 0, riverZ, model)
 
 	-- The pad sits in front of the building, on the side facing spawn and the zone's gate (+Z).
 	local dropPad = Instance.new("Part")
@@ -125,8 +106,8 @@ local function build(center: Vector3): BasePart
 end
 
 function SawmillManager.init()
-	for _, zone in Config.Zones do
-		table.insert(pads, build(zone.Sawmill))
+	for index, zone in Config.Zones do
+		table.insert(pads, build(zone.Sawmill, index))
 	end
 end
 

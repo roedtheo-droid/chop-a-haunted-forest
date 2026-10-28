@@ -1,6 +1,7 @@
 --!strict
 -- Builds the camp in front of zone 1 (see Config.Camp): its grass, the river with a bridge
--- across its far end, and the dirt path that runs from spawn through every gate to the boss.
+-- across its far end, the dirt path that runs from spawn through every gate to the boss,
+-- and the things around spawn (campfire, quest board, well... see Build/CampProps).
 -- It also moves the place's SpawnLocation into the camp. No trees grow in the camp
 -- (it isn't a zone), and none grow on the path (see ForestSpawner).
 
@@ -9,6 +10,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Zones = require(ReplicatedStorage.Shared.Zones)
 local Blocky = require(script.Parent.Parent.Build.Blocky)
+local CampProps = require(script.Parent.Parent.Build.CampProps)
 
 local FLOOR_THICKNESS = 1
 local FLOOR_TOP = 0.05 -- the same height as the zone floors (see ZoneManager)
@@ -38,7 +40,7 @@ end
 local function buildRiver(): number
 	local cfg = Config.Camp
 	local bounds = Zones.getCampBounds()
-	local z = bounds.MinZ + cfg.RiverGap + cfg.RiverWidth / 2
+	local z = Zones.getRiverZ()
 	local river = Blocky.part(
 		"River",
 		Vector3.new(bounds.MaxX - bounds.MinX, RIVER_TOP, cfg.RiverWidth),
@@ -164,6 +166,7 @@ function CampManager.init()
 	buildFloor()
 	buildPath()
 	buildBridge(buildRiver())
+	CampProps.build(folder)
 	folder.Parent = workspace
 	placeSpawn()
 end

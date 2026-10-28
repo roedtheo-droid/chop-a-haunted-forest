@@ -74,6 +74,11 @@ function Zones.isInCamp(position: Vector3): boolean
 	return isInside(position, campBounds)
 end
 
+-- The middle (Z) of the river that runs across the far end of the camp (see CampManager).
+function Zones.getRiverZ(): number
+	return campBounds.MinZ + Config.Camp.RiverGap + Config.Camp.RiverWidth / 2
+end
+
 -- How far (x, z) is from the middle of the dirt path (Config.Path), in studs.
 function Zones.distanceToPath(x: number, z: number): number
 	local point = Vector2.new(x, z)

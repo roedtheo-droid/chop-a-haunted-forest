@@ -172,7 +172,7 @@ game builds the old parts version.
     (done, tested)
 6a. Landmarks and camp props as models. (done, tested)
 6b. Logs, stumps and the Elder Hollow as models. (done, tested)
-6c. The Tool Shed and the sawmills as models.
+6c. The Tool Shed and the sawmills as models. (done, tested)
 
 ## After the MVP (ideas, not scheduled)
 - Lobby with party pads: step on a pad, pick the map and party size (1–4),

@@ -621,12 +621,17 @@ function ChopEffectsController.start()
 	logs.ChildAdded:Connect(onLogAdded)
 
 	-- Load the chop sounds now, so even the very first hit plays without a delay.
-	local sounds: { string } = {}
+	-- PreloadAsync needs Sound objects: a plain id would be loaded as a picture, and fail.
+	local names = { "TreeCrack", "TreeFall" }
 	for _, feel in Config.ChopFeel do
-		table.insert(sounds, Config.Sounds[feel.Sound].Id)
+		table.insert(names, feel.Sound)
 	end
-	table.insert(sounds, Config.Sounds.TreeCrack.Id)
-	table.insert(sounds, Config.Sounds.TreeFall.Id)
+	local sounds: { Instance } = {}
+	for _, name in names do
+		local sound = Instance.new("Sound")
+		sound.SoundId = Config.Sounds[name].Id
+		table.insert(sounds, sound)
+	end
 	ContentProvider:PreloadAsync(sounds)
 end
 

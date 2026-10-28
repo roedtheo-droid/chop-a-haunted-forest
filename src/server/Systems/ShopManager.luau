@@ -1,5 +1,5 @@
 --!strict
--- Builds the placeholder Tool Shed and handles every purchase.
+-- Builds the Tool Shed (see Build/ToolShed) and handles every purchase.
 --
 -- The client only says "I want to buy item X". The server checks that:
 --   the item exists, the player is standing at the shed, they're not clicking too fast,
@@ -19,9 +19,7 @@ local CoinManager = require(script.Parent.CoinManager)
 local QuestManager = require(script.Parent.QuestManager)
 local ToolManager = require(script.Parent.ToolManager)
 local UpgradeManager = require(script.Parent.UpgradeManager)
-local Blocky = require(script.Parent.Parent.Build.Blocky)
-
-local COUNTER_COLOR = Color3.fromRGB(150, 110, 70)
+local ToolShed = require(script.Parent.Parent.Build.ToolShed)
 
 local ShopManager = {}
 
@@ -35,47 +33,20 @@ local function groundHeightAt(x: number, z: number): number
 end
 
 local function buildShed(): BasePart
-	local cfg = Config.Shop
-	local center = cfg.Position
-	local size = cfg.BuildingSize
-	local groundY = groundHeightAt(center.X, center.Z)
+	local center = Config.Shop.Position
+	local ground = Vector3.new(center.X, groundHeightAt(center.X, center.Z), center.Z)
+	local shopCounter = ToolShed.build(ground, ToolManager.buildDisplay)
 
-	local model = Instance.new("Model")
-	model.Name = "ToolShed"
-
-	-- A log cabin with a big yellow "TOOL SHED" sign over the door.
-	local ground = Vector3.new(center.X, groundY, center.Z)
-	Blocky.cabin("Building", ground, size, 2, model)
-	Blocky.sign(
-		"TOOL SHED",
-		CFrame.new(ground + Vector3.new(0, size.Y * 0.84, size.Z / 2 + 0.3)),
-		size.X * 0.8,
-		size.Y * 0.26,
-		Config.Style.HazardYellow,
-		model
-	)
-
-	-- A counter in front of the shed (facing spawn) holds the "Open shop" prompt.
-	local shopCounter = Instance.new("Part")
-	shopCounter.Name = "Counter"
-	shopCounter.Size = Vector3.new(6, 3, 1.5)
-	shopCounter.Position = Vector3.new(center.X, groundY + 1.5, center.Z + size.Z / 2 + 1)
-	shopCounter.Color = COUNTER_COLOR
-	shopCounter.Material = Enum.Material.Wood
-	shopCounter.Anchored = true
-	shopCounter.Parent = model
-
+	-- The "Open shop" prompt is on the counter inside, in front of the shopkeeper.
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = "Open shop"
-	prompt.ObjectText = "Tool Shed"
+	prompt.ObjectText = "Shopkeeper"
 	prompt.KeyboardKeyCode = Enum.KeyCode.E
 	prompt.HoldDuration = 0
-	prompt.MaxActivationDistance = cfg.PromptDistance
+	prompt.MaxActivationDistance = Config.Shop.PromptDistance
 	prompt.RequiresLineOfSight = false
 	prompt.Parent = shopCounter
 	CollectionService:AddTag(prompt, Tags.ShopPrompt)
-
-	model.Parent = workspace
 	return shopCounter
 end
 

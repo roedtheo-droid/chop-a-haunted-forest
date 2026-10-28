@@ -16,6 +16,7 @@ Kits (what to build):
     details little things on the ground: GrassTuft, Flowers, Fern, Mushrooms, DeadLeaves, Bones
     landmarks  Tent, Dock, Rowboat, WindmillTower, WindmillSails, IronFence, Crypt, BossStone1-2
     camp    Bridge, Well, QuestBoard, Campfire, Bench, Signpost, SignArrow
+    logs    Log, Stump, ElderTrunk, ElderCrown, ElderRoot
     all     every model
 You can also name single models: python blender/build.py Oak Rock2
 And "bundle" packs every model into one file, blender/export/AllModels.fbx, so Studio needs
@@ -33,7 +34,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import bpy  # noqa: E402
 from lib import output  # noqa: E402
 from mathutils import Vector  # noqa: E402
-from models import camp, details, edges, ground, landmarks, outside, props, rocks, trees  # noqa: E402
+from models import camp, details, edges, ground, landmarks, logs, outside, props, rocks, trees  # noqa: E402
 
 MODELS = {
     "Oak": trees.oak,
@@ -99,6 +100,11 @@ MODELS = {
     "Bench": camp.bench,
     "Signpost": camp.signpost,
     "SignArrow": camp.sign_arrow,
+    "Log": logs.log,
+    "Stump": logs.stump,
+    "ElderTrunk": logs.elder_trunk,
+    "ElderCrown": logs.elder_crown,
+    "ElderRoot": logs.elder_root,
 }
 
 KITS = {
@@ -142,6 +148,7 @@ KITS = {
         "BossStone2",
     ],
     "camp": ["Bridge", "Well", "QuestBoard", "Campfire", "Bench", "Signpost", "SignArrow"],
+    "logs": ["Log", "Stump", "ElderTrunk", "ElderCrown", "ElderRoot"],
 }
 KITS["all"] = list(MODELS)
 

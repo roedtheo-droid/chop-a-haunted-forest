@@ -466,6 +466,12 @@ local Config = {
 			{ Model = "Gravestone2", Part = "Stone", Width = 2.6 },
 			{ Model = "Gravestone3", Part = "Stone", Width = 2.6 },
 		},
+		-- One-part models the game sizes itself: it sets their Size, which stretches the model
+		-- to fill that box. A log on the ground (Server/Systems/LogManager), a felled tree's
+		-- stump (TreeManager), and the Elder Hollow's trunk, crown blocks and roots (BossManager).
+		Log = "Log",
+		Stump = "Stump",
+		Boss = { Trunk = "ElderTrunk", Crown = "ElderCrown", Root = "ElderRoot" },
 	},
 
 	-- Little things scattered over each zone's ground (see Server/Build/Details): grass and

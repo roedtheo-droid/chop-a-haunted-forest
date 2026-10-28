@@ -8,8 +8,8 @@
 -- Why ServerStorage? Rojo only syncs the folders in default.project.json, so imported models
 -- stay safe in the place, and only the server can see them (players get the built copies).
 --
--- Used by Blocky (trees and the chop notch), Props (rocks and pebbles), Ground, CampManager
--- (the river banks), Edges and SceneryManager (hills and mountains).
+-- Used by Blocky (trees, the chop notch, and Blocky.block for logs, stumps and the boss),
+-- Props, Details, Landmarks, CampProps, Ground, CampManager, Edges and SceneryManager.
 -- It's not a system, so it has no init()/start().
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -154,6 +154,8 @@ local ROLES = {
 	"Metal",
 	"Ash",
 	"Frame",
+	"Stump",
+	"Crown",
 }
 
 -- Blender can't give two objects the same name, so they're numbered ("LeafBlock_2"), and

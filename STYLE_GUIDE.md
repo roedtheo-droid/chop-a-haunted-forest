@@ -90,6 +90,9 @@ Samme kantede stil hele vejen, bare mørkere.
   jernhegn, krypten, ringstenene om bossen, broen, brønden, opslagstavlen, bålet, bænkene og
   vejviseren er Blender-modeller. Hvor man går på dem (broen, bådebroen) ligger de præcise
   Parts-gulve usynligt under modellen.
+- **Stammer, stubbe og bossen:** stammerne på jorden, stubbene og Elder Hollows stamme, krone og
+  rødder er Blender-modeller med bark-riller. De har præcis samme størrelse som de gamle blokke, så
+  ringene på enderne og alt spillet gør med dem (samle op, rødder der bliver tyndere) virker som før.
 - **Jorden:** bløde pletter (`Patch`) i lysere/mørkere græs, mos, mudder og visne blade, og ved
   zone-grænserne fletter de to zoners farver ind i hinanden. Stien har en mørkere jordkant og småsten.
   Floden har sandbanker med sten, en mørkere bund, siv og åkander.

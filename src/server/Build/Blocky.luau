@@ -21,14 +21,14 @@ local SIGN_DEPTH = 0.4
 
 local Blocky = {}
 
--- A plain anchored part.
+-- A plain anchored part. `parent` can be nil, to parent it yourself once it's set up.
 function Blocky.part(
 	name: string,
 	size: Vector3,
 	cframe: CFrame,
 	color: Color3,
 	material: Enum.Material,
-	parent: Instance
+	parent: Instance?
 ): Part
 	local part = Instance.new("Part")
 	part.Name = name
@@ -41,6 +41,31 @@ function Blocky.part(
 	part.BottomSurface = Enum.SurfaceType.Smooth
 	part.Parent = parent
 	return part
+end
+
+-- Like Blocky.part, but it's the one-part Blender model `model` (a log, a stump, the boss's
+-- trunk...) when that's imported. Setting a MeshPart's Size stretches its mesh to fill it, so
+-- both versions are the same box, and the game can still resize it later (the boss's roots).
+function Blocky.block(
+	model: string,
+	name: string,
+	size: Vector3,
+	cframe: CFrame,
+	color: Color3,
+	material: Enum.Material,
+	parent: Instance?
+): BasePart
+	local mesh = Assets.part(model)
+	if not mesh then
+		return Blocky.part(name, size, cframe, color, material, parent)
+	end
+	mesh.Name = name
+	mesh.Size = size
+	mesh.CFrame = cframe
+	mesh.Color = color
+	mesh.Material = material
+	mesh.Parent = parent -- Assets.part already anchored it
+	return mesh
 end
 
 -- A wedge. Its slope faces its front (-Z): the back is tall and the front touches the ground.

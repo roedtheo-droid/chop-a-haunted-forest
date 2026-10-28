@@ -54,7 +54,7 @@ simply builds the old blocky version.
 
 **Import all the models at once** (the easy way):
 
-1. In Studio, open the **File** menu and click **Import 3D**. Pick `blender/export/AllModels.fbx`: every model in one file.
+1. In Studio, open the **File** menu and click **Import** (in some versions **Import 3D**). Pick `blender/export/AllModels.fbx`: every model in one file.
 2. In the import window, keep the settings as they are and click **Import**. (Don't worry about the size: the game resizes every model itself. If there's a "Merge meshes" option, leave it off: the game needs the parts separate.)
 3. A model called `AllModels` shows up in the Workspace. In the Explorer, find **ServerStorage**. The first time, add a **Folder** in it and name it `MapAssets`.
 4. Drag `AllModels` into `ServerStorage > MapAssets`.
@@ -74,6 +74,7 @@ When the models change (a new step adds some), delete the old `AllModels` in `Ma
 - ground details: `GrassTuft`, `Flowers`, `Fern`, `Mushrooms`, `DeadLeaves`, `Bones`
 - landmarks: `Tent`, `Dock`, `Rowboat`, `WindmillTower`, `WindmillSails`, `IronFence`, `Crypt`, `BossStone1`, `BossStone2`
 - camp: `Bridge`, `Well`, `QuestBoard`, `Campfire`, `Bench`, `Signpost`, `SignArrow`
+- logs and the boss: `Log`, `Stump`, `ElderTrunk`, `ElderCrown`, `ElderRoot`
 
 When you press Play, the Output window says which models the game found
 (`[Assets] Using the Blender model "Oak"`) and which ones are missing.
@@ -85,7 +86,7 @@ blender --background --python blender/build.py -- all bundle
 ```
 
 or with Blender's Python package instead (`pip install bpy`, needs Python 3.13): `python blender/build.py all bundle`.
-(`pilot`, `trees`, `ground`, `edges`, `outside`, `props`, `details`, `landmarks` or `camp` instead of `all` builds just those models;
+(`pilot`, `trees`, `ground`, `edges`, `outside`, `props`, `details`, `landmarks`, `camp` or `logs` instead of `all` builds just those models;
 `bundle` makes `AllModels.fbx`.)
 
 Then import the changed files again (delete the old copy in `MapAssets` first).

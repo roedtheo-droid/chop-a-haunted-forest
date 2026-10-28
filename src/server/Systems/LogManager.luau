@@ -84,15 +84,18 @@ end
 local function createLog(position: Vector3, yaw: number, value: number, cursed: boolean): BasePart
 	local cfg = Config.Logs
 
-	-- A square, blocky log lying along its X axis, with light ringed ends.
-	local log = Instance.new("Part")
-	log.Name = "Log"
-	log.Size = Vector3.new(cfg.Length, cfg.Thickness, cfg.Thickness)
-	log.CFrame = CFrame.new(position) * CFrame.Angles(0, yaw, 0)
-	log.Color = if cursed then CURSED_LOG_COLOR else LOG_COLOR
-	log.Material = Enum.Material.Wood
+	-- A square, blocky log lying along its X axis, with light ringed ends. It's the Log model
+	-- from Blender when that's imported (the same size), or a plain block.
+	local log = Blocky.block(
+		Config.Models.Log,
+		"Log",
+		Vector3.new(cfg.Length, cfg.Thickness, cfg.Thickness),
+		CFrame.new(position) * CFrame.Angles(0, yaw, 0),
+		if cursed then CURSED_LOG_COLOR else LOG_COLOR,
+		Enum.Material.Wood,
+		nil -- parented once it's ready (see spawnLogs)
+	)
 	log:SetAttribute("Value", value)
-	log.Anchored = true
 	log.CanCollide = false -- so players don't trip over logs
 	Blocky.rings(log, Enum.NormalId.Left)
 	Blocky.rings(log, Enum.NormalId.Right)

@@ -307,6 +307,7 @@ local function trySell(truck: Truck)
 			RunManager.record(owner, "CoinsEarned", coins)
 			QuestManager.report(owner, "SellLogs")
 			EffectsManager.burst("Coins", position)
+			SawmillManager.showSell(pad, logs, position)
 			notify(owner, Config.Truck.Text.Sold, logs, Format.number(coins))
 			return
 		end

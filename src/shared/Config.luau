@@ -1194,7 +1194,7 @@ local Config = {
 	Sawmill = {
 		BuildingSize = Vector3.new(20, 11, 14), -- the open-fronted mill shed
 		RoofHeight = 6,
-		PadSize = 8, -- the "DROP LOGS" pad is this many studs wide and deep
+		PadSize = Vector2.new(16, 12), -- the "DROP LOGS" pad: studs across the sawmill's front, and out from it
 		SellCooldown = 1, -- seconds between sells for one player (stops double-selling)
 		SawSize = 6, -- how wide the big round saw is
 		WheelRadius = 5, -- the water wheel on the side
@@ -1202,6 +1202,34 @@ local Config = {
 		WheelSpin = 0.7, -- how fast the water wheel turns
 		SpinDistance = 250, -- the saw and wheel only turn on your screen when you're this close
 		Wear = { 0, 0.15, 0.28 }, -- how much darker each zone's sawmill is: zones 2 and 3 are old and worn
+
+		-- The sell yard in front of each sawmill (see Server/Build/SellYard and
+		-- Client/Controllers/SellYardController): a conveyor runs from the pad's left end up
+		-- into a big orange wood chipper, and a billboard floats above the pad.
+		ConveyorLength = 8, -- studs along the ground from the pad's edge to the chipper
+		ChipperHeight = 4.4, -- how high the chipper's mouth (the top of the conveyor) is
+		ChipperColor = Color3.fromRGB(240, 128, 30),
+		BillboardHeight = 18, -- studs above the ground
+		BillboardSize = Vector2.new(14, 8), -- studs
+		ArrowBob = 0.6, -- studs the yellow arrow under the billboard bobs up and down
+		ArrowBobSpeed = 3, -- radians per second (about one bob every 2 seconds)
+		-- When you sell, your logs drop onto the pad and ride the conveyor into the chipper, one
+		-- by one (only for looks, on every player's screen; the server pays straight away).
+		LogGap = 0.15, -- seconds between two logs
+		DropTime = 0.25, -- seconds a log takes to fall onto the pad
+		SlideSpeed = 16, -- studs per second across the pad
+		BeltSpeed = 9, -- studs per second up the conveyor
+		MaxShownLogs = 30, -- a bigger sale still pays for every log, but only this many are drawn
+		Text = {
+			DropLogs = "DROP LOGS",
+			SellLogs = "SELL LOGS",
+			PerLog = "%s PER LOG", -- the coins one log from this zone's trees is worth
+			ChipperName = "TIMBER CHOMP",
+			ChipperInfo = "heavy duty drum chipper",
+			Danger = "DANGER",
+			DangerInfo = "keep clear of feed rollers",
+			Sold = "Sold %d log(s) for %s coins!",
+		},
 	},
 
 	-- Tool Shed (in the camp, across the path from the sawmill)

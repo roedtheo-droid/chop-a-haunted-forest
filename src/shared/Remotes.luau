@@ -39,6 +39,11 @@ local list: { [string]: Types.RemoteKind } = {
 	-- Client -> server: "Park my truck by the Garage" (a truck Id you own, see TruckManager).
 	SpawnTruck = "Event",
 
+	-- Server -> all clients: someone sold logs on a DROP LOGS pad, so draw them dropping onto it
+	-- and riding the conveyor into the chipper (only for looks). Carries the pad, how many logs
+	-- to draw and where they drop from (a Vector3).
+	LogsSold = "Event",
+
 	-- Client -> server: "I'm holding sprint" (true) or "I let go" (false).
 	-- The server decides the actual speed.
 	SetSprint = "Event",

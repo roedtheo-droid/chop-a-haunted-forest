@@ -5,7 +5,8 @@
 -- with smoke and a lamp post. The saw and the wheel are tagged Spinner, so every player's
 -- computer turns them (see Client/SpinnerController).
 -- Zones 2 and 3 get the same sawmill, only darker and more worn (Config.Sawmill.Wear).
--- Only for looks: SawmillManager builds the pad and does the selling.
+-- Only for looks: Build/SellYard builds the pad, the signs and the chipper in front, and
+-- SawmillManager does the selling.
 -- When the Blender models are imported (Config.Models.Buildings), the shed, the saw's table,
 -- the saw, the water wheel, the workshop and the log pile are those models, each over its
 -- parts version: the parts turn invisible but still do the bumping, the light and the smoke
@@ -197,13 +198,6 @@ local function dressShed()
 	dressed = true
 end
 
--- The "SELL LOGS" sign above the open front.
-local function buildSign()
-	group("Sign")
-	local size = Config.Sawmill.BuildingSize
-	Blocky.sign("SELL LOGS", origin * at(0, size.Y + 1.9, size.Z / 2 + 1.4), 12, 3, nil, model)
-end
-
 -- The big round saw on its table, with a log waiting to be cut and the conveyor belt
 -- that brings logs in from the pad.
 local function buildSaw()
@@ -343,13 +337,13 @@ local function buildLogPile()
 	})
 end
 
--- A lamp post next to the pad, its lantern hanging over towards the pad (the LampPost
--- model from the path when it's imported).
+-- A lamp post at the pad's back left corner, its lantern hanging over towards the pad (the
+-- LampPost model from the path when it's imported).
 local function buildLampPost()
 	group("LampPost")
 	local cfg = Config.Sawmill
-	local x = -cfg.PadSize / 2 - 2.5
-	local z = cfg.BuildingSize.Z / 2 + cfg.PadSize / 2 + 1
+	local x = -cfg.PadSize.X / 2 - 3.5
+	local z = cfg.BuildingSize.Z / 2 + 1.2
 	Props.lampPost(model, (origin * at(x, 0, z)).Position, Vector3.xAxis, LAMP_COLOR, false, Random.new(0))
 end
 
@@ -488,7 +482,6 @@ function SawmillBuilding.build(ground: Vector3, wear: number, riverZ: number?, p
 	roofColor = Blocky.shade(style.Roof, -wear)
 	buildShed()
 	dressShed()
-	buildSign()
 	buildSaw()
 	buildWorkshop()
 	buildLogPile()

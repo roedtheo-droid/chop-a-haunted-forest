@@ -17,6 +17,7 @@ local Tags = {
 	Landowner = "Landowner", -- Mr. Graves, the NPC at the vault (see LandownerController)
 	LandownerPrompt = "LandownerPrompt", -- his "Talk" prompt
 	GaragePad = "GaragePad", -- the glowing pad in front of the Garage (see GarageController)
+	SellBillboard = "SellBillboard", -- the floating SELL LOGS billboard over a sawmill's pad (see SellYardController)
 }
 
 return table.freeze(Tags)

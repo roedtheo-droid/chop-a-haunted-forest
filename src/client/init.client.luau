@@ -36,6 +36,7 @@ local controllers: { Types.Module } = {
 	require(Controllers.KnockdownController),
 	require(Controllers.LanternController),
 	require(Controllers.SpinnerController),
+	require(Controllers.SellYardController), -- sold logs riding into the chipper, the billboards' arrows
 	require(Controllers.AmbientController),
 	require(Controllers.BossController),
 	require(Controllers.ForestClearedController),

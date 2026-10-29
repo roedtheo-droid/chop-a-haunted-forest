@@ -8,7 +8,7 @@
 -- Why ServerStorage? Rojo only syncs the folders in default.project.json, so imported models
 -- stay safe in the place, and only the server can see them (players get the built copies).
 --
--- Used by Blocky (trees, the chop notch, and Blocky.block for logs, stumps and the boss),
+-- Used by Blocky (trees, the chop cut, and Blocky.block for logs, stumps and the boss),
 -- Props, Details, Landmarks, CampProps, Ground, CampManager, Edges, SceneryManager, ToolShed
 -- and SawmillBuilding.
 -- It's not a system, so it has no init()/start().

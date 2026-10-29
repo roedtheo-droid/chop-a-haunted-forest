@@ -1,10 +1,14 @@
 --!strict
 -- First person, like in Chop a Forest (see STYLE_GUIDE.md and Config.FirstPerson):
 --   * the camera is locked in your head, and Roblox hides your own body
---   * two big blocky forearms and fists sit at the bottom of the screen. Each swing jabs one
---     fist forward and back, taking turns: left, right, left...
+--   * two big blocky forearms and fists with rounded corners sit at the bottom of the screen.
+--     Each swing punches with one fist, taking turns: left, right, left...
 --   * when you hold a tool, a copy of it sits in your right hand instead, and chops down
 --   * a small hollow circle in the middle of the screen shows what you'll hit
+-- A punch moves like a real one: the fist pulls back a little (wind-up), then jabs forward
+-- faster and faster and turns as it goes. On a hit it stops right at the bark, freezes for a
+-- split second and bounces back off it; on a miss it carries on a bit. Then it springs back to
+-- rest with a small bounce, and the other fist pulls back a little while it punches.
 -- The arms are parts inside the camera. Parts in the camera only exist on your own computer, so
 -- nobody else sees them (they see your character's normal swing, see ChopController).
 -- Only for looks: ChopController still decides when you can swing, and the server decides the hits.
@@ -21,34 +25,58 @@ local IntroController = require(script.Parent.IntroController)
 
 local cfg = Config.FirstPerson
 local RENDER_NAME = "FirstPersonArms"
+local MAX_STEP = 1 / 30 -- the springs never take a bigger step than this, so a slow frame can't fling them
 
 type Side = "Left" | "Right"
 local SIDES: { Side } = { "Left", "Right" }
+
+-- A block with rounded corners, made of parts: three boxes crossing each other, a cylinder
+-- along each edge and a ball in each corner. Offsets place each part from the block's middle.
+type Block = {
+	Parts: { BasePart },
+	Offsets: { CFrame },
+}
+
 type Arm = {
-	Forearm: Part,
-	Fist: Part,
+	Forearm: Block,
+	Fist: Block,
 	Side: Side,
+	-- The punch: X is how far the fist is forward (studs, below 0 while it winds up), V its speed.
+	Started: number, -- os.clock() when its last punch started
+	Reach: number, -- how far this punch goes (to the bark, or its full reach)
+	Hit: boolean, -- does this punch hit a tree? (then it stops and bounces off the bark)
+	Springing: boolean, -- true once it has landed and is springing back
+	X: number,
+	V: number,
 }
 
 local ViewmodelController = {}
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+local random = Random.new()
 local active = false -- true once first person is on (after the intro)
 local viewmodel: Model -- holds the arms and the tool copy, inside the camera
 local arms: { [Side]: Arm } = {}
 local crosshair: Frame
 
--- The swing that's playing right now.
-local swingSide: Side = "Right" -- the fist that jabbed last (the next jab uses the other one)
+local punchSide: Side = "Right" -- the fist that punched last (the next punch uses the other one)
+local punchScale = 1 -- below 1 if the punch has to be quicker to fit the tool's cooldown
+
+-- A tool swing (fists use the punches above instead).
 local swingStarted = -math.huge
-local swingScale = 1 -- below 1 when the tool swings faster than a full jab (the Chainsaw)
+local swingScale = 1 -- below 1 when the tool swings faster than a full swing (the Chainsaw)
 local swingSize = 1 -- how big the movement is (Config.ChopFeel SwingSize)
 
 -- The tool in your hand: the real one (hidden on your screen) and our copy of it.
 local heldTool: Tool? = nil
 local toolCopy: { { Part: BasePart, Offset: CFrame } } = {} -- each copied part, placed from the handle
 local handleLength = 0 -- the copied handle's length (handles are long along Z)
+
+-- Every arm part and where it goes this frame, moved all at once with BulkMoveTo (much faster
+-- than setting 90-odd CFrames one by one).
+local movingParts: { BasePart } = {}
+local movingFrames: { CFrame } = {}
 
 local function isTouch(): boolean
 	return UserInputService.TouchEnabled and not UserInputService.MouseEnabled
@@ -64,11 +92,12 @@ local function menuOpen(): boolean
 	return false
 end
 
-local function plainPart(name: string, size: Vector3, color: Color3): Part
+local function plainPart(name: string, size: Vector3, shape: Enum.PartType): Part
 	local part = Instance.new("Part")
 	part.Name = name
+	part.Shape = shape
 	part.Size = size
-	part.Color = color
+	part.Color = cfg.SkinColor
 	part.Material = Enum.Material.SmoothPlastic
 	part.TopSurface = Enum.SurfaceType.Smooth
 	part.BottomSurface = Enum.SurfaceType.Smooth
@@ -79,6 +108,52 @@ local function plainPart(name: string, size: Vector3, color: Color3): Part
 	part.CastShadow = false
 	part.Parent = viewmodel
 	return part
+end
+
+-- Build a block of `size` with rounded corners (see the Block type above).
+local function roundedBlock(name: string, size: Vector3): Block
+	local radius = math.min(size.X, size.Y, size.Z) * cfg.Roundness
+	local diameter = radius * 2
+	local half = size / 2 - Vector3.one * radius -- where the middles of the round edges are
+	local block: Block = { Parts = {}, Offsets = {} }
+	local function add(partSize: Vector3, shape: Enum.PartType, offset: CFrame)
+		table.insert(block.Parts, plainPart(name, partSize, shape))
+		table.insert(block.Offsets, offset)
+	end
+
+	-- Three boxes, each one full size in one direction and shorter in the other two.
+	add(Vector3.new(size.X, size.Y - diameter, size.Z - diameter), Enum.PartType.Block, CFrame.identity)
+	add(Vector3.new(size.X - diameter, size.Y, size.Z - diameter), Enum.PartType.Block, CFrame.identity)
+	add(Vector3.new(size.X - diameter, size.Y - diameter, size.Z), Enum.PartType.Block, CFrame.identity)
+	for _, a in { -1, 1 } do
+		for _, b in { -1, 1 } do
+			-- Round edges: a cylinder lies along its X axis, so the Y and Z ones are turned.
+			add(Vector3.new(size.X - diameter, diameter, diameter), Enum.PartType.Cylinder, CFrame.new(0, a * half.Y, b * half.Z))
+			add(
+				Vector3.new(size.Y - diameter, diameter, diameter),
+				Enum.PartType.Cylinder,
+				CFrame.new(a * half.X, 0, b * half.Z) * CFrame.Angles(0, 0, math.pi / 2)
+			)
+			add(
+				Vector3.new(size.Z - diameter, diameter, diameter),
+				Enum.PartType.Cylinder,
+				CFrame.new(a * half.X, b * half.Y, 0) * CFrame.Angles(0, math.pi / 2, 0)
+			)
+			-- Round corners.
+			for _, c in { -1, 1 } do
+				add(Vector3.one * diameter, Enum.PartType.Ball, CFrame.new(a * half.X, b * half.Y, c * half.Z))
+			end
+		end
+	end
+	return block
+end
+
+-- Queue a block to be moved to `cframe` this frame.
+local function placeBlock(block: Block, cframe: CFrame)
+	for index, part in block.Parts do
+		table.insert(movingParts, part)
+		table.insert(movingFrames, cframe * block.Offsets[index])
+	end
 end
 
 -- Your character's skin colour, so the fists match your avatar.
@@ -99,9 +174,14 @@ end
 
 local function paintArms()
 	local color = skinColor()
+	local fistColor = color:Lerp(Color3.new(1, 1, 1), 0.06) -- a hair lighter, so the fist reads as its own block
 	for _, arm in arms do
-		arm.Forearm.Color = color
-		arm.Fist.Color = color:Lerp(Color3.new(1, 1, 1), 0.06) -- a hair lighter, so the fist reads as its own block
+		for _, part in arm.Forearm.Parts do
+			part.Color = color
+		end
+		for _, part in arm.Fist.Parts do
+			part.Color = fistColor
+		end
 	end
 end
 
@@ -184,7 +264,7 @@ end
 -- Moving the arms every frame
 ---------------------------------------------------------------------------
 
--- How far into the swing we are: 0 at rest, 1 at full stretch. Quick out, a bit slower back.
+-- How far into a tool swing we are: 0 at rest, 1 at full stretch. Quick out, a bit slower back.
 local function swingAmount(now: number): number
 	local out = cfg.PunchOut * swingScale
 	local back = cfg.PunchBack * swingScale
@@ -199,6 +279,45 @@ local function swingAmount(now: number): number
 	return 1 - u * u * (3 - 2 * u) -- smooth on the way back
 end
 
+-- Move one fist's punch on by `dt` seconds. Sets arm.X (how far forward) and arm.V.
+local function updatePunch(arm: Arm, now: number, dt: number)
+	local out = cfg.PunchOut * punchScale
+	local windUpTime = out * cfg.WindUpShare
+	local t = now - arm.Started
+	if t < windUpTime then
+		-- Wind-up: pull back, slowing down as it gets there.
+		arm.X = -cfg.WindUp * math.sin(t / windUpTime * math.pi / 2)
+		return
+	elseif t < out then
+		-- The jab: faster and faster until it lands.
+		local u = (t - windUpTime) / (out - windUpTime)
+		arm.X = -cfg.WindUp + (arm.Reach + cfg.WindUp) * u * u
+		return
+	elseif arm.Hit and t < out + cfg.HitStop * punchScale then
+		-- It hit the bark: hold still for a split second (with a tiny shiver).
+		arm.X = arm.Reach
+		return
+	end
+
+	if not arm.Springing then
+		-- It just landed: bounce back off the bark, or carry on a little through thin air.
+		arm.Springing = true
+		arm.X = arm.Reach
+		arm.V = if arm.Hit then -cfg.RecoilSpeed else cfg.AirFollow
+	end
+	-- Spring back to rest. The stiffness is picked so it's (almost) back after PunchBack seconds.
+	local damping = cfg.ReturnBounce
+	local stiffness = 3 / (damping * cfg.PunchBack * punchScale)
+	local left = dt
+	while left > 0 do
+		local step = math.min(left, MAX_STEP)
+		local accel = -stiffness * stiffness * arm.X - 2 * damping * stiffness * arm.V
+		arm.V += accel * step
+		arm.X += arm.V * step
+		left -= step
+	end
+end
+
 -- Where a fist rests on the screen (the left one is the right one mirrored).
 local function restFrame(camera: Camera, side: Side): CFrame
 	local mirror = if side == "Left" then -1 else 1
@@ -208,14 +327,31 @@ local function restFrame(camera: Camera, side: Side): CFrame
 		* CFrame.Angles(math.rad(cfg.RestPitch), math.rad(cfg.RestYaw) * mirror, 0)
 end
 
--- Put the forearm behind the fist. `fist` is the middle of the fist, facing forward (-Z).
-local function placeArm(arm: Arm, fist: CFrame)
-	arm.Fist.CFrame = fist
-	local length = cfg.ForearmSize.Z
-	arm.Forearm.CFrame = fist * CFrame.new(0, 0, cfg.FistSize.Z / 2 + length / 2 - 0.15)
+-- Where a punching fist is, from where it rests and how far into the punch it is.
+local function punchFrame(arm: Arm, rest: CFrame, otherForward: number): CFrame
+	local inward = if arm.Side == "Left" then 1 else -1 -- the way towards the middle of the screen
+	local forward = arm.X
+	local stretch = math.clamp(forward / math.max(arm.Reach, 0.01), 0, 1)
+	local cocked = math.clamp(-forward / cfg.WindUp, 0, 1) -- 1 at the end of the wind-up
+	-- The other fist pulls back a little while this one punches.
+	local pull = math.max(otherForward, 0) * cfg.CounterPull
+	local shiver = Vector3.zero
+	if arm.Hit and not arm.Springing and forward >= arm.Reach then
+		shiver = Vector3.new(random:NextNumber(-1, 1), random:NextNumber(-1, 1), 0) * cfg.HitShake
+	end
+	return rest
+		* CFrame.new(Vector3.new(0.22 * inward * stretch, 0.12 * stretch - 0.05 * pull, -forward + pull) + shiver)
+		* CFrame.Angles(math.rad(12) * cocked - math.rad(4) * stretch, 0, math.rad(cfg.PunchTwist) * inward * stretch)
 end
 
-local function update()
+-- Put the forearm behind the fist. `fist` is the middle of the fist, facing forward (-Z).
+local function placeArm(arm: Arm, fist: CFrame)
+	placeBlock(arm.Fist, fist)
+	local length = cfg.ForearmSize.Z
+	placeBlock(arm.Forearm, fist * CFrame.new(0, 0, cfg.FistSize.Z / 2 + length / 2 - 0.15))
+end
+
+local function update(dt: number)
 	local camera = workspace.CurrentCamera
 	if not (active and camera) then
 		return
@@ -235,34 +371,35 @@ local function update()
 		hideRealTool(tool)
 	end
 
-	local amount = swingAmount(os.clock()) * swingSize
-	for side, arm in arms do
-		local fist = restFrame(camera, side)
-		if heldTool then
-			-- Holding a tool: the right hand chops it down, the left fist waits.
-			if side == "Right" then
-				-- Turn around the elbow (the back of the forearm), forwards and down.
-				local elbow = fist * CFrame.new(0, 0, cfg.ForearmSize.Z)
-				local chop = CFrame.Angles(-math.rad(cfg.ToolSwingAngle) * amount, 0, 0)
-				fist = elbow * chop * elbow:ToObjectSpace(fist)
-			end
-		elseif side == swingSide then
-			-- A jab: straight forward, a little in towards the middle and up.
-			local mirror = if side == "Left" then 1 else -1
-			fist *= CFrame.new(0.25 * mirror * amount, 0.15 * amount, -cfg.PunchReach * amount)
-		end
-		placeArm(arm, fist)
-	end
-
-	-- The tool sits in the right fist, pointing up and forward, its head at the far end.
+	local now = os.clock()
+	table.clear(movingParts)
+	table.clear(movingFrames)
 	if heldTool then
-		local grip = arms.Right.Fist.CFrame
+		-- Holding a tool: the right hand chops it down (around the elbow), the left fist waits.
+		local amount = swingAmount(now) * swingSize
+		local rest = restFrame(camera, "Right")
+		local elbow = rest * CFrame.new(0, 0, cfg.ForearmSize.Z)
+		local chop = CFrame.Angles(-math.rad(cfg.ToolSwingAngle) * amount, 0, 0)
+		local rightFist = elbow * chop * elbow:ToObjectSpace(rest)
+		placeArm(arms.Right, rightFist)
+		placeArm(arms.Left, restFrame(camera, "Left"))
+		-- The tool sits in the right fist, pointing up and forward, its head at the far end.
+		local grip = rightFist
 			* CFrame.Angles(math.rad(cfg.ToolPitch), 0, 0)
 			* CFrame.new(0, 0, -handleLength * (0.5 - cfg.ToolGrip))
 		for _, copy in toolCopy do
 			copy.Part.CFrame = grip * copy.Offset
 		end
+	else
+		for _, arm in arms do
+			updatePunch(arm, now, dt)
+		end
+		for side, arm in arms do
+			local other = arms[if side == "Left" then "Right" else "Left"]
+			placeArm(arm, punchFrame(arm, restFrame(camera, side), other.X))
+		end
 	end
+	workspace:BulkMoveTo(movingParts, movingFrames, Enum.BulkMoveMode.FireCFrameChanged)
 
 	-- The crosshair shows while you aim; while a menu is open you get the mouse instead.
 	local aiming = not menuOpen()
@@ -277,20 +414,35 @@ function ViewmodelController.isActive(): boolean
 	return active
 end
 
--- Play one swing: a jab with the next fist, or a chop with the tool in your hand.
+-- Play one swing: a punch with the next fist, or a chop with the tool in your hand.
 -- `cooldown` is the tool's time between swings: a swing that would take longer is sped up to fit.
--- `size` makes the movement smaller (the Chainsaw's short, fast sawing).
-function ViewmodelController.swing(cooldown: number, size: number)
+-- `size` makes a tool's movement smaller (the Chainsaw's short, fast sawing).
+-- `distance` is how far away the bark you're aiming at is (nil if you aren't aiming at a tree),
+-- so the fist can stop right on it, and `hit` says whether the hit will count.
+function ViewmodelController.swing(cooldown: number, size: number, distance: number?, hit: boolean)
 	if not active then
 		return
 	end
-	if not heldTool then
-		swingSide = if swingSide == "Left" then "Right" else "Left"
+	if heldTool then
+		swingScale = math.min(1, cooldown * 0.95 / (cfg.PunchOut + cfg.PunchBack))
+		swingSize = size
+		swingStarted = os.clock()
+		return
 	end
-	local full = cfg.PunchOut + cfg.PunchBack
-	swingScale = math.min(1, cooldown * 0.95 / full)
-	swingSize = size
-	swingStarted = os.clock()
+
+	punchSide = if punchSide == "Left" then "Right" else "Left"
+	punchScale = math.min(1, cooldown * 0.95 / (cfg.PunchOut + cfg.HitStop + cfg.PunchBack))
+	local arm = arms[punchSide]
+	-- Reach just far enough to touch the bark (the fist rests about -RestOffset.Z in front of you).
+	local reach = cfg.PunchReachMax
+	if distance then
+		reach = math.clamp(distance + cfg.RestOffset.Z - cfg.FistSize.Z / 2, cfg.PunchReachMin, cfg.PunchReachMax)
+	end
+	arm.Started = os.clock()
+	arm.Reach = reach
+	arm.Hit = hit
+	arm.Springing = false
+	arm.V = 0
 end
 
 local function buildCrosshair()
@@ -334,7 +486,7 @@ local function buildCrosshair()
 	outline.Parent = ring
 
 	ring.Parent = gui
-	gui.Parent = player:WaitForChild("PlayerGui")
+	gui.Parent = playerGui
 	crosshair = ring
 end
 
@@ -353,9 +505,15 @@ function ViewmodelController.init()
 	viewmodel.Name = "FirstPersonArms"
 	for _, side in SIDES do
 		arms[side] = {
-			Forearm = plainPart(`{side}Forearm`, cfg.ForearmSize, cfg.SkinColor),
-			Fist = plainPart(`{side}Fist`, cfg.FistSize, cfg.SkinColor),
+			Forearm = roundedBlock(`{side}Forearm`, cfg.ForearmSize),
+			Fist = roundedBlock(`{side}Fist`, cfg.FistSize),
 			Side = side,
+			Started = -math.huge,
+			Reach = cfg.PunchReachMax,
+			Hit = false,
+			Springing = true,
+			X = 0,
+			V = 0,
 		}
 	end
 	buildCrosshair()

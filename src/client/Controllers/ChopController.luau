@@ -65,11 +65,12 @@ local function aimRay(): Ray?
 	return camera:ScreenPointToRay(pointer.X, pointer.Y)
 end
 
--- Find the tree (or awake mimic, or the boss or one of its roots) you're aiming at.
-local function findTree(): Model?
+-- Find the tree (or awake mimic, or the boss or one of its roots) you're aiming at, and the
+-- point where the aim touches it.
+local function findTree(): (Model?, Vector3?)
 	local ray = aimRay()
 	if not ray then
-		return nil
+		return nil, nil
 	end
 
 	local params = RaycastParams.new()
@@ -83,14 +84,25 @@ local function findTree(): Model?
 
 	local result = workspace:Raycast(ray.Origin, ray.Direction * MAX_CLICK_DISTANCE, params)
 	if not result then
-		return nil
+		return nil, nil
 	end
 
 	local model = result.Instance:FindFirstAncestorWhichIsA("Model")
 	if model and hasAnyTag(model, SWINGABLE) then
-		return model
+		return model, result.Position
 	end
-	return nil
+	return nil, nil
+end
+
+local function getTrunk(tree: Model): BasePart?
+	local trunk = tree:FindFirstChild("Trunk")
+	return if trunk and trunk:IsA("BasePart") then trunk else nil
+end
+
+local function getHead(): BasePart?
+	local character = player.Character
+	local head = if character then character:FindFirstChild("Head") else nil
+	return if head and head:IsA("BasePart") then head else nil
 end
 
 -- The id of the tool we're holding ("Fists" if none).
@@ -102,12 +114,6 @@ local function heldToolId(): string
 		return toolId
 	end
 	return "Fists"
-end
-
-local function getRoot(): BasePart?
-	local character = player.Character
-	local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
-	return if root and root:IsA("BasePart") then root else nil
 end
 
 -- Play the tool's swing on your character. Animations you play on your own character
@@ -141,14 +147,19 @@ end
 
 -- Will the server count this hit? The same checks as Server/Systems/TreeManager, using only
 -- what this computer can see. (It can't see which trees are mimics, and doesn't need to.)
-local function willCount(tree: Model, toolId: string, root: BasePart): boolean
+local function willCount(tree: Model, toolId: string, point: Vector3): boolean
 	if Config.Tools[toolId].Damage <= 0 then
 		return false -- the Torch doesn't chop
 	end
 	if not tree:IsDescendantOf(workspace) or not hasAnyTag(tree, CHOPPABLE) then
 		return false -- someone else just chopped it down, or it's the boss
 	end
-	if not ChopRules.inReach(root.Position, tree, toolId) then
+	local trunk = getTrunk(tree)
+	local head = getHead()
+	if not (trunk and head and ChopRules.pointOnTrunk(trunk, point)) then
+		return false -- you hit its leaves or roots, not the trunk
+	end
+	if not ChopRules.pointInReach(head.Position, point, toolId) then
 		return false
 	end
 	-- Trees behind a closed gate can't be chopped.
@@ -174,24 +185,33 @@ local function trySwing()
 	-- The Torch has no feel of its own: it swings like Fists.
 	local feel = Config.ChopFeel[toolId] or Config.ChopFeel.Fists
 
-	local tree = findTree()
-	-- In first person your fists (or tool) swing on every click, even at thin air.
+	local tree, aimedAt = findTree()
+	-- In first person your fists (or tool) swing on every click, even at thin air. A punch
+	-- reaches for the bark you aim at and bounces off it if the hit will count.
 	if ViewmodelController.isActive() then
 		lastSwing = now
-		ViewmodelController.swing(cooldown, feel.SwingSize)
+		local camera = workspace.CurrentCamera
+		local distance = if aimedAt and camera then (aimedAt - camera.CFrame.Position).Magnitude else nil
+		local hit = tree ~= nil and aimedAt ~= nil and willCount(tree, toolId, aimedAt)
+		ViewmodelController.swing(cooldown, feel.SwingSize, distance, hit)
 	end
-	if not tree then
+	if not (tree and aimedAt) then
 		return
 	end
 	lastSwing = now
 	playSwing(feel)
 
+	-- Remember the point on the tree itself, so it's still right if the tree moves (an awake
+	-- mimic) before the swing lands. The boss has no Trunk: the server ignores its point anyway.
+	local trunk = getTrunk(tree)
+	local onTrunk = if trunk then trunk.CFrame:PointToObjectSpace(aimedAt) else aimedAt
+
 	-- The hit lands partway through the swing.
 	task.delay(Config.ChopEffects.ImpactDelay, function()
-		swingRemote:FireServer(tree)
-		local root = getRoot()
-		if root and willCount(tree, toolId, root) then
-			ChopEffectsController.showMyHit(tree, toolId, root.Position)
+		local point = if trunk then trunk.CFrame:PointToWorldSpace(onTrunk) else aimedAt
+		swingRemote:FireServer(tree, point)
+		if willCount(tree, toolId, point) then
+			ChopEffectsController.showMyHit(tree, toolId, point)
 		end
 	end)
 end

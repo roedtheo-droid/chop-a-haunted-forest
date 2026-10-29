@@ -2,7 +2,7 @@
 -- The fun part of chopping, only for looks (see STYLE_GUIDE.md). The server tells every
 -- player about each hit (the TreeHit remote), and each player draws the effects on their own screen:
 --   * the tool's chop sound, a little higher or lower each time
---   * little wood cubes fly out of the notch with a small puff and flash, and the crown wobbles
+--   * little wood cubes fly out of the cut with a small puff and flash, and the crown wobbles
 --   * your camera jolts a little on your own hits
 --   * a felled tree cracks, falls, bounces and fades away, with dust, flying leaves, a crash
 --     and a camera shake where it lands, and its logs pop out of the fallen trunk
@@ -10,7 +10,7 @@
 -- Your own hits don't wait for the server: ChopController calls showMyHit the moment your
 -- swing lands, so chopping feels instant.
 -- None of this changes the game, so it's fine that it runs on the client.
--- (The notch itself is built by the server, so every player sees the same one.)
+-- (The cut itself is built by the server, so every player sees the same one.)
 
 local ContentProvider = game:GetService("ContentProvider")
 local Debris = game:GetService("Debris")
@@ -44,6 +44,8 @@ type Fall = {
 	Axis: Vector3, -- turning around this tips the top over the way it falls
 	Away: Vector3, -- the way it falls, flat on the ground
 	Height: number, -- the trunk's height
+	Split: number, -- studs above the ground where it broke (it tips over from there), 0 if it fell whole
+	Drop: number, -- studs the broken top drops while it falls, so it ends up lying on the ground
 	Started: number,
 	Near: boolean, -- close enough to see the dust and leaves where it lands
 	Landed: boolean,
@@ -159,7 +161,7 @@ local function playChopSound(feel: Types.ChopFeelConfig, position: Vector3, hitt
 	Fx.playSound(sound, position, pitchJitter())
 end
 
--- Little wood cubes that fly out of the notch, bounce on the ground and fade away.
+-- Little wood cubes that fly out of the cut, bounce on the ground and fade away.
 local function spawnChips(position: Vector3, outward: Vector3, barkColor: Color3, feel: Types.ChopFeelConfig)
 	for index = 1, feel.Chips do
 		if chipCount >= cfg.MaxChips then
@@ -174,7 +176,7 @@ local function spawnChips(position: Vector3, outward: Vector3, barkColor: Color3
 			color
 		)
 		chip.Material = Enum.Material.Wood
-		-- Out of the notch, a bit up, spread out a little.
+		-- Out of the cut, a bit up, spread out a little.
 		local spread = Vector3.new(random:NextNumber(-0.7, 0.7), random:NextNumber(0.3, 1.1), random:NextNumber(-0.7, 0.7))
 		chip.AssemblyLinearVelocity = (outward + spread).Unit * cfg.ChipSpeed * random:NextNumber(0.6, 1)
 		chip.AssemblyAngularVelocity =
@@ -298,7 +300,7 @@ local function updateWobbles()
 	end
 end
 
--- Draw one hit. `position` is where the notch opens on the bark, `outward` the way it faces.
+-- Draw one hit. `position` is where the cut opens on the bark, `outward` the way it faces.
 -- `hitter` is the player who swung (nil if they just left the game).
 local function playHit(
 	tree: Model,
@@ -419,7 +421,7 @@ local function fadeTree(tree: Model, fall: Fall, amount: number)
 			if descendant:IsA("BasePart") then
 				start[descendant] = descendant.Transparency
 			elseif descendant:IsA("SurfaceGui") then
-				descendant.Enabled = false -- pictures on parts (birch marks, the notch) don't fade with them
+				descendant.Enabled = false -- pictures on parts (birch marks, the cut) don't fade with them
 			end
 		end
 		fall.Fade = start
@@ -437,17 +439,22 @@ local function startFall(tree: Model, trunk: BasePart, away: Vector3, near: bool
 	end
 	stopWobble(tree)
 	local start = tree:GetPivot()
+	-- The server broke it at its cut (see Blocky.split): the top tips over from there.
+	local splitAttribute = tree:GetAttribute("SplitHeight")
+	local split = if typeof(splitAttribute) == "number" then splitAttribute else 0
 	falls[tree] = {
 		Start = start,
 		Axis = Vector3.yAxis:Cross(away), -- turning "up" around this by 90 degrees points it along `away`
 		Away = away,
 		Height = trunk.Size.Y, -- the trunk is a block: Size.Y is its height
+		Split = split,
+		Drop = math.max(split - trunk.Size.X / 2, 0), -- lying down, the middle of the trunk is half its width up
 		Started = os.clock(),
 		Near = near,
 		Landed = false,
 		Fade = nil,
 	}
-	Fx.playSound(Config.Sounds.TreeCrack, start.Position + Vector3.new(0, Config.Tree.NotchHeight, 0), pitchJitter())
+	Fx.playSound(Config.Sounds.TreeCrack, start.Position + Vector3.new(0, split, 0), pitchJitter())
 end
 
 local function updateFalls(now: number)
@@ -488,9 +495,11 @@ local function updateFalls(now: number)
 				end
 			end
 		end
-		model:PivotTo(
-			CFrame.new(fall.Start.Position - Vector3.yAxis * sink) * CFrame.fromAxisAngle(fall.Axis, angle) * fall.Start.Rotation
-		)
+		-- Turn around the break, and drop down as it tips so it lands flat on the ground.
+		local hinge = fall.Start.Position + Vector3.yAxis * fall.Split
+		local drop = fall.Drop * math.min(angle / (math.pi / 2), 1) + sink
+		local turn = CFrame.new(hinge - Vector3.yAxis * drop) * CFrame.fromAxisAngle(fall.Axis, angle) * CFrame.new(-hinge)
+		model:PivotTo(turn * fall.Start)
 	end
 end
 
@@ -549,13 +558,18 @@ end
 ---------------------------------------------------------------------------
 
 -- Your own hit, drawn the moment your swing lands (called by ChopController), so you don't
--- wait for the server. It's drawn right where the server is about to cut the notch.
-function ChopEffectsController.showMyHit(tree: Model, toolId: string, from: Vector3)
+-- wait for the server. It's drawn right where the server is about to cut, worked out from
+-- `point` (where you aimed) with the same rules the server uses.
+function ChopEffectsController.showMyHit(tree: Model, toolId: string, point: Vector3)
 	local trunk = getTrunk(tree)
 	if not trunk then
 		return
 	end
-	local opening = ChopRules.notchOpening(trunk, ChopRules.notchFace(tree, trunk, from - trunk.Position))
+	local opening = ChopRules.cutOpening(
+		trunk,
+		ChopRules.cutFace(tree, trunk, point),
+		ChopRules.cutHeight(tree, trunk, point)
+	)
 	local now = os.clock()
 	for other, shown in shownAt do
 		if now - shown > cfg.ShownWindow then

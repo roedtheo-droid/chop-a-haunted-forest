@@ -119,7 +119,7 @@ local particles: { [string]: Types.ParticleConfig } = {
 local treeTypes: { [string]: Types.TreeTypeConfig } = {
 	-- Pale Pines: bright, happy and green, with white birches and a few autumn trees.
 	Birch = {
-		MaxHP = 30,
+		MaxHP = 50, -- 10 punches with Fists, like in Chop a Forest
 		LogValue = 5,
 		Scale = 1,
 		TrunkColors = { Color3.fromRGB(120, 75, 45), Color3.fromRGB(135, 85, 50), Color3.fromRGB(110, 68, 40) },
@@ -410,7 +410,7 @@ local Config = {
 	-- Anything that isn't imported yet is built from plain parts, so the game always works.
 	Models = {
 		Folder = "MapAssets", -- the folder in ServerStorage
-		BarkBlock = "BarkBlock", -- stretched copies of it make up a chopped trunk (see Blocky.notch)
+		BarkBlock = "BarkBlock", -- stretched copies of it make up a chopped trunk (see Blocky.cut)
 		Rocks = { "Rock1", "Rock2" }, -- each rock picks one of these at random
 		Trees = treeShapes, -- which tree types use them: Shapes in TreeTypes above
 		Patches = { "Patch1", "Patch2", "Patch3" }, -- flat blobs on the ground (see Ground below)
@@ -796,9 +796,9 @@ local Config = {
 	-- How many chips, how big, how hard the crown sways and your camera jolts is set per
 	-- tool in chopFeel at the top of this file.
 	ChopEffects = {
-		ImpactDelay = 0.1, -- seconds from your click to the moment your swing hits the tree
+		ImpactDelay = 0.12, -- seconds from your click to the moment your swing hits the tree (in first person: when the fist lands, FirstPerson.PunchOut)
 		PitchJitter = 0.08, -- each hit sounds up to 8% higher or lower, so it never sounds the same twice
-		ChipSpeed = 16, -- the little wood cubes that fly out of the notch
+		ChipSpeed = 16, -- the little wood cubes that fly out of the cut
 		ChipLifetime = 1.2, -- seconds before a chip fades away
 		MaxChips = 80, -- never more chips than this at once (keeps phones fast)
 		WobbleTime = 0.35,
@@ -831,14 +831,27 @@ local Config = {
 	FirstPerson = {
 		FirstPersonOnly = true, -- false = the old camera behind your character, aiming with the mouse
 		SkinColor = Color3.fromRGB(245, 205, 160), -- only used if your character's arm colour can't be found
-		ForearmSize = Vector3.new(0.8, 0.8, 2.6), -- studs: width, height, length
+		ForearmSize = Vector3.new(0.8, 0.8, 4), -- studs: width, height, length (long, so its end never shows mid-punch)
 		FistSize = Vector3.new(1.05, 1.05, 1.05),
+		Roundness = 0.22, -- how round the corners of the fists and forearms are (0 = sharp, 0.5 = very round)
 		RestOffset = Vector3.new(1.15, -1.05, -2.3), -- where the right fist rests, seen from the camera (the left one is mirrored)
 		RestPitch = 14, -- degrees the forearms tilt up from the bottom of the screen
 		RestYaw = 10, -- degrees they point in towards the middle
-		PunchOut = 0.12, -- seconds a jab takes to go forward...
-		PunchBack = 0.2, -- ...and to come back
-		PunchReach = 1.3, -- studs a fist moves forward in a jab
+		-- A punch (see ViewmodelController): a short wind-up, a jab that speeds up until it
+		-- lands, a tiny freeze when it hits the bark, then it springs back and settles.
+		PunchOut = 0.12, -- seconds from the click to the fist landing (wind-up + jab)...
+		PunchBack = 0.2, -- ...and seconds to spring back to rest
+		WindUp = 0.25, -- studs the fist pulls back before it jabs
+		WindUpShare = 0.3, -- share of PunchOut spent pulling back
+		PunchReachMin = 0.8, -- studs a fist jabs forward: it stops at the bark you aim at,
+		PunchReachMax = 2.2, -- ...but always moves at least Min and never more than Max
+		PunchTwist = 25, -- degrees the fist turns as it jabs
+		HitStop = 0.04, -- seconds the fist freezes against the bark on a hit (makes it feel solid)
+		HitShake = 0.02, -- studs it shivers during that freeze
+		RecoilSpeed = 9, -- studs per second it bounces back off the bark
+		AirFollow = 4, -- studs per second it keeps going when you punch thin air
+		ReturnBounce = 0.55, -- how springy the return is: lower bounces more, 1 = no bounce
+		CounterPull = 0.12, -- the other fist pulls back this share of the jab
 		ToolPitch = 30, -- degrees a held tool leans up from pointing straight ahead
 		ToolGrip = 0.25, -- where your fist holds a tool's handle: 0 = its end, 0.5 = its middle
 		ToolSwingAngle = 65, -- degrees a tool chops down in a swing (smaller for the Chainsaw, see SwingSize in chopFeel)
@@ -962,11 +975,7 @@ local Config = {
 		RootHeight = 1.6,
 		BirchMarks = 6, -- dark marks on each side of a birch trunk
 		MinTrunkScale = 0.4, -- the boss's trunk width at 0 HP, compared to full width (shows damage)
-		-- Hitting a tree cuts a notch on the side you chop from. It gets deeper as HP goes down.
-		NotchHeight = 2, -- studs from the ground to the middle of the notch
-		NotchFirstHit = 0.15, -- how deep the first hit cuts, as a part of the trunk's width
-		NotchMaxDepth = 0.6, -- how deep the notch is at 0 HP, as a part of the trunk's width
-		NotchOpening = 1.2, -- the notch's height at the bark, compared to how deep it is
+		-- Hitting a tree cuts into it where you aim: see Cut below.
 		-- A felled tree cracks, falls, bounces, lies there and fades away. Every player's
 		-- computer animates it (see Client/Controllers/ChopEffectsController).
 		CrackTime = 0.35, -- seconds it shudders and creaks before it tips over
@@ -979,6 +988,30 @@ local Config = {
 		SinkDepth = 1.5, -- studs it sinks while it fades
 		LogsPerTree = 3,
 		StumpHeight = 1.2, -- the stump a felled tree leaves behind
+	},
+
+	-- The cut a tree gets where you hit it (see Server/Build/Blocky and Shared/ChopRules).
+	-- The first hit picks where it goes: the side and the height your crosshair touched. Every
+	-- hit makes it wider and deeper: a pocket of pale inner wood with a dark bark edge, with
+	-- rings once half the HP is gone, almost all the way through at 0 HP. The tree breaks there:
+	-- the bottom stays as the stump and the top falls.
+	-- Sizes are a share of the trunk's width: "First" right after the first hit, "Max" at 0 HP.
+	Cut = {
+		MinHeight = 1.2, -- studs from the ground to the middle of the cut, at least...
+		MaxHeight = 6, -- ...and at most
+		MaxHeightShare = 0.6, -- and never higher than this share of the trunk's height
+		PointMargin = 1, -- studs the aimed point may be outside the trunk (lag, moving mimics)
+		HeadReachExtra = 2, -- studs added to the tool's Reach, measured from your head to the point you hit
+		DepthFirst = 0.15,
+		DepthMax = 0.92,
+		WidthFirst = 0.45,
+		WidthMax = 0.9,
+		OpeningFirst = 0.3, -- how tall the cut is at the bark
+		OpeningMax = 0.6,
+		RingsFrom = 0.5, -- rings show at the back of the pocket once half the HP is gone
+		RimWidth = 0.05, -- the dark bark edge around the cut
+		RimShade = -0.25, -- how much darker than the bark the edge is (-1 = black)
+		Chunks = 0.35, -- splinters in the corners of the cut that make its edge ragged, compared to its height
 	},
 
 	Tools = tools,

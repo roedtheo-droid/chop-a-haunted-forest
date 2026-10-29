@@ -350,7 +350,7 @@ local function meshTree(
 		model:Destroy()
 		return nil
 	end
-	-- A random quarter turn: the trunk stays square to the world, which the chop notch and
+	-- A random quarter turn: the trunk stays square to the world, which the chop cut and
 	-- a mimic's knot rely on.
 	local turn = CFrame.Angles(0, random:NextInteger(0, 3) * math.pi / 2, 0)
 	Assets.fit(model, trunk, shape.TrunkWidth * scale, base, turn)
@@ -509,11 +509,11 @@ function Blocky.tree(base: Vector3, treeType: Types.TreeTypeConfig, random: Rand
 	return model
 end
 
--- One piece of a notched trunk: same colour and material as the trunk, never in the way.
+-- One piece of a cut trunk: same colour and material as the trunk, never in the way.
 -- A Blender trunk (a MeshPart) is cut into stretched bark blocks, so the pieces keep its bark.
-local function trunkPiece(name: string, trunk: BasePart, tree: Model, wedge: boolean): BasePart
-	local bark = if not wedge and trunk:IsA("MeshPart") then Assets.part(Config.Models.BarkBlock) else nil
-	local piece: BasePart = bark or (if wedge then Instance.new("WedgePart") else Instance.new("Part"))
+local function trunkPiece(name: string, trunk: BasePart, tree: Model): BasePart
+	local bark = if trunk:IsA("MeshPart") then Assets.part(Config.Models.BarkBlock) else nil
+	local piece: BasePart = bark or Instance.new("Part")
 	piece.Name = name
 	piece.Color = trunk.Color
 	piece.Material = trunk.Material
@@ -526,76 +526,183 @@ local function trunkPiece(name: string, trunk: BasePart, tree: Model, wedge: boo
 	return piece
 end
 
+-- A small decoration on the cut (its dark edge, the ragged corners): never in the way, and
+-- clicks go through it to the trunk.
+local function cutBit(name: string, color: Color3, tree: Model): Part
+	local bit = Blocky.part(name, Vector3.one, CFrame.identity, color, Enum.Material.Wood, tree)
+	bit.CanCollide = false
+	bit.CanQuery = false
+	bit.CanTouch = false
+	bit.CastShadow = false
+	return bit
+end
+
 local function getPiece(tree: Model, name: string): BasePart
 	local piece = tree:FindFirstChild(name)
-	assert(piece and piece:IsA("BasePart"), `notch piece {name} is missing`)
+	assert(piece and piece:IsA("BasePart"), `cut piece {name} is missing`)
 	return piece
 end
 
--- Cut a V-shaped notch into a tree's trunk, `cut` deep (a part of the trunk's width, 0 to 1).
--- The first cut picks the side of the trunk that faces `outward`; later cuts deepen the same notch.
--- A part can't have a hole in it, so the first cut hides the real Trunk (it stays as the
--- tree's invisible body, which other code still uses) and draws the trunk again from five
--- pieces: a block below the notch, a block above it, a thinner block behind it, and two
--- wedges for the notch's light, freshly cut slopes.
--- Returns where the notch opens on the bark, facing out (for the chop effects).
--- Which side and how high come from Shared/ChopRules, so clients can work out the same spot.
-function Blocky.notch(tree: Model, trunk: BasePart, outward: Vector3, cut: number): CFrame
-	local cfg = Config.Tree
-	local face = ChopRules.notchFace(tree, trunk, outward)
-	if tree:GetAttribute("NotchFace") == nil then
-		tree:SetAttribute("NotchFace", face)
+local CUT_SIDES = { "TrunkBelow", "CutBack", "CutLeft", "CutRight" } -- the pieces that stay with the stump
+local RIM_SEGMENTS = 3 -- pieces of dark bark edge along each side of the cut (see Blocky.cut)
+local CORNERS = { Vector2.new(-1, -1), Vector2.new(1, -1), Vector2.new(-1, 1), Vector2.new(1, 1) }
 
-		trunkPiece("TrunkBelow", trunk, tree, false)
-		local above = trunkPiece("TrunkAbove", trunk, tree, false)
-		local core = trunkPiece("TrunkCore", trunk, tree, false)
-		Blocky.face(core, Enum.NormalId.Front, Config.Style.InnerWood)
-		for _, name in { "NotchLower", "NotchUpper" } do
-			local wedge = trunkPiece(name, trunk, tree, true)
-			Blocky.face(wedge, Enum.NormalId.Top, Config.Style.InnerWood) -- a wedge's Top is its slope
+-- Cut into a tree's trunk where `point` is (where the player aimed). `amount` is how far along
+-- the cut is: 0 right after the first hit, 1 at 0 HP (see Config.Cut for the sizes).
+-- The first hit picks the side and the height (Shared/ChopRules, so clients work out the same
+-- spot); later hits make the same cut wider and deeper.
+-- A part can't have a hole in it, so the first hit hides the real Trunk (it stays as the
+-- tree's invisible body, which other code still uses) and draws the trunk again from pieces
+-- around a box-shaped pocket: a block below it, a block above it, a block behind it and one on
+-- each side. The faces that show inside the pocket are pale inner wood. Short dark blocks around
+-- the opening are its ragged bark edge, and turned blocks round off the corners.
+-- Returns where the cut opens on the bark, facing out (for the chop effects).
+function Blocky.cut(tree: Model, trunk: BasePart, point: Vector3, amount: number): CFrame
+	local cfg = Config.Cut
+	local inner = Config.Style.InnerWood
+	local rimColor = Blocky.shade(trunk.Color, cfg.RimShade)
+	local face = ChopRules.cutFace(tree, trunk, point)
+	local height = ChopRules.cutHeight(tree, trunk, point)
+	if tree:GetAttribute("CutFace") == nil then
+		tree:SetAttribute("CutFace", face)
+		tree:SetAttribute("CutHeight", height)
+		tree:SetAttribute("CutSeed", math.random(1, 1000000)) -- so the ragged edge stays the same shape
+
+		local below = trunkPiece("TrunkBelow", trunk, tree)
+		local above = trunkPiece("TrunkAbove", trunk, tree)
+		-- Only the part of these faces inside the pocket shows; the other pieces cover the rest.
+		Blocky.face(below, Enum.NormalId.Top, inner)
+		Blocky.face(above, Enum.NormalId.Bottom, inner)
+		Blocky.face(trunkPiece("CutBack", trunk, tree), Enum.NormalId.Front, inner)
+		Blocky.face(trunkPiece("CutLeft", trunk, tree), Enum.NormalId.Right, inner)
+		Blocky.face(trunkPiece("CutRight", trunk, tree), Enum.NormalId.Left, inner)
+		for index = 1, RIM_SEGMENTS * 4 do
+			cutBit(`Rim{index}`, rimColor, tree)
 		end
-		-- Pictures on the trunk (birch marks) move to the big piece above the notch.
+		for index in CORNERS do
+			cutBit(`CutCorner{index}`, Blocky.shade(inner, -0.18), tree)
+		end
+		-- Pictures on the trunk (birch marks) move to the big pieces above and below the cut.
 		for _, child in trunk:GetChildren() do
 			if child:IsA("SurfaceGui") then
 				child:Clone().Parent = above
+				child:Clone().Parent = below
 				child.Enabled = false
 			end
 		end
 		trunk.Transparency = 1
 	end
 
-	local width, height = trunk.Size.X, trunk.Size.Y
-	local depth = width * math.clamp(cut, 0.05, 0.95)
-	local opening = depth * cfg.NotchOpening
-	-- The middle of the notch, measured from the trunk's centre.
-	local middle = ChopRules.notchMiddle(trunk)
+	local seed = tree:GetAttribute("CutSeed")
+	local random = Random.new(if typeof(seed) == "number" then seed else 1)
+	local trunkWidth, trunkHeight = trunk.Size.X, trunk.Size.Y
+	local t = math.clamp(amount, 0, 1)
+	local depth = trunkWidth * (cfg.DepthFirst + (cfg.DepthMax - cfg.DepthFirst) * t)
+	local width = trunkWidth * (cfg.WidthFirst + (cfg.WidthMax - cfg.WidthFirst) * t)
+	local opening = trunkWidth * (cfg.OpeningFirst + (cfg.OpeningMax - cfg.OpeningFirst) * t)
+	local side = (trunkWidth - width) / 2
+	local front = -trunkWidth / 2 -- the bark on the cut side
+	local middle = height - trunkHeight / 2 -- the middle of the cut, measured from the trunk's centre
+	local space = ChopRules.cutSpace(trunk, face)
 
-	-- The trunk's space turned so that -Z points out of the notched side.
-	local space = trunk.CFrame * CFrame.lookAt(Vector3.zero, face)
+	local function place(piece: BasePart, size: Vector3, offset: CFrame)
+		piece.Size = size
+		piece.CFrame = space * offset
+	end
 
-	local belowHeight = middle - opening / 2 + height / 2
-	local below = getPiece(tree, "TrunkBelow")
-	below.Size = Vector3.new(width, belowHeight, width)
-	below.CFrame = space * CFrame.new(0, -height / 2 + belowHeight / 2, 0)
+	local belowHeight = height - opening / 2
+	place(getPiece(tree, "TrunkBelow"), Vector3.new(trunkWidth, belowHeight, trunkWidth), CFrame.new(0, -trunkHeight / 2 + belowHeight / 2, 0))
+	local aboveHeight = trunkHeight - height - opening / 2
+	place(getPiece(tree, "TrunkAbove"), Vector3.new(trunkWidth, aboveHeight, trunkWidth), CFrame.new(0, trunkHeight / 2 - aboveHeight / 2, 0))
+	local back = getPiece(tree, "CutBack")
+	place(back, Vector3.new(trunkWidth, opening, trunkWidth - depth), CFrame.new(0, middle, depth / 2))
+	place(getPiece(tree, "CutLeft"), Vector3.new(side, opening, depth), CFrame.new(-width / 2 - side / 2, middle, front + depth / 2))
+	place(getPiece(tree, "CutRight"), Vector3.new(side, opening, depth), CFrame.new(width / 2 + side / 2, middle, front + depth / 2))
 
-	local aboveHeight = height / 2 - (middle + opening / 2)
-	local above = getPiece(tree, "TrunkAbove")
-	above.Size = Vector3.new(width, aboveHeight, width)
-	above.CFrame = space * CFrame.new(0, height / 2 - aboveHeight / 2, 0)
+	-- Once half the HP is gone, the back of the deep pocket shows the tree's rings.
+	if t >= cfg.RingsFrom and not back:GetAttribute("Rings") then
+		back:SetAttribute("Rings", true)
+		local plain = back:FindFirstChild("FrontFace")
+		if plain then
+			plain:Destroy()
+		end
+		Blocky.rings(back, Enum.NormalId.Front)
+	end
 
-	local core = getPiece(tree, "TrunkCore")
-	core.Size = Vector3.new(width, opening, width - depth)
-	core.CFrame = space * CFrame.new(0, middle, depth / 2)
+	-- The dark bark edge: short pieces around the opening, sticking out a hair from the bark.
+	-- Each is a different thickness and pokes a little into the opening, so the edge is ragged.
+	local rim = trunkWidth * cfg.RimWidth
+	local thin = 0.06
+	local z = front - thin / 2
+	local rimIndex = 0
+	local function edge(along: Vector3, out: Vector3, center: Vector3, length: number)
+		for segment = 1, RIM_SEGMENTS do
+			rimIndex += 1
+			local thickness = rim * random:NextNumber(0.5, 1.6)
+			local reach = thickness / 2 - rim * random:NextNumber(0, 0.35) -- below thickness / 2 pokes into the opening
+			local spot = center + along * ((segment - 0.5) / RIM_SEGMENTS - 0.5) * length + out * reach
+			local size = along * (length / RIM_SEGMENTS * random:NextNumber(1, 1.15)) + out * thickness
+			place(getPiece(tree, `Rim{rimIndex}`), Vector3.new(math.abs(size.X), math.abs(size.Y), thin), CFrame.new(spot.X, spot.Y, z))
+		end
+	end
+	local spanX = width + rim
+	edge(Vector3.xAxis, Vector3.yAxis, Vector3.new(0, middle + opening / 2, 0), spanX)
+	edge(Vector3.xAxis, -Vector3.yAxis, Vector3.new(0, middle - opening / 2, 0), spanX)
+	edge(Vector3.yAxis, -Vector3.xAxis, Vector3.new(-width / 2, middle, 0), opening)
+	edge(Vector3.yAxis, Vector3.xAxis, Vector3.new(width / 2, middle, 0), opening)
 
-	-- The lower wedge's slope faces up and out. The upper one is the same, upside down.
-	local lower = getPiece(tree, "NotchLower")
-	lower.Size = Vector3.new(width, opening / 2, depth)
-	lower.CFrame = space * CFrame.new(0, middle - opening / 4, -width / 2 + depth / 2)
-	local upper = getPiece(tree, "NotchUpper")
-	upper.Size = lower.Size
-	upper.CFrame = space * CFrame.new(0, middle + opening / 4, -width / 2 + depth / 2) * CFrame.Angles(0, 0, math.pi)
+	-- A block turned 45 degrees in each corner of the pocket rounds it off unevenly, so the cut
+	-- looks like a ragged blob instead of a neat box. They sit a hair behind the bark, so only
+	-- their slanted, slightly darker inner-wood sides show inside the pocket.
+	for index, corner in CORNERS do
+		-- Never so big that its tip pokes out of the side of the trunk.
+		local size = math.min(opening * cfg.Chunks * random:NextNumber(0.7, 1.3), side * 1.4)
+		place(
+			getPiece(tree, `CutCorner{index}`),
+			Vector3.new(size, size, depth - 0.02),
+			CFrame.new(corner.X * width / 2, middle + corner.Y * opening / 2, front + depth / 2 + 0.01) * CFrame.Angles(0, 0, math.pi / 4)
+		)
+	end
 
-	return space * CFrame.new(0, middle, -width / 2)
+	return ChopRules.cutOpening(trunk, face, height)
+end
+
+-- A felled tree breaks cleanly at its cut. Everything below the middle of the cut stays
+-- behind (TreeManager builds the stump there), so those pieces are removed from the tree.
+-- The piece above grows down to the break and gets a pale, ringed bottom: the end of the
+-- trunk that falls. Returns the height of the break, in studs above the bottom of the trunk
+-- (nil if the tree was never cut).
+function Blocky.split(tree: Model, trunk: BasePart): number?
+	local height = tree:GetAttribute("CutHeight")
+	local above = tree:FindFirstChild("TrunkAbove")
+	if typeof(height) ~= "number" or not (above and above:IsA("BasePart")) then
+		return nil
+	end
+	local face = tree:GetAttribute("CutFace")
+	local space = ChopRules.cutSpace(trunk, if typeof(face) == "Vector3" then face else Vector3.zAxis)
+	local trunkHeight = trunk.Size.Y
+	above.Size = Vector3.new(above.Size.X, trunkHeight - height, above.Size.Z)
+	above.CFrame = space * CFrame.new(0, trunkHeight / 2 - above.Size.Y / 2, 0)
+	local plain = above:FindFirstChild("BottomFace")
+	if plain then
+		plain:Destroy()
+	end
+	Blocky.rings(above, Enum.NormalId.Bottom)
+
+	local gone = table.clone(CUT_SIDES)
+	for index = 1, RIM_SEGMENTS * 4 do
+		table.insert(gone, `Rim{index}`)
+	end
+	for index in CORNERS do
+		table.insert(gone, `CutCorner{index}`)
+	end
+	for _, name in gone do
+		local piece = tree:FindFirstChild(name)
+		if piece then
+			piece:Destroy()
+		end
+	end
+	return height
 end
 
 -- A gable roof: two wedges meeting in a ridge that runs along X (turned by `turn`, if given).

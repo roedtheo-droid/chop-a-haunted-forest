@@ -27,7 +27,7 @@ export type ChopFeelConfig = {
 	Swing: string, -- your character's swing animation ("rbxassetid://...")
 	SwingSpeed: number, -- 1 = the animation's normal speed, 2 = twice as fast
 	SwingSize: number, -- 1 = a full chop; smaller is a smaller, shakier movement (the Chainsaw)
-	Chips: number, -- wood chips that fly out of the notch on each hit
+	Chips: number, -- wood chips that fly out of the cut on each hit
 	ChipSize: number, -- how big each chip is, in studs
 	Wobble: number, -- degrees the crown sways when the tree is hit
 	CameraKick: number, -- studs your camera jolts on your own hits

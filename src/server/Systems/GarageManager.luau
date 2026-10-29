@@ -31,6 +31,7 @@ local GarageManager = {}
 
 local notifyRemote: RemoteEvent
 local pad: BasePart
+local garageBase: CFrame -- the middle of the Garage's floor, its doors facing -Z
 local lastBuy: { [Player]: number } = {}
 
 local function groundHeightAt(x: number, z: number): number
@@ -42,8 +43,8 @@ local function notify(player: Player, text: string, value: string)
 	notifyRemote:FireClient(player, string.format(text, value))
 end
 
--- Is the player standing on the pad (or very close to it)?
-local function isOnPad(player: Player): boolean
+-- Is the player standing on the pad (or very close to it)? TruckManager asks this too.
+function GarageManager.isOnPad(player: Player): boolean
 	local character = player.Character
 	local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
 	if not (root and root:IsA("BasePart")) then
@@ -86,7 +87,7 @@ local function onBuy(player: Player, truckId: unknown)
 		return
 	end
 	lastBuy[player] = now
-	if not isOnPad(player) then
+	if not GarageManager.isOnPad(player) then
 		notifyRemote:FireClient(player, text.NotOnPad)
 		return
 	end
@@ -139,6 +140,16 @@ local function processReceipt(receipt: { [string]: any }): Enum.ProductPurchaseD
 	return Enum.ProductPurchaseDecision.PurchaseGranted
 end
 
+-- Where spawned trucks park, next to the driveway (see Config.Truck), facing the camp.
+function GarageManager.parkingSpots(): { CFrame }
+	local front = -Config.Garage.BuildingSize.Z / 2
+	local spots = {}
+	for _, side in Config.Truck.SpawnSides do
+		table.insert(spots, garageBase * CFrame.new(side, 0, front - Config.Truck.SpawnOut))
+	end
+	return spots
+end
+
 function GarageManager.init()
 	local cfg = Config.Garage
 	local folder = Instance.new("Folder")
@@ -146,6 +157,7 @@ function GarageManager.init()
 	local spot = cfg.Position
 	local ground = Vector3.new(spot.X, groundHeightAt(spot.X, spot.Z), spot.Z)
 	local base = CFrame.lookAt(ground, Vector3.new(cfg.FaceToward.X, ground.Y, cfg.FaceToward.Z))
+	garageBase = base
 	pad = GarageBuilding.build(folder, base)
 	CollectionService:AddTag(pad, Tags.GaragePad)
 	folder.Parent = workspace

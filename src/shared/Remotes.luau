@@ -36,6 +36,9 @@ local list: { [string]: Types.RemoteKind } = {
 	-- The server checks the price, your Coins or Embers and that you're on the Garage pad.
 	BuyTruck = "Event",
 
+	-- Client -> server: "Park my truck by the Garage" (a truck Id you own, see TruckManager).
+	SpawnTruck = "Event",
+
 	-- Client -> server: "I'm holding sprint" (true) or "I let go" (false).
 	-- The server decides the actual speed.
 	SetSprint = "Event",

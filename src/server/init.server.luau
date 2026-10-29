@@ -20,6 +20,7 @@ local systems: { Types.Module } = {
 	require(Systems.QuestManager),
 	require(Systems.ZoneManager), -- before anything that looks for the ground (it builds the zone floors)
 	require(Systems.CampManager), -- the camp, river, bridge and path (and moves spawn into the camp)
+	require(Systems.LandownerManager), -- after CampManager (he stands on the camp's grass)
 	require(Systems.SceneryManager), -- trees outside the walls, mountains (only for looks)
 	require(Systems.LandmarkManager), -- the lake, swamps, graveyard... and props along the path (only for looks)
 	require(Systems.ForestSpawner),

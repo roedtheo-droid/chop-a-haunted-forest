@@ -1178,6 +1178,54 @@ local Config = {
 		BuyCooldown = 0.25, -- seconds between purchases for one player
 	},
 
+	-- Mr. Graves, the landowner who hired the party to clear his haunted forest. He stands in
+	-- front of his steel vault on the camp's right side (see Server/Systems/LandownerManager,
+	-- Server/Build/Vault and Client/Controllers/LandownerController).
+	Landowner = {
+		VaultPosition = Vector3.new(80, 0, 494), -- the middle of the vault's foot (height is found automatically)
+		FaceToward = Vector3.new(0, 0, 470), -- the vault's door and Mr. Graves face this spot (near spawn)
+		NpcDistance = 7, -- studs in front of the vault's door where he stands
+		Scale = 1.15, -- how big he is next to a player (1 = about player size)
+		-- The prompt: big text, and the small text with the number of trees left in the whole forest.
+		PromptAction = "Talk",
+		TreesLeftText = "%s trees left", -- %s becomes the number, like "1,353"
+		PromptDistance = 10,
+		-- The dialogue box at the bottom of the screen.
+		NameTag = "Mr. Graves, the Landowner",
+		NotDoneLine = "Go finish your job first",
+		ThanksLine = "You cleared my whole forest! Thank you, the land is finally at peace.", -- after the Elder Hollow falls
+		TypeSpeed = 0.04, -- seconds per letter as the text types out
+		HideDistance = 14, -- walk further away than this...
+		HideDelay = 2, -- ...and the box hides after this many seconds
+		-- His relaxed idle (only on your screen).
+		BreatheSpeed = 1.6, -- how fast he breathes (radians per second: 1.6 is one breath every 4 seconds)
+		BreatheHeight = 0.06, -- studs his upper body rises with each breath
+		SwayAngle = 2, -- degrees he leans from side to side
+		HeadTurnAngle = 12, -- degrees he slowly looks left and right
+		ArmSwingAngle = 4,
+		-- His look.
+		SuitColor = Color3.fromRGB(32, 32, 38),
+		ShirtColor = Color3.fromRGB(240, 240, 240),
+		TieColor = Color3.fromRGB(150, 30, 40),
+		SkinColor = Color3.fromRGB(234, 184, 146),
+		HairColor = Color3.fromRGB(20, 18, 18),
+		-- The vault: a giant steel safe with a round door, and his money stacked around it.
+		VaultSize = Vector3.new(14, 13, 11), -- width, height, depth
+		VaultColor = Color3.fromRGB(70, 82, 98), -- dark blue-grey steel
+		VaultTrimColor = Color3.fromRGB(52, 61, 74),
+		DoorColor = Color3.fromRGB(110, 124, 142),
+		VaultLetters = "GRV", -- the three letters on top (for Graves)
+		LetterColor = Color3.fromRGB(255, 215, 70),
+		CashColor = Color3.fromRGB(95, 165, 80),
+		GoldColor = Color3.fromRGB(255, 200, 40),
+		StrapColor = Color3.fromRGB(112, 116, 48), -- the olive straps around the stacks
+		-- A little red bird that hops around on the grass in front of the vault (only for looks).
+		BirdColor = Color3.fromRGB(205, 40, 40),
+		BirdRadius = 6, -- studs from its home spot that it hops around in
+		BirdHopTime = 0.25, -- seconds per hop
+		BirdRest = { 0.6, 1.8 }, -- seconds it waits between hops (a random number in this range)
+	},
+
 	-- UI
 	UI = {
 		NotifyDuration = 2, -- seconds a message stays on screen

@@ -7,8 +7,8 @@
 --   Coins   CoinManager.spend. The truck is yours until the end of this run (Coins reset too).
 --   Embers  EmberManager.spend. The truck is saved forever (SaveManager unlock).
 --   Robux   Roblox shows its purchase window for the truck's developer product. When Roblox
---           says the player paid (ProcessReceipt), the truck is saved forever and the save is
---           written right away. While the product id is 0, the truck isn't for sale.
+--           says the player paid (through ProductManager), the truck is saved forever and the
+--           save is written right away. While the product id is 0, the truck isn't for sale.
 -- Who owns what is shown to the client with player attributes (see Shared/Trucks).
 
 local CollectionService = game:GetService("CollectionService")
@@ -24,6 +24,7 @@ local Trucks = require(ReplicatedStorage.Shared.Trucks)
 local Types = require(ReplicatedStorage.Shared.Types)
 local CoinManager = require(script.Parent.CoinManager)
 local EmberManager = require(script.Parent.EmberManager)
+local ProductManager = require(script.Parent.ProductManager)
 local SaveManager = require(script.Parent.SaveManager)
 local GarageBuilding = require(script.Parent.Parent.Build.GarageBuilding)
 
@@ -121,23 +122,15 @@ local function onBuy(player: Player, truckId: unknown)
 	end
 end
 
--- Roblox calls this when a player has paid for a developer product (and again later if we
--- don't answer "granted", for example because saving failed). Giving a truck twice does no
--- harm (an unlock is only stored once), so a repeated receipt is safe.
-local function processReceipt(receipt: { [string]: any }): Enum.ProductPurchaseDecision
-	local player = Players:GetPlayerByUserId(receipt.PlayerId)
-	local truck = Trucks.getByProduct(receipt.ProductId)
-	if not player or not truck then
-		return Enum.ProductPurchaseDecision.NotProcessedYet
-	end
+-- ProductManager calls this when a player has paid for a truck's developer product (and again
+-- later if we don't say it's done, for example because saving failed). Giving a truck twice
+-- does no harm (an unlock is only stored once), so a repeated receipt is safe.
+local function grantTruck(player: Player, truck: Types.TruckConfig): boolean
 	if not Trucks.owns(player, truck.Id) then
 		give(player, truck)
 	end
 	-- Only say "done" once it's really saved, so a crash can't lose a paid truck.
-	if not SaveManager.saveNow(player) then
-		return Enum.ProductPurchaseDecision.NotProcessedYet
-	end
-	return Enum.ProductPurchaseDecision.PurchaseGranted
+	return SaveManager.saveNow(player)
 end
 
 -- Where spawned trucks park, next to the driveway (see Config.Truck), facing the camp.
@@ -166,7 +159,13 @@ end
 function GarageManager.start()
 	notifyRemote = Remotes.getEvent("Notify")
 	Remotes.getEvent("BuyTruck").OnServerEvent:Connect(onBuy)
-	MarketplaceService.ProcessReceipt = processReceipt
+	for _, truck in Config.Trucks do
+		if truck.Currency == "Robux" then
+			ProductManager.register(truck.ProductId, function(player: Player): boolean
+				return grantTruck(player, truck)
+			end)
+		end
+	end
 
 	Players.PlayerRemoving:Connect(function(player: Player)
 		lastBuy[player] = nil

@@ -17,6 +17,7 @@ local systems: { Types.Module } = {
 	require(Systems.RemoteService), -- first, so every other system can use remotes
 	require(Systems.EffectsManager), -- world sounds and particles (used by many systems)
 	require(Systems.SaveManager), -- early, so players' saves start loading as soon as possible
+	require(Systems.ProductManager), -- Robux purchases (the Garage and the trial table register their products)
 	require(Systems.QuestManager),
 	require(Systems.ZoneManager), -- before anything that looks for the ground (it builds the zone floors)
 	require(Systems.CampManager), -- the camp, river, bridge and path (and moves spawn into the camp)
@@ -38,6 +39,7 @@ local systems: { Types.Module } = {
 	require(Systems.KnockdownManager),
 	require(Systems.SawmillManager),
 	require(Systems.ShopManager),
+	require(Systems.TrialManager), -- after ShopManager (its prompt goes on the shed's trial table)
 	require(Systems.GarageManager), -- the Garage and truck purchases
 	require(Systems.TruckManager), -- driving, loading and selling with your trucks
 	require(Systems.TreeManager),

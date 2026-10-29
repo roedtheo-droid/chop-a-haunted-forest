@@ -1257,16 +1257,27 @@ local Config = {
 		},
 	},
 
-	-- The trial table in the Tool Shed: try a tool for a few minutes (see Server/Build/ShedDecor).
+	-- The trial table in the Tool Shed: try a tool for a few minutes (see Server/Build/ShedDecor,
+	-- Server/Systems/TrialManager and the time left in Client/HudController).
 	Trial = {
 		ToolId = "Chainsaw",
 		Seconds = 180, -- how long a trial lasts
-		RobuxPrice = 25, -- shown on the table
+		RobuxPrice = 25, -- shown on the table (set the same price on the developer product)
 		ProductId = 0, -- the developer product. 0: the trial is free, once per run (for testing)
+		PromptDistance = 8, -- how close to the table you must be to see "Try"
+		HudGap = 30, -- pixels the quest box moves down while "TRIAL 2:59" shows under the coins
 		Text = {
 			Sign = "TRIAL SAW",
 			Tag = "%d MIN", -- the number of minutes
 			Price = "R$ %s",
+			Action = "Try",
+			Object = "%s - %d min", -- the tool's name and the minutes
+			Hud = "TRIAL %d:%02d", -- minutes and seconds left
+			Started = "You can use the %s for %d minutes! Press its number key to hold it.",
+			Over = "Your %s trial is over.",
+			Owned = "You already own the %s.",
+			Running = "Your %s trial is still running.",
+			UsedFree = "You already had your free trial this run.",
 		},
 	},
 

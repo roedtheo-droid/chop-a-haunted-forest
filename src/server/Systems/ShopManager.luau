@@ -29,6 +29,7 @@ local ShopManager = {}
 local notifyRemote: RemoteEvent
 local shedOrigin: CFrame -- the middle of the shed's floor plan, turned like the shed
 local plates: { [string]: BasePart } = {}
+local trialTable: BasePart
 local lastBuy: { [Player]: number } = {}
 
 local function groundHeightAt(x: number, z: number): number
@@ -55,6 +56,7 @@ local function buildShed()
 	local built = ToolShed.build(ground, ToolManager.buildDisplay)
 	shedOrigin = built.Origin
 	plates = built.Plates
+	trialTable = built.TrialTable
 
 	-- The "Open shop" prompt is on the counter by the door, in front of the shopkeeper.
 	local prompt = newPrompt(built.Counter, cfg.Text.ShopAction, cfg.Text.Shopkeeper, cfg.PromptDistance)
@@ -163,6 +165,11 @@ local function addBuyPrompts()
 			tryBuy(player, itemId)
 		end)
 	end
+end
+
+-- The top of the trial table in the shed (TrialManager puts its "Try" prompt on it).
+function ShopManager.getTrialTable(): BasePart
+	return trialTable
 end
 
 function ShopManager.init()

@@ -46,6 +46,11 @@ function Shop.levelAttribute(upgradeId: string): string
 	return `Upgrade_{upgradeId}`
 end
 
+-- While a player tries a tool (the trial table in the Tool Shed): which tool, and the server
+-- time (workspace:GetServerTimeNow()) the trial ends. Both are removed when it ends.
+Shop.TRIAL_TOOL = "TrialTool"
+Shop.TRIAL_ENDS = "TrialEnds"
+
 function Shop.maxLevel(upgradeId: string): number
 	local upgrade = Config.Upgrades[upgradeId]
 	return if upgrade then #upgrade.Prices else 0

@@ -1,13 +1,16 @@
 --!strict
 -- Shows the player's Coins and Embers on the left side of the screen: a round icon and the
--- number, with a small "+15" that floats up when one of them goes up.
--- It only DISPLAYS the Coins and Embers attributes the server sets on the player.
+-- number, with a small "+15" that floats up when one of them goes up. During a tool trial,
+-- "TRIAL 2:59" shows under the coins.
+-- It only DISPLAYS the attributes the server sets on the player.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Shop = require(ReplicatedStorage.Shared.Shop)
 local UiKit = require(script.Parent.Parent.UiKit)
 
 local POP_TIME = 0.9
@@ -23,6 +26,7 @@ type Counter = {
 
 local player = Players.LocalPlayer
 local counters: { Counter } = {}
+local trialLabel: TextLabel
 
 local function getNumber(name: string): number
 	local value = player:GetAttribute(name)
@@ -84,6 +88,27 @@ local function addCounter(gui: ScreenGui, attribute: string, color: Color3, yOff
 	table.insert(counters, { Attribute = attribute, Label = label, Last = 0 })
 end
 
+-- "TRIAL 2:59" under the coins while you're trying a tool from the trial table. The server
+-- sets when the trial ends (Shop.TRIAL_ENDS, in server time) and removes it when it's over.
+local function addTrialTimer(gui: ScreenGui)
+	trialLabel = UiKit.text(gui, "Trial", "", Config.Style.Ember)
+	trialLabel.Position = UDim2.new(0, 16, 0.45, 24)
+	trialLabel.Size = UDim2.fromOffset(170, 26)
+	trialLabel.TextXAlignment = Enum.TextXAlignment.Left
+	trialLabel.Visible = false
+end
+
+local function updateTrialTimer()
+	local ends = player:GetAttribute(Shop.TRIAL_ENDS)
+	if typeof(ends) ~= "number" then
+		trialLabel.Visible = false
+		return
+	end
+	local left = math.max(0, math.floor(ends - workspace:GetServerTimeNow()))
+	trialLabel.Text = string.format(Config.Trial.Text.Hud, left // 60, left % 60)
+	trialLabel.Visible = true
+end
+
 function HudController.init()
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "Hud"
@@ -92,11 +117,13 @@ function HudController.init()
 	-- Embers sit just above Coins (the quest box is just below Coins).
 	addCounter(gui, "Embers", Config.Style.Ember, -46)
 	addCounter(gui, "Coins", Config.Style.Gold, 0)
+	addTrialTimer(gui)
 
 	gui.Parent = player:WaitForChild("PlayerGui")
 end
 
 function HudController.start()
+	RunService.Heartbeat:Connect(updateTrialTimer)
 	for _, counter in counters do
 		-- Start from the current amount so we don't "pop" the starting amount.
 		counter.Last = getNumber(counter.Attribute)

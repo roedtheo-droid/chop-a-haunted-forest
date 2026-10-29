@@ -7,6 +7,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Shop = require(ReplicatedStorage.Shared.Shop)
 local UiKit = require(script.Parent.Parent.UiKit)
 
 local BOX_WIDTH = 250
@@ -97,7 +98,15 @@ function QuestController.init()
 	gui.Parent = player:WaitForChild("PlayerGui")
 end
 
+-- Make room for "TRIAL 2:59" under the coins (Client/HudController) while a trial runs.
+local function placeBox()
+	local trial = typeof(player:GetAttribute(Shop.TRIAL_ENDS)) == "number"
+	box.Position = UDim2.new(0, 16, 0.45, 28 + (if trial then Config.Trial.HudGap else 0))
+end
+
 function QuestController.start()
+	placeBox()
+	player:GetAttributeChangedSignal(Shop.TRIAL_ENDS):Connect(placeBox)
 	refresh()
 	player:GetAttributeChangedSignal("QuestIndex"):Connect(refresh)
 	player:GetAttributeChangedSignal("QuestProgress"):Connect(refresh)

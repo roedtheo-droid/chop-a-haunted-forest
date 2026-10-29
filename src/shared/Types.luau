@@ -191,7 +191,37 @@ export type SaveData = {
 	Version: number, -- which shape this save has, so old saves can be upgraded later
 	Embers: number,
 	Stats: { [string]: number }, -- lifetime stats, like Stats.TreesFelled
-	Unlocks: { string }, -- permanent unlocks bought with Embers (none yet)
+	Unlocks: { string }, -- permanent unlocks, like "Truck_StakeHauler" (bought with Embers or Robux)
+}
+
+-- How a log truck looks, as blocky placeholder parts (see Shared/TruckBuilder).
+export type TruckLook = {
+	Cab: Color3, -- the cab and hood
+	Body: Color3, -- the bed, dump box or canvas
+	Trim: Color3, -- bumpers, grille and stacks
+	-- What's behind the cab: "Wood" (low wooden sides), "Stakes" (wooden stake sides),
+	-- "Flatbed" (long and flat, short stakes), "TallStakes", "Dump" (a dump box),
+	-- "Canvas" (an army cover), "LogTrailer" (logs on bolsters), "LogBed" (a tall bed of logs).
+	Bed: string,
+	Axles: number, -- 2 = 4 wheels, 3 = 6 wheels, 4 = 8 wheels
+	Length: number, -- studs from bumper to bumper (before Scale)
+	Scale: number, -- 1 = a normal truck; big rigs are bigger
+	Rounded: boolean?, -- an old truck with rounded hood and roof
+	Sleeper: boolean?, -- a big rig's tall cab with exhaust stacks
+}
+
+-- One log truck in the Garage (see Config.Trucks). Speed and Carry are what it does once you
+-- drive it; Price is in Currency (for Robux, ProductId is the developer product to sell).
+export type TruckConfig = {
+	Id: string,
+	Name: string,
+	Speed: number,
+	Carry: number, -- logs its bed holds
+	Currency: "Coins" | "Embers" | "Robux",
+	Price: number,
+	ProductId: number, -- Robux trucks only: 0 means "not on sale yet" (the button says Coming soon)
+	Skins: boolean, -- shows the SKINS panel (display only for now)
+	Look: TruckLook,
 }
 
 -- One tutorial quest (see Config.Quests).

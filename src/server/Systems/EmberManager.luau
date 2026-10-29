@@ -21,6 +21,17 @@ function EmberManager.add(player: Player, amount: number)
 	player:SetAttribute("Embers", data.Embers)
 end
 
+-- Take Embers if the player has enough. Returns false (and takes nothing) if not.
+function EmberManager.spend(player: Player, amount: number): boolean
+	local data = SaveManager.getData(player)
+	if not data or amount < 0 or data.Embers < amount then
+		return false
+	end
+	data.Embers -= amount
+	player:SetAttribute("Embers", data.Embers)
+	return true
+end
+
 function EmberManager.init() end
 
 function EmberManager.start() end

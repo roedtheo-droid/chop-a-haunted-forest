@@ -38,6 +38,7 @@ local systems: { Types.Module } = {
 	require(Systems.KnockdownManager),
 	require(Systems.SawmillManager),
 	require(Systems.ShopManager),
+	require(Systems.GarageManager), -- the Garage and truck purchases
 	require(Systems.TreeManager),
 	require(Systems.DebugManager), -- Studio-only test shortcuts
 }

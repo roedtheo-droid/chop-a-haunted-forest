@@ -18,11 +18,13 @@ local list: { [string]: Types.RemoteKind } = {
 	-- Server -> client: show a short message (like "Clear every tree first (N left)").
 	Notify = "Event",
 
-	-- Client -> server: "I swung at this tree". The server decides damage.
+	-- Client -> server: "I swung at this tree, and my crosshair hit its trunk at this point"
+	-- (a Vector3). The server checks the point and decides the damage; the point only picks
+	-- where the cut goes.
 	SwingAtTree = "Event",
 
 	-- Server -> all clients: a tree was hit, so draw the chop effects (only for looks).
-	-- Carries the tree, where on the bark it was hit, which way that side faces, the tool's Id,
+	-- Carries the tree, where the cut opens on the bark, which way that side faces, the tool's Id,
 	-- the Player who swung, and the way it falls if this hit felled it (nil otherwise).
 	TreeHit = "Event",
 

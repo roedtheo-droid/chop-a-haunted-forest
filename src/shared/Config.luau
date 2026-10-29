@@ -36,7 +36,8 @@ local chopFeel: { [string]: Types.ChopFeelConfig } = {
 		Swing = SWING,
 		SwingSpeed = 1.6,
 		SwingSize = 1,
-		Chips = 5,
+		ChipsMin = 3, -- 3 to 6 little wood cubes per punch, like in Chop a Forest
+		ChipsMax = 6,
 		ChipSize = 0.35,
 		Wobble = 1.5,
 		CameraKick = 0.06,
@@ -46,7 +47,8 @@ local chopFeel: { [string]: Types.ChopFeelConfig } = {
 		Swing = SWING,
 		SwingSpeed = 1.6,
 		SwingSize = 1,
-		Chips = 8,
+		ChipsMin = 5,
+		ChipsMax = 8,
 		ChipSize = 0.45,
 		Wobble = 2,
 		CameraKick = 0.09,
@@ -56,7 +58,8 @@ local chopFeel: { [string]: Types.ChopFeelConfig } = {
 		Swing = SWING,
 		SwingSpeed = 1.8,
 		SwingSize = 1,
-		Chips = 12,
+		ChipsMin = 8,
+		ChipsMax = 12,
 		ChipSize = 0.55,
 		Wobble = 3,
 		CameraKick = 0.13,
@@ -66,7 +69,8 @@ local chopFeel: { [string]: Types.ChopFeelConfig } = {
 		Swing = SWING,
 		SwingSpeed = 3,
 		SwingSize = 0.35, -- a small, fast sawing movement instead of big chops
-		Chips = 4, -- fewer per hit, but it hits very often
+		ChipsMin = 2, -- fewer per hit, but it hits very often
+		ChipsMax = 4,
 		ChipSize = 0.3,
 		Wobble = 1,
 		CameraKick = 0.04,
@@ -119,7 +123,8 @@ local particles: { [string]: Types.ParticleConfig } = {
 local treeTypes: { [string]: Types.TreeTypeConfig } = {
 	-- Pale Pines: bright, happy and green, with white birches and a few autumn trees.
 	Birch = {
-		MaxHP = 30,
+		Name = "Oak", -- the parts version of these trees is an oak
+		MaxHP = 50, -- 10 punches with Fists, like in Chop a Forest
 		LogValue = 5,
 		Scale = 1,
 		TrunkColors = { Color3.fromRGB(120, 75, 45), Color3.fromRGB(135, 85, 50), Color3.fromRGB(110, 68, 40) },
@@ -148,6 +153,7 @@ local treeTypes: { [string]: Types.TreeTypeConfig } = {
 	},
 	-- Fog Hollow: the same trees, but greyer and gloomier.
 	Willow = {
+		Name = "Willow",
 		MaxHP = 60,
 		LogValue = 8,
 		Scale = 1.15,
@@ -167,6 +173,7 @@ local treeTypes: { [string]: Types.TreeTypeConfig } = {
 	},
 	-- Graveyard Grove: dead, crooked trees with a few dark leaves and bare branches.
 	DeadOak = {
+		Name = "Dead Oak",
 		MaxHP = 100,
 		LogValue = 12,
 		Scale = 1.3,
@@ -188,16 +195,16 @@ local treeTypes: { [string]: Types.TreeTypeConfig } = {
 -- Pines stay green (no autumn colours), a little darker than the oaks.
 local pineGreens = { Color3.fromRGB(47, 107, 42), Color3.fromRGB(58, 127, 51), Color3.fromRGB(70, 138, 56) }
 local treeShapes: { [string]: Types.TreeShapeConfig } = {
-	Oak = { TrunkWidth = 3 },
-	Oak2 = { TrunkWidth = 3 },
-	Pine = { TrunkWidth = 2.2, LeafColors = pineGreens },
-	Pine2 = { TrunkWidth = 2.2, LeafColors = pineGreens },
-	Birch = { TrunkWidth = 2.4 },
-	Birch2 = { TrunkWidth = 2.4 },
-	Willow1 = { TrunkWidth = 3.2 },
-	Willow2 = { TrunkWidth = 3.2 },
-	DeadOak1 = { TrunkWidth = 3 },
-	DeadOak2 = { TrunkWidth = 3 },
+	Oak = { Name = "Oak", TrunkWidth = 3 },
+	Oak2 = { Name = "Oak", TrunkWidth = 3 },
+	Pine = { Name = "Pine", TrunkWidth = 2.2, LeafColors = pineGreens },
+	Pine2 = { Name = "Pine", TrunkWidth = 2.2, LeafColors = pineGreens },
+	Birch = { Name = "Birch", TrunkWidth = 2.4 },
+	Birch2 = { Name = "Birch", TrunkWidth = 2.4 },
+	Willow1 = { Name = "Willow", TrunkWidth = 3.2 },
+	Willow2 = { Name = "Willow", TrunkWidth = 3.2 },
+	DeadOak1 = { Name = "Dead Oak", TrunkWidth = 3 },
+	DeadOak2 = { Name = "Dead Oak", TrunkWidth = 3 },
 }
 
 -- The zones, in order from spawn. Clearing every tree in a zone opens the gate to the next one.
@@ -383,6 +390,10 @@ local Config = {
 	-- They never work in the real game (see Server/Systems/DebugManager).
 	StudioShortcuts = true,
 
+	-- Extra chop text, like in Chop a Forest. Both are off by default to keep the effects clean.
+	ShowTreeHpBar = false, -- true: the tree's name and HP show under the crosshair (see TreeHpBar)
+	ShowTimberText = false, -- true: "TIMBER!" pops up when a tree falls (see Timber)
+
 	-- The forest: zones in a row with walls around them (see Shared/Zones.luau)
 	Forest = {
 		Width = 260, -- the camp and every zone are this wide (X axis)
@@ -410,7 +421,7 @@ local Config = {
 	-- Anything that isn't imported yet is built from plain parts, so the game always works.
 	Models = {
 		Folder = "MapAssets", -- the folder in ServerStorage
-		BarkBlock = "BarkBlock", -- stretched copies of it make up a chopped trunk (see Blocky.notch)
+		BarkBlock = "BarkBlock", -- stretched copies of it make up a chopped trunk (see Build/Carve)
 		Rocks = { "Rock1", "Rock2" }, -- each rock picks one of these at random
 		Trees = treeShapes, -- which tree types use them: Shapes in TreeTypes above
 		Patches = { "Patch1", "Patch2", "Patch3" }, -- flat blobs on the ground (see Ground below)
@@ -796,18 +807,42 @@ local Config = {
 	-- How many chips, how big, how hard the crown sways and your camera jolts is set per
 	-- tool in chopFeel at the top of this file.
 	ChopEffects = {
-		ImpactDelay = 0.1, -- seconds from your click to the moment your swing hits the tree
+		ImpactDelay = 0.12, -- seconds from your click to the moment your swing hits the tree (in first person: when the fist lands, FirstPerson.PunchOut)
 		PitchJitter = 0.08, -- each hit sounds up to 8% higher or lower, so it never sounds the same twice
-		ChipSpeed = 16, -- the little wood cubes that fly out of the notch
+		ChipSpeed = 16, -- the little wood cubes that fly out of the cut
 		ChipLifetime = 1.2, -- seconds before a chip fades away
 		MaxChips = 80, -- never more chips than this at once (keeps phones fast)
 		WobbleTime = 0.35,
 		PuffCubes = 5, -- little beige cubes that puff out where a swing hits
 		PuffSize = 0.5,
 		PuffTime = 0.35,
-		FlashSize = 1.2, -- the small white flash where a swing hits, in studs
-		FlashTime = 0.12,
+		-- A warm glow bursts out of the cut on every hit, like light shining out of the wood.
+		GlowTime = 0.3, -- seconds it takes to fade
+		GlowColor = Color3.fromRGB(255, 236, 175), -- warm white-yellow
+		GlowSize = 1.3, -- how big it starts, compared to the cut's opening
+		GlowGrow = 1.8, -- how much bigger it gets while it fades
+		GlowBrightness = 4, -- the light it casts around the cut
+		GlowRange = 9, -- studs
+		ChipsToPlayer = 0.7, -- 0 = chips fly straight out of the cut, 1 = straight at the player who hit
+		-- Long thin splinters fly out with the chips.
+		SplintersMin = 1,
+		SplintersMax = 2,
+		SplinterSize = Vector3.new(0.1, 0.1, 0.7),
+		-- Fine sawdust drifts down from the cut.
+		SawdustBits = 6,
+		SawdustSize = 0.12,
+		SawdustTime = 1.4, -- seconds before it's gone
+		SawdustFall = 1.5, -- studs per second it sinks
+		-- A few leaves come loose from the crown on every hit and flutter down.
+		HitLeavesMin = 2,
+		HitLeavesMax = 3,
+		LeafSize = 0.5, -- studs
+		LeafFallSpeed = 2.2, -- studs per second they sink
+		LeafFlutter = 1.2, -- studs they sway from side to side while they fall
+		LeafFallTime = 2.5, -- seconds before a falling leaf is gone
 		KickTime = 0.12, -- seconds your camera jolts on your own hits
+		KickPush = 0.12, -- studs your camera is pushed towards the tree on your own hits
+		KickTilt = 0.8, -- degrees it nods down with it
 		-- Your own hits show the moment your swing lands. When the server then says the hit
 		-- counted, it isn't shown again if it was shown this many seconds ago.
 		ShownWindow = 0.5,
@@ -815,13 +850,81 @@ local Config = {
 		ShakeDistance = 45, -- your camera shakes when a tree lands this close to you
 		ShakeStrength = 0.25, -- studs the camera moves at most
 		ShakeTime = 0.3,
-		DustCubes = 15, -- grey cubes in the puffs along a tree that lands (shared by 3 puffs)
+		DustCubes = 25, -- tan cubes in the dust cloud that rolls along a tree that lands (shared by DustPuffs puffs)
+		DustPuffs = 5,
 		DustSize = 1.4,
 		DustTime = 0.9,
-		DustColor = Color3.fromRGB(205, 190, 165),
-		LeafCubes = 10, -- leaf cubes that fly off the crown when a tree lands
-		LeafCubeSize = 0.9,
-		LeafTime = 1.2,
+		DustColor = Color3.fromRGB(210, 185, 145), -- tan
+		LeafCubes = 25, -- leaves that burst up off the crown when a tree lands, then flutter down
+		LandLeafBurst = 7, -- studs per second they burst up
+	},
+
+	-- The health bar under the crosshair while you aim at a tree (see Client/Controllers/TreeHpController).
+	-- Only shows when ShowTreeHpBar (above) is true.
+	TreeHpBar = {
+		Below = 26, -- pixels from the middle of the screen (or the mouse) down to the tree's name
+		Width = 150, -- pixels
+		BarHeight = 22,
+		NameHeight = 22,
+		Text = "%.1f/%.1f HP", -- HP left / max HP, with one decimal
+		-- The fill changes colour as the tree loses HP: green, then yellow, orange and red, and
+		-- grey at 0. Each colour is used down to its share of HP left.
+		Colors = {
+			{ Above = 0.75, Color = Color3.fromRGB(90, 200, 70) },
+			{ Above = 0.5, Color = Color3.fromRGB(240, 210, 50) },
+			{ Above = 0.25, Color = Color3.fromRGB(240, 140, 40) },
+			{ Above = 0, Color = Color3.fromRGB(220, 50, 50) },
+		},
+		EmptyColor = Color3.fromRGB(125, 118, 110),
+	},
+
+	-- "TIMBER!" over the cut when a tree falls (see Client/Controllers/ChopEffectsController).
+	-- Only shows when ShowTimberText (above) is true.
+	Timber = {
+		Text = "TIMBER!",
+		Color = Color3.fromRGB(255, 190, 40), -- orange-yellow
+		StrokeColor = Color3.fromRGB(80, 45, 20), -- dark brown outline
+		Size = Vector2.new(320, 100), -- pixels: width, height (the same size on screen however far away the tree is)
+		Above = 1, -- studs above the cut
+		ScaleIn = 0.15, -- seconds it pops in
+		Hold = 0.6, -- seconds it stays
+		FadeTime = 0.3, -- seconds it fades away
+	},
+
+	-- First person (see Client/Controllers/ViewmodelController). The camera sits in your head, and
+	-- only you see your own two blocky forearms and fists at the bottom of the screen. Each swing
+	-- jabs one fist (left, right, left...), or swings the tool you hold in your right hand.
+	-- A small hollow circle in the middle of the screen shows what you'll hit.
+	FirstPerson = {
+		FirstPersonOnly = true, -- false = the old camera behind your character, aiming with the mouse
+		SkinColor = Color3.fromRGB(245, 205, 160), -- only used if your character's arm colour can't be found
+		ForearmSize = Vector3.new(0.8, 0.8, 4), -- studs: width, height, length (long, so its end never shows mid-punch)
+		FistSize = Vector3.new(1.05, 1.05, 1.05),
+		Roundness = 0.22, -- how round the corners of the fists and forearms are (0 = sharp, 0.5 = very round)
+		RestOffset = Vector3.new(1.15, -1.05, -2.3), -- where the right fist rests, seen from the camera (the left one is mirrored)
+		RestPitch = 14, -- degrees the forearms tilt up from the bottom of the screen
+		RestYaw = 10, -- degrees they point in towards the middle
+		-- A punch (see ViewmodelController): a short wind-up, a jab that speeds up until it
+		-- lands, a tiny freeze when it hits the bark, then it springs back and settles.
+		PunchOut = 0.12, -- seconds from the click to the fist landing (wind-up + jab)...
+		PunchBack = 0.2, -- ...and seconds to spring back to rest
+		WindUp = 0.25, -- studs the fist pulls back before it jabs
+		WindUpShare = 0.3, -- share of PunchOut spent pulling back
+		PunchReachMin = 0.8, -- studs a fist jabs forward: it stops at the bark you aim at,
+		PunchReachMax = 2.2, -- ...but always moves at least Min and never more than Max
+		PunchTwist = 25, -- degrees the fist turns as it jabs
+		HitStop = 0.04, -- seconds the fist freezes against the bark on a hit (makes it feel solid)
+		HitShake = 0.02, -- studs it shivers during that freeze
+		RecoilSpeed = 9, -- studs per second it bounces back off the bark
+		AirFollow = 4, -- studs per second it keeps going when you punch thin air
+		ReturnBounce = 0.55, -- how springy the return is: lower bounces more, 1 = no bounce
+		CounterPull = 0.12, -- the other fist pulls back this share of the jab
+		ToolPitch = 30, -- degrees a held tool leans up from pointing straight ahead
+		ToolGrip = 0.25, -- where your fist holds a tool's handle: 0 = its end, 0.5 = its middle
+		ToolSwingAngle = 65, -- degrees a tool chops down in a swing (smaller for the Chainsaw, see SwingSize in chopFeel)
+		CrosshairSize = 14, -- pixels across
+		CrosshairThickness = 2, -- pixels
+		CrosshairColor = Color3.fromRGB(255, 255, 255),
 	},
 
 	-- The glowing line to the nearest tree when a zone is almost cleared
@@ -938,24 +1041,66 @@ local Config = {
 		RootLength = 1.6, -- how far a root sticks out past the trunk
 		RootHeight = 1.6,
 		BirchMarks = 6, -- dark marks on each side of a birch trunk
+		BirchName = "Birch", -- a birch's name on the tree HP bar, when it's built from parts
 		MinTrunkScale = 0.4, -- the boss's trunk width at 0 HP, compared to full width (shows damage)
-		-- Hitting a tree cuts a notch on the side you chop from. It gets deeper as HP goes down.
-		NotchHeight = 2, -- studs from the ground to the middle of the notch
-		NotchFirstHit = 0.15, -- how deep the first hit cuts, as a part of the trunk's width
-		NotchMaxDepth = 0.6, -- how deep the notch is at 0 HP, as a part of the trunk's width
-		NotchOpening = 1.2, -- the notch's height at the bark, compared to how deep it is
-		-- A felled tree cracks, falls, bounces, lies there and fades away. Every player's
-		-- computer animates it (see Client/Controllers/ChopEffectsController).
-		CrackTime = 0.35, -- seconds it shudders and creaks before it tips over
-		CrackLean = 3, -- degrees it leans while it cracks
-		FallTime = 1.1, -- seconds it takes to fall (slow at first, then faster)
-		BounceAngle = 6, -- degrees it bounces back up when it hits the ground
-		BounceTime = 0.3,
-		RemoveDelay = 1.5, -- seconds a fallen tree lies there before it fades away
-		FadeTime = 0.5, -- seconds it takes to sink into the ground and fade
-		SinkDepth = 1.5, -- studs it sinks while it fades
-		LogsPerTree = 3,
+		-- Hitting a tree cuts into it where you aim: see Cut below.
+		-- A felled tree, like in Chop a Forest: the top slips down a little at the break, tips over
+		-- away from the player who felled it and reaches the ground 1.5 s after the break
+		-- (CrackTime + FallTime). It bounces, a dust cloud rolls along it and leaves burst off the
+		-- crown, then the crown vanishes and the trunk turns into logs lying in a row where it
+		-- landed. Every player's computer animates it (see Client/Controllers/ChopEffectsController).
+		CrackTime = 0.2, -- seconds the top slips and creaks before it tips over
+		CrackLean = 2, -- degrees it leans while it slips
+		SlipDrop = 0.3, -- studs the top slips down at the break
+		FallTime = 1.3, -- seconds it takes to fall (slow at first, then faster)
+		BounceAngle = 4, -- degrees it bounces back up when it hits the ground
+		BounceTime = 0.2, -- seconds the bounce takes; then it turns into logs
+		RemoveDelay = 0.3, -- seconds after it lands before the server removes it (it's invisible by then)
+		FadeTime = 0.1, -- (added to RemoveDelay)
+		LogsPerTree = 5, -- logs a felled tree turns into
 		StumpHeight = 1.2, -- the stump a felled tree leaves behind
+	},
+
+	-- Carving (see Server/Build/Carve), like in Chop a Forest: every hit scoops a round hole out
+	-- of the trunk where you aim. Hit the same spot and the dent gets wider and deeper; hit
+	-- somewhere else and a new dent starts there. The trunk has layers like a real one (bark,
+	-- pale wood, a darker ring, a pale heart), so a dent shows a dark bark rim, then pale wood,
+	-- then the ring. At 0 HP the tree breaks at its deepest dent.
+	Cut = {
+		BarkThickness = 0.1, -- how thick the bark is, as a share of the trunk's width
+		RimShade = 0.3, -- the bark around a dent is this much darker than the bark (0 = the same, 1 = black)
+		RingWidth = 0.55, -- the darker ring's outside, as a share of the trunk's width
+		HeartWidth = 0.3, -- the pale heart in the middle
+		InnerColors = {
+			Color3.fromRGB(235, 200, 150), -- pale wood (and the heart)
+			Color3.fromRGB(205, 160, 105), -- the darker ring
+		},
+		HoleSize = 0.34, -- a punch's hole: its radius as a share of the trunk's width
+		HitsPerTree = 10, -- HoleSize is for a hit that takes this share of a tree's HP (1/10: a punch on an oak)
+		MinHoleScale = 0.7, -- smaller hits still scoop at least this big a hole (compared to HoleSize)...
+		MaxHoleScale = 2, -- ...and big tools at most this big
+		HoleOut = 0.65, -- how far out of the wood each hole's middle sits (share of its radius): a new dent starts as a shallow bowl
+		DigStep = 0.25, -- each hit on a dent digs this much deeper (share of the hole's radius)
+		MaxDepth = 0.5, -- the deepest a hole's middle goes: this far past the middle of the trunk (share of half its width), so a dent gets almost all the way through
+		HoleJitter = 0.25, -- holes are shifted a little at random, so dents look natural
+		-- Each hit is a rough bite, not a perfect bowl (see Carve: roughHole). Sizes and distances
+		-- are a share of the hole's radius; pairs are the smallest and biggest (picked at random).
+		Rough = {
+			MainSize = { 0.8, 1 }, -- the big ball in the middle
+			GrainLumps = 2, -- lumps above and below it (wood tears along the grain, up the trunk)
+			GrainSize = { 0.45, 0.7 },
+			GrainReach = { 0.55, 1 },
+			SideLumps = { 2, 4 }, -- lumps to the sides
+			SideSize = { 0.35, 0.55 },
+			SideReach = { 0.75, 1.2 },
+			Splinters = { 4, 6 }, -- thin, tilted blocks around the edge that leave sharp, splintery corners
+			SplinterLength = { 0.8, 1.4 },
+			SplinterReach = { 0.75, 1.15 },
+			SplinterDepth = { -0.6, -0.1 }, -- how far into the wood they reach from the middle ball (below 0 = deeper)
+		},
+		SplitGap = 0.2, -- studs of wood that vanish where the tree breaks
+		PointMargin = 1, -- studs the aimed point may be outside the trunk (lag, moving mimics)
+		HeadReachExtra = 2, -- studs added to the tool's Reach, measured from your head to the point you hit
 	},
 
 	Tools = tools,
@@ -987,12 +1132,13 @@ local Config = {
 	Logs = {
 		CarryLimit = 5, -- starting backpack size
 		PickupDistance = 8, -- how close you must be to see "Pick up"
-		Length = 4,
-		Thickness = 1.2,
-		Scatter = 3, -- logs land up to this many studs to the side of the fallen trunk
-		-- Logs pop out of the fallen trunk in a little arc (every player's computer animates it).
-		PopStart = 1.5, -- studs above the ground they start, inside the fallen trunk
-		PopHeight = 3, -- how high the arc goes
+		Length = 2.4, -- short, square-ish blocks, like in Chop a Forest
+		Thickness = 1.3,
+		Gap = 0.15, -- studs between the logs lying in a row where the trunk landed
+		-- The trunk breaks into the logs: each one hops a little where it lands (every player's
+		-- computer animates it).
+		PopStart = 0.8, -- studs above where it ends up that it starts (inside the fallen trunk)
+		PopHeight = 1.2, -- how high the hop goes
 		PopTime = 0.55, -- seconds from popping out to lying still (the Log Vacuum waits this long)
 	},
 

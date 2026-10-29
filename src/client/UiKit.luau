@@ -229,4 +229,22 @@ function UiKit.bounce(object: GuiObject)
 	end
 end
 
+-- In first person the mouse is locked in the middle of the screen, so you couldn't click a
+-- menu's buttons. A "Modal" button frees the mouse while it's showing, so put one (invisible)
+-- in every menu: the mouse is free while the menu is open and locked again when it closes.
+-- The gui also gets the FREES_MOUSE attribute, so ViewmodelController can hide the crosshair
+-- and show the mouse while it's open.
+UiKit.FREES_MOUSE = "FreesMouse"
+function UiKit.freeMouse(gui: ScreenGui)
+	gui:SetAttribute(UiKit.FREES_MOUSE, true)
+	local button = Instance.new("TextButton")
+	button.Name = "FreeMouse"
+	button.Modal = true
+	button.Text = ""
+	button.BackgroundTransparency = 1
+	button.Size = UDim2.fromOffset(1, 1)
+	button.Selectable = false
+	button.Parent = gui
+end
+
 return UiKit

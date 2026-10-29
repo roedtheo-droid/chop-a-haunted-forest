@@ -128,6 +128,7 @@ local function buildGui()
 	gui.ResetOnSpawn = false
 	gui.Enabled = false
 	gui.DisplayOrder = 5 -- below the Notify messages, so "Bought ..." shows on top
+	UiKit.freeMouse(gui) -- so you can click the buttons in first person
 
 	local window = UiKit.panel(gui, "Window")
 	window.AnchorPoint = Vector2.new(0.5, 0.5)

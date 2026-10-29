@@ -45,6 +45,8 @@ local shot: Types.IntroShot = shots[1]
 local modeStart = 0 -- os.clock() when the current shot, orbit or swoop began
 local swoopFrom = CFrame.identity -- where the camera was when PLAY was pressed
 local skipped = false
+local finished = false -- true once the intro is over (or switched off)
+local finishedCallbacks: { () -> () } = {}
 
 local introGui: ScreenGui
 local blackout: Frame -- the black screen we fade in from and dip to between shots
@@ -349,6 +351,15 @@ local function swoopToCharacter()
 	task.wait(cfg.SwoopTime)
 end
 
+-- The intro is over: tell everyone who asked (see IntroController.onFinished).
+local function markFinished()
+	finished = true
+	for _, callback in finishedCallbacks do
+		task.spawn(callback)
+	end
+	table.clear(finishedCallbacks)
+end
+
 -- Hand the camera back to Roblox (following your character) and remove the intro.
 local function finish()
 	RunService:UnbindFromRenderStep(RENDER_NAME)
@@ -364,12 +375,25 @@ local function finish()
 	AtmosphereController.setViewPoint(nil)
 	showEverythingElse()
 	introGui:Destroy()
+	markFinished()
+end
+
+-- Run `callback` once the intro is over and you have control (right away if it already is).
+-- The first-person camera waits for this (see ViewmodelController), so the intro camera can
+-- fly freely and you can click PLAY with the mouse.
+function IntroController.onFinished(callback: () -> ())
+	if finished then
+		task.spawn(callback)
+	else
+		table.insert(finishedCallbacks, callback)
+	end
 end
 
 function IntroController.init() end
 
 function IntroController.start()
 	if not cfg.Enabled then
+		markFinished()
 		return
 	end
 	buildGui()

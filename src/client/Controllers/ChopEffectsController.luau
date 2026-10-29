@@ -2,15 +2,19 @@
 -- The fun part of chopping, only for looks (see STYLE_GUIDE.md). The server tells every
 -- player about each hit (the TreeHit remote), and each player draws the effects on their own screen:
 --   * the tool's chop sound, a little higher or lower each time
---   * little wood cubes fly out of the notch with a small puff and flash, and the crown wobbles
---   * your camera jolts a little on your own hits
---   * a felled tree cracks, falls, bounces and fades away, with dust, flying leaves, a crash
---     and a camera shake where it lands, and its logs pop out of the fallen trunk
+--   * a warm glow bursts out of the cut with a few rays of light and a soft beige puff
+--   * little wood cubes and a splinter or two fly out towards the player who hit, and drop
+--   * fine sawdust drifts down from the cut, and a few leaves come loose and flutter down
+--   * the crown wobbles
+--   * your camera is pushed towards the tree and jolts a little on your own hits
+--   * "TIMBER!" over the cut when a tree falls (only with Config.ShowTimberText)
+--   * a felled tree slips, falls away from whoever felled it and bounces, with a crash, a dust
+--     cloud along it, leaves bursting off its crown and a small shake; then it turns into logs
 -- How many chips and how hard things shake depends on the tool (Config.ChopFeel).
 -- Your own hits don't wait for the server: ChopController calls showMyHit the moment your
 -- swing lands, so chopping feels instant.
 -- None of this changes the game, so it's fine that it runs on the client.
--- (The notch itself is built by the server, so every player sees the same one.)
+-- (The dents are cut by CarveController, from holes the server picks, so everyone sees the same ones.)
 
 local ContentProvider = game:GetService("ContentProvider")
 local Debris = game:GetService("Debris")
@@ -24,10 +28,31 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Fx = require(ReplicatedStorage.Shared.Fx)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Types = require(ReplicatedStorage.Shared.Types)
+local CarveController = require(script.Parent.CarveController)
 
 local cfg = Config.ChopEffects
 local Style = Config.Style
 local CRACK_SHUDDER = math.rad(1) -- how much a cracking tree shakes, besides leaning over
+local MAX_FLOATERS = 150 -- never more sawdust and falling leaves than this at once (keeps phones fast)
+local GLOW_RAYS = 5 -- thin rays of light that shoot out of the cut with the glow
+local GLOW_RAY_LENGTH = 1.6 -- studs
+
+-- Something light that drifts and sinks on our screen: sawdust or a falling leaf.
+type Floater = {
+	Part: BasePart,
+	Start: Vector3,
+	Drift: Vector3, -- its push at the start (studs per second), which slows down quickly
+	Fall: number, -- studs per second it sinks
+	Sway: number, -- studs it sways from side to side
+	SwayDirection: Vector3,
+	SwaySpeed: number, -- radians per second
+	Phase: number,
+	Spin: Vector3, -- the axis it turns around
+	SpinSpeed: number, -- radians per second
+	Started: number,
+	Life: number, -- seconds before it's gone (it fades out at the end)
+	Transparency: number, -- how see-through it is to begin with
+}
 
 type Wobble = {
 	Leaves: BasePart,
@@ -44,6 +69,8 @@ type Fall = {
 	Axis: Vector3, -- turning around this tips the top over the way it falls
 	Away: Vector3, -- the way it falls, flat on the ground
 	Height: number, -- the trunk's height
+	Split: number, -- studs above the ground where it broke (it tips over from there), 0 if it fell whole
+	Drop: number, -- studs the broken top drops while it falls, so it ends up lying on the ground
 	Started: number,
 	Near: boolean, -- close enough to see the dust and leaves where it lands
 	Landed: boolean,
@@ -68,9 +95,11 @@ local wobbles: { [Model]: Wobble } = {}
 local falls: { [Model]: Fall } = {}
 local pops: { Pop } = {}
 local chipCount = 0
+local floaters: { Floater } = {}
 local shakeUntil = 0
 local shakeStrength = 0
 local shakeTime = 1
+local kickStarted = -math.huge -- when your camera was last pushed towards a tree
 local lastSound: { [Player]: { [string]: number } } = {}
 local shownAt: { [Model]: number } = {} -- when this computer last drew your own hit on each tree
 
@@ -124,7 +153,16 @@ end
 local function updateShake()
 	local now = os.clock()
 	local camera = workspace.CurrentCamera
-	if now >= shakeUntil or not camera then
+	if not camera then
+		return
+	end
+	-- Your own hit: a quick push towards the tree and back, with a little nod.
+	local kick = (now - kickStarted) / cfg.KickTime
+	if kick < 1 then
+		local curve = math.sin(kick * math.pi)
+		camera.CFrame *= CFrame.new(0, 0, -cfg.KickPush * curve) * CFrame.Angles(-math.rad(cfg.KickTilt) * curve, 0, 0)
+	end
+	if now >= shakeUntil then
 		return
 	end
 	local amount = shakeStrength * (shakeUntil - now) / shakeTime
@@ -136,7 +174,7 @@ local function updateShake()
 end
 
 ---------------------------------------------------------------------------
--- Every hit: sound, chips, puff, flash and wobble
+-- Every hit: sound, glow, chips, splinters, puff, sawdust, leaves and wobble
 ---------------------------------------------------------------------------
 
 local function playChopSound(feel: Types.ChopFeelConfig, position: Vector3, hitter: Player?)
@@ -159,41 +197,66 @@ local function playChopSound(feel: Types.ChopFeelConfig, position: Vector3, hitt
 	Fx.playSound(sound, position, pitchJitter())
 end
 
--- Little wood cubes that fly out of the notch, bounce on the ground and fade away.
-local function spawnChips(position: Vector3, outward: Vector3, barkColor: Color3, feel: Types.ChopFeelConfig)
-	for index = 1, feel.Chips do
+-- A small piece of wood thrown out of the cut: it flies, bounces on the ground and fades away.
+local function throwWood(name: string, size: Vector3, cframe: CFrame, color: Color3, velocity: Vector3)
+	local piece = plainPart(name, size, cframe, color)
+	piece.Material = Enum.Material.Wood
+	piece.AssemblyLinearVelocity = velocity
+	piece.AssemblyAngularVelocity = Vector3.new(random:NextNumber(-15, 15), random:NextNumber(-15, 15), random:NextNumber(-15, 15))
+	piece.Parent = folder
+	chipCount += 1
+
+	task.delay(cfg.ChipLifetime, function()
+		TweenService:Create(piece, TweenInfo.new(0.3), { Transparency = 1 }):Play()
+	end)
+	-- Removed on a timer, not when the fade ends, so a chip can never be left behind.
+	task.delay(cfg.ChipLifetime + 0.3, function()
+		piece:Destroy()
+		chipCount -= 1
+	end)
+end
+
+-- Which way wood flies out of the cut: mostly towards the player who hit (`toward`), a bit up,
+-- spread out a little.
+local function flyDirection(outward: Vector3, toward: Vector3): Vector3
+	local aim = (outward * (1 - cfg.ChipsToPlayer) + toward * cfg.ChipsToPlayer).Unit
+	local spread = Vector3.new(random:NextNumber(-0.6, 0.6), random:NextNumber(0.3, 1), random:NextNumber(-0.6, 0.6))
+	return (aim + spread).Unit
+end
+
+-- Little wood cubes (mostly pale inner wood, some bark) and a long splinter or two.
+local function spawnChips(position: Vector3, outward: Vector3, toward: Vector3, barkColor: Color3, feel: Types.ChopFeelConfig)
+	local start = position + outward * 0.4
+	for index = 1, random:NextInteger(feel.ChipsMin, feel.ChipsMax) do
 		if chipCount >= cfg.MaxChips then
 			return
 		end
 		local size = feel.ChipSize * random:NextNumber(0.6, 1.3)
-		local color = if index % 3 == 0 then barkColor else Style.InnerWood
-		local chip = plainPart(
+		throwWood(
 			"Chip",
 			Vector3.one * size,
-			CFrame.new(position + outward * 0.5) * CFrame.Angles(random:NextNumber(0, 6), random:NextNumber(0, 6), 0),
-			color
+			CFrame.new(start) * CFrame.Angles(random:NextNumber(0, 6), random:NextNumber(0, 6), 0),
+			if index % 3 == 0 then barkColor else Style.InnerWood,
+			flyDirection(outward, toward) * cfg.ChipSpeed * random:NextNumber(0.6, 1)
 		)
-		chip.Material = Enum.Material.Wood
-		-- Out of the notch, a bit up, spread out a little.
-		local spread = Vector3.new(random:NextNumber(-0.7, 0.7), random:NextNumber(0.3, 1.1), random:NextNumber(-0.7, 0.7))
-		chip.AssemblyLinearVelocity = (outward + spread).Unit * cfg.ChipSpeed * random:NextNumber(0.6, 1)
-		chip.AssemblyAngularVelocity =
-			Vector3.new(random:NextNumber(-15, 15), random:NextNumber(-15, 15), random:NextNumber(-15, 15))
-		chip.Parent = folder
-		chipCount += 1
-
-		task.delay(cfg.ChipLifetime, function()
-			TweenService:Create(chip, TweenInfo.new(0.3), { Transparency = 1 }):Play()
-		end)
-		-- Removed on a timer, not when the fade ends, so a chip can never be left behind.
-		task.delay(cfg.ChipLifetime + 0.3, function()
-			chip:Destroy()
-			chipCount -= 1
-		end)
+	end
+	for _ = 1, random:NextInteger(cfg.SplintersMin, cfg.SplintersMax) do
+		if chipCount >= cfg.MaxChips then
+			return
+		end
+		local direction = flyDirection(outward, toward)
+		-- Long side along the way it flies, so it looks like it's been ripped out.
+		throwWood(
+			"Splinter",
+			cfg.SplinterSize * random:NextNumber(0.7, 1.2),
+			CFrame.lookAt(start, start + direction),
+			Style.InnerWood:Lerp(Color3.new(1, 1, 1), 0.1),
+			direction * cfg.ChipSpeed * random:NextNumber(0.7, 1.1)
+		)
 	end
 end
 
--- A small puff of light, dusty cubes where the swing hits.
+-- A small puff of soft beige dust around the cut.
 local function hitPuff(position: Vector3, outward: Vector3)
 	for _ = 1, cfg.PuffCubes do
 		local size = cfg.PuffSize * random:NextNumber(0.6, 1.2)
@@ -206,10 +269,15 @@ local function hitPuff(position: Vector3, outward: Vector3)
 		cube.Anchored = true
 		cube.CanCollide = false
 		cube.Material = Enum.Material.SmoothPlastic
+		cube.Transparency = 0.3
 		cube.Parent = folder
 
-		local drift = (outward + Vector3.new(random:NextNumber(-0.8, 0.8), random:NextNumber(-0.2, 0.8), random:NextNumber(-0.8, 0.8)))
-			* random:NextNumber(0.8, 1.8)
+		-- It billows out around the cut (only a little towards the player, so it never fills
+		-- your screen in first person).
+		local side = Vector3.yAxis:Cross(outward)
+		local drift = outward * random:NextNumber(0.1, 0.4)
+			+ side * random:NextNumber(-0.9, 0.9)
+			+ Vector3.yAxis * random:NextNumber(-0.3, 0.7)
 		local duration = cfg.PuffTime * random:NextNumber(0.7, 1.2)
 		TweenService:Create(
 			cube,
@@ -220,25 +288,156 @@ local function hitPuff(position: Vector3, outward: Vector3)
 	end
 end
 
--- A quick white flash right where the swing hits.
-local function hitFlash(position: Vector3)
-	local flash = plainPart(
-		"Flash",
-		Vector3.one * cfg.FlashSize * 0.4,
-		CFrame.new(position) * CFrame.Angles(random:NextNumber(0, 6), random:NextNumber(0, 6), 0),
-		Color3.new(1, 1, 1)
+-- How big a punch's hole in this trunk is across (see Config.Cut.HoleSize): the glow covers it.
+local function holeSize(trunk: BasePart): number
+	return trunk.Size.X * Config.Cut.HoleSize * 2
+end
+
+-- A warm white-yellow glow bursts out of the cut, like light shining out of the wood: a glowing
+-- plate over the opening that grows and fades, a few thin rays of light shooting out, and a
+-- light that brightens the bark around it for a moment.
+local function hitGlow(position: Vector3, outward: Vector3, opening: Vector2)
+	local face = CFrame.lookAt(position + outward * 0.05, position + outward * 2)
+	local glow = plainPart(
+		"Glow",
+		Vector3.new(opening.X * cfg.GlowSize, opening.Y * cfg.GlowSize, 0.05),
+		face,
+		cfg.GlowColor
 	)
-	flash.Anchored = true
-	flash.CanCollide = false
-	flash.Material = Enum.Material.Neon
-	flash.Transparency = 0.3
-	flash.Parent = folder
-	TweenService:Create(
-		flash,
-		TweenInfo.new(cfg.FlashTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-		{ Size = Vector3.one * cfg.FlashSize, Transparency = 1 }
-	):Play()
-	Debris:AddItem(flash, cfg.FlashTime)
+	glow.Anchored = true
+	glow.CanCollide = false
+	glow.CastShadow = false
+	glow.Material = Enum.Material.Neon
+	glow.Transparency = 0.15
+	local light = Instance.new("PointLight")
+	light.Color = cfg.GlowColor
+	light.Brightness = cfg.GlowBrightness
+	light.Range = cfg.GlowRange
+	light.Parent = glow
+	glow.Parent = folder
+
+	local info = TweenInfo.new(cfg.GlowTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	TweenService:Create(glow, info, { Size = glow.Size * cfg.GlowGrow, Transparency = 1 }):Play()
+	TweenService:Create(light, info, { Brightness = 0 }):Play()
+	Debris:AddItem(glow, cfg.GlowTime)
+
+	for _ = 1, GLOW_RAYS do
+		-- Out of the cut, fanned out a little around the way it faces.
+		local direction = (outward + Vector3.new(random:NextNumber(-0.7, 0.7), random:NextNumber(-0.5, 0.7), random:NextNumber(-0.7, 0.7))).Unit
+		local length = GLOW_RAY_LENGTH * random:NextNumber(0.6, 1.2)
+		local ray = plainPart(
+			"GlowRay",
+			Vector3.new(0.07, 0.07, length * 0.3),
+			CFrame.lookAt(position, position + direction) * CFrame.new(0, 0, -length * 0.15),
+			cfg.GlowColor
+		)
+		ray.Anchored = true
+		ray.CanCollide = false
+		ray.CastShadow = false
+		ray.Material = Enum.Material.Neon
+		ray.Transparency = 0.2
+		ray.Parent = folder
+		-- It shoots out and stretches as it fades.
+		TweenService:Create(ray, info, {
+			Size = Vector3.new(0.03, 0.03, length),
+			CFrame = CFrame.lookAt(position, position + direction) * CFrame.new(0, 0, -length * 0.8),
+			Transparency = 1,
+		}):Play()
+		Debris:AddItem(ray, cfg.GlowTime)
+	end
+end
+
+-- Start something light drifting and sinking (see Floater and updateFloaters).
+local function addFloater(part: BasePart, drift: Vector3, fall: number, sway: number, life: number)
+	if #floaters >= MAX_FLOATERS then
+		part:Destroy()
+		return
+	end
+	part.Anchored = true
+	part.CanCollide = false
+	part.CastShadow = false
+	part.Parent = folder
+	local angle = random:NextNumber(0, math.pi * 2)
+	table.insert(floaters, {
+		Part = part,
+		Start = part.Position,
+		Drift = drift,
+		Fall = fall,
+		Sway = sway,
+		SwayDirection = Vector3.new(math.cos(angle), 0, math.sin(angle)),
+		SwaySpeed = random:NextNumber(2.5, 4),
+		Phase = random:NextNumber(0, math.pi * 2),
+		Spin = Vector3.new(random:NextNumber(-1, 1), random:NextNumber(-1, 1), random:NextNumber(-1, 1)).Unit,
+		SpinSpeed = random:NextNumber(1.5, 4),
+		Started = os.clock(),
+		Life = life,
+		Transparency = part.Transparency,
+	})
+	Debris:AddItem(part, life + 0.5) -- just in case: it can never be left behind
+end
+
+local function updateFloaters(now: number)
+	for index = #floaters, 1, -1 do
+		local floater = floaters[index]
+		local t = now - floater.Started
+		if t >= floater.Life or not floater.Part.Parent then
+			floater.Part:Destroy()
+			table.remove(floaters, index)
+			continue
+		end
+		-- Its push slows down quickly, it sinks steadily and sways from side to side.
+		local pushed = floater.Drift * (1 - math.exp(-3 * t)) / 3
+		local sway = floater.SwayDirection * math.sin(t * floater.SwaySpeed + floater.Phase) * floater.Sway
+		local position = floater.Start + pushed - Vector3.yAxis * floater.Fall * t + sway
+		floater.Part.CFrame = CFrame.new(position) * CFrame.fromAxisAngle(floater.Spin, t * floater.SpinSpeed)
+		-- Fade out over the last 30% of its life.
+		local fade = math.clamp((t / floater.Life - 0.7) / 0.3, 0, 1)
+		floater.Part.Transparency = floater.Transparency + (1 - floater.Transparency) * fade
+	end
+end
+
+-- Fine pale sawdust that drifts out of the cut and sinks slowly.
+local function sawdust(position: Vector3, outward: Vector3)
+	for _ = 1, cfg.SawdustBits do
+		local bit = plainPart(
+			"Sawdust",
+			Vector3.one * cfg.SawdustSize * random:NextNumber(0.6, 1.3),
+			CFrame.new(position + outward * 0.2 + Vector3.new(random:NextNumber(-0.3, 0.3), random:NextNumber(-0.2, 0.2), random:NextNumber(-0.3, 0.3))),
+			Style.InnerWood:Lerp(Color3.new(1, 1, 1), random:NextNumber(0.1, 0.35))
+		)
+		bit.Material = Enum.Material.SmoothPlastic
+		local drift = outward * random:NextNumber(0.6, 1.6) + Vector3.new(random:NextNumber(-0.5, 0.5), random:NextNumber(0, 0.6), random:NextNumber(-0.5, 0.5))
+		addFloater(bit, drift, cfg.SawdustFall * random:NextNumber(0.7, 1.3), 0.15, cfg.SawdustTime * random:NextNumber(0.7, 1.2))
+	end
+end
+
+-- Leaves come loose from the crown and flutter down. `count` of them, pushed up by `burst`
+-- studs per second (0 = they just drop).
+local function looseLeaves(crown: BasePart, count: number, burst: number)
+	local size = crown.Size
+	for _ = 1, count do
+		local start = (
+			crown.CFrame
+			* CFrame.new(random:NextNumber(-0.45, 0.45) * size.X, random:NextNumber(-0.5, 0.2) * size.Y, random:NextNumber(-0.45, 0.45) * size.Z)
+		).Position
+		local leaf = plainPart(
+			"Leaf",
+			Vector3.new(cfg.LeafSize, cfg.LeafSize * 0.25, cfg.LeafSize) * random:NextNumber(0.7, 1.3),
+			CFrame.new(start),
+			crown.Color:Lerp(Color3.new(1, 1, 1), random:NextNumber(0, 0.15))
+		)
+		leaf.Material = crown.Material
+		local angle = random:NextNumber(0, math.pi * 2)
+		local drift = Vector3.new(math.cos(angle), 0, math.sin(angle)) * random:NextNumber(0.5, 2) * (if burst > 0 then 2 else 1)
+			+ Vector3.yAxis * burst * random:NextNumber(0.6, 1.2)
+		addFloater(
+			leaf,
+			drift,
+			cfg.LeafFallSpeed * random:NextNumber(0.7, 1.2),
+			cfg.LeafFlutter * random:NextNumber(0.6, 1.2),
+			cfg.LeafFallTime * random:NextNumber(0.8, 1.2)
+		)
+	end
 end
 
 -- The crown of leaves sways for a moment. We only move it on our own screen, and only the
@@ -298,8 +497,25 @@ local function updateWobbles()
 	end
 end
 
--- Draw one hit. `position` is where the notch opens on the bark, `outward` the way it faces.
+---------------------------------------------------------------------------
+
+-- Chips fly towards whoever hit: your own camera, or the other player's head.
+local function towardHitter(hitter: Player?, position: Vector3, outward: Vector3): Vector3
+	local from: Vector3? = nil
+	if hitter == player then
+		local camera = workspace.CurrentCamera
+		from = if camera then camera.CFrame.Position else nil
+	elseif hitter then
+		local character = hitter.Character
+		local head = if character then character:FindFirstChild("Head") else nil
+		from = if head and head:IsA("BasePart") then head.Position else nil
+	end
+	return if from and (from - position).Magnitude > 0.1 then (from - position).Unit else outward
+end
+
+-- Draw one hit. `position` is where it hit the trunk, `outward` the way that side faces.
 -- `hitter` is the player who swung (nil if they just left the game).
+-- (The dent itself is cut by the server, see Server/Build/Carve.)
 local function playHit(
 	tree: Model,
 	trunk: BasePart,
@@ -310,100 +526,78 @@ local function playHit(
 	falling: boolean
 )
 	local feel = Config.ChopFeel[toolId] or Config.ChopFeel.Fists
+	local hole = holeSize(trunk)
 	playChopSound(feel, position, hitter)
-	spawnChips(position, outward, trunk.Color, feel)
+	hitGlow(position, outward, Vector2.new(hole, hole))
+	spawnChips(position, outward, towardHitter(hitter, position, outward), trunk.Color, feel)
 	hitPuff(position, outward)
-	hitFlash(position + outward * 0.2)
+	sawdust(position, outward)
+	local crown = tree:FindFirstChild("Leaves")
+	if crown and crown:IsA("BasePart") then
+		looseLeaves(crown, random:NextInteger(cfg.HitLeavesMin, cfg.HitLeavesMax), 0)
+	end
 	if not falling then
 		wobble(tree, trunk, outward, feel.Wobble)
 	end
 	if hitter == player then
 		shakeCamera(feel.CameraKick, cfg.KickTime)
+		kickStarted = os.clock()
 	end
 end
 
 ---------------------------------------------------------------------------
--- A felled tree: crack, fall, bounce, land and fade
+-- A felled tree: slip, fall, bounce, then it turns into logs
 ---------------------------------------------------------------------------
 
--- A puff of grey-brown cubes that grow, drift out and fade.
-local function dustPuff(position: Vector3, count: number)
+-- A tan dust cloud that rolls out along the ground from `position`: cubes that grow, drift out
+-- low and to the sides (`along` is the way the trunk lies), and fade.
+local function dustPuff(position: Vector3, along: Vector3, count: number)
+	local side = Vector3.yAxis:Cross(along)
 	for _ = 1, count do
 		local size = cfg.DustSize * random:NextNumber(0.6, 1.2)
 		local cube = plainPart(
 			"Dust",
 			Vector3.one * size,
-			CFrame.new(position + Vector3.new(random:NextNumber(-1, 1), size / 2, random:NextNumber(-1, 1)))
+			CFrame.new(position + Vector3.new(random:NextNumber(-0.8, 0.8), size / 2, random:NextNumber(-0.8, 0.8)))
 				* CFrame.Angles(0, random:NextNumber(0, 6), 0),
 			cfg.DustColor:Lerp(Color3.new(1, 1, 1), random:NextNumber(0, 0.25))
 		)
 		cube.Anchored = true
 		cube.CanCollide = false
 		cube.Material = Enum.Material.SmoothPlastic
+		cube.Transparency = 0.15
 		cube.Parent = folder
 
-		local angle = random:NextNumber(0, math.pi * 2)
-		local drift = Vector3.new(math.cos(angle), 0, math.sin(angle)) * random:NextNumber(2, 6)
-			+ Vector3.new(0, random:NextNumber(0.5, 2.5), 0)
-		local duration = cfg.DustTime * random:NextNumber(0.7, 1.2)
+		-- Mostly out to the sides of the trunk, a bit along it, and only a little up: it rolls.
+		local drift = side * random:NextNumber(-5, 5) + along * random:NextNumber(-1.5, 1.5) + Vector3.yAxis * random:NextNumber(0.3, 1.5)
+		local duration = cfg.DustTime * random:NextNumber(0.8, 1.4)
 		TweenService:Create(cube, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			CFrame = cube.CFrame + drift,
-			Size = cube.Size * 2,
+			CFrame = (cube.CFrame + drift) * CFrame.Angles(0, random:NextNumber(-1, 1), 0),
+			Size = cube.Size * 2.2,
 			Transparency = 1,
 		}):Play()
 		Debris:AddItem(cube, duration) -- removed on a timer, so it can never be left behind
 	end
 end
 
--- Leaf cubes in the crown's colour fly up and out when it hits the ground, then fade.
-local function leafBurst(crown: BasePart)
-	local size = crown.Size.X
-	for _ = 1, cfg.LeafCubes do
-		local cubeSize = cfg.LeafCubeSize * random:NextNumber(0.6, 1.2)
-		local start = crown.Position
-			+ Vector3.new(random:NextNumber(-0.4, 0.4) * size, random:NextNumber(0, 0.4) * size, random:NextNumber(-0.4, 0.4) * size)
-		local cube = plainPart(
-			"Leaf",
-			Vector3.one * cubeSize,
-			CFrame.new(start) * CFrame.Angles(random:NextNumber(0, 6), random:NextNumber(0, 6), 0),
-			crown.Color:Lerp(Color3.new(1, 1, 1), random:NextNumber(0, 0.15))
-		)
-		cube.Anchored = true
-		cube.CanCollide = false
-		cube.Material = crown.Material
-		cube.Parent = folder
-
-		local angle = random:NextNumber(0, math.pi * 2)
-		local drift = Vector3.new(math.cos(angle), 0, math.sin(angle)) * random:NextNumber(2, 5)
-			+ Vector3.new(0, random:NextNumber(1, 3), 0)
-		local duration = cfg.LeafTime * random:NextNumber(0.7, 1.2)
-		TweenService:Create(cube, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			CFrame = (cube.CFrame + drift) * CFrame.Angles(random:NextNumber(-2, 2), random:NextNumber(-2, 2), 0),
-			Size = cube.Size * 0.5,
-			Transparency = 1,
-		}):Play()
-		Debris:AddItem(cube, duration)
-	end
-end
-
--- The moment a falling tree hits the ground.
+-- The moment a falling tree hits the ground: a crash, a dust cloud rolling along the trunk,
+-- leaves bursting up off the crown and fluttering down, and a small shake if you're close.
 local function land(tree: Model, fall: Fall)
 	local base = fall.Start.Position
-	local landing = base + fall.Away * fall.Height * 0.6
+	local length = fall.Height - fall.Split -- the part that fell
+	local landing = base + fall.Away * length * 0.6
 	Fx.playSound(Config.Sounds.TreeFall, landing, pitchJitter())
 	if not fall.Near then
 		return
 	end
-	-- Dust all along the trunk...
-	for _, along in { 0.3, 0.6, 0.9 } do
-		dustPuff(base + fall.Away * fall.Height * along, math.ceil(cfg.DustCubes / 3))
+	for index = 1, cfg.DustPuffs do
+		local along = (index - 0.5) / cfg.DustPuffs
+		dustPuff(base + fall.Away * length * along, fall.Away, math.ceil(cfg.DustCubes / cfg.DustPuffs))
 	end
-	-- ...leaves flying off the crown...
 	local crown = tree:FindFirstChild("Leaves")
 	if crown and crown:IsA("BasePart") then
-		leafBurst(crown)
+		looseLeaves(crown, cfg.LeafCubes, cfg.LandLeafBurst)
 	end
-	-- ...and the ground shakes if you're close, stronger the closer you are.
 	local distance = distanceTo(landing)
 	if distance <= cfg.ShakeDistance then
 		shakeCamera(cfg.ShakeStrength * (1 - distance / cfg.ShakeDistance * 0.6), cfg.ShakeTime)
@@ -419,7 +613,7 @@ local function fadeTree(tree: Model, fall: Fall, amount: number)
 			if descendant:IsA("BasePart") then
 				start[descendant] = descendant.Transparency
 			elseif descendant:IsA("SurfaceGui") then
-				descendant.Enabled = false -- pictures on parts (birch marks, the notch) don't fade with them
+				descendant.Enabled = false -- pictures on parts (birch marks) don't fade with them
 			end
 		end
 		fall.Fade = start
@@ -437,17 +631,22 @@ local function startFall(tree: Model, trunk: BasePart, away: Vector3, near: bool
 	end
 	stopWobble(tree)
 	local start = tree:GetPivot()
+	-- The server broke it at its deepest dent (see Carve.split): the top tips over from there.
+	local splitAttribute = tree:GetAttribute("SplitHeight")
+	local split = if typeof(splitAttribute) == "number" then splitAttribute else 0
 	falls[tree] = {
 		Start = start,
 		Axis = Vector3.yAxis:Cross(away), -- turning "up" around this by 90 degrees points it along `away`
 		Away = away,
 		Height = trunk.Size.Y, -- the trunk is a block: Size.Y is its height
+		Split = split,
+		Drop = math.max(split - trunk.Size.X / 2, 0), -- lying down, the middle of the trunk is half its width up
 		Started = os.clock(),
 		Near = near,
 		Landed = false,
 		Fade = nil,
 	}
-	Fx.playSound(Config.Sounds.TreeCrack, start.Position + Vector3.new(0, Config.Tree.NotchHeight, 0), pitchJitter())
+	Fx.playSound(Config.Sounds.TreeCrack, start.Position + Vector3.new(0, split, 0), pitchJitter())
 end
 
 local function updateFalls(now: number)
@@ -460,15 +659,18 @@ local function updateFalls(now: number)
 		end
 		local t = now - fall.Started
 		local angle: number
-		local sink = 0
+		local drop: number
+		local slip = if fall.Split > 0 then timing.SlipDrop else 0
 		if t < timing.CrackTime then
-			-- It creaks: it shudders and starts to lean over.
+			-- It slips: the top sinks a little at the break and starts to lean, with a shudder.
 			local u = t / timing.CrackTime
 			angle = lean * u + CRACK_SHUDDER * math.sin(t * 60) * (1 - u)
+			drop = slip * u * u
 		elseif t < timing.CrackTime + timing.FallTime then
 			-- It falls: slowly at first, then faster and faster.
 			local u = (t - timing.CrackTime) / timing.FallTime
 			angle = lean + (math.pi / 2 - lean) * u * u
+			drop = slip + (math.max(fall.Drop, slip) - slip) * u * u
 		else
 			if not fall.Landed then
 				fall.Landed = true
@@ -478,19 +680,19 @@ local function updateFalls(now: number)
 			-- A little bounce off the ground...
 			local bounce = math.min(after / timing.BounceTime, 1)
 			angle = math.pi / 2 - math.rad(timing.BounceAngle) * math.sin(bounce * math.pi)
-			-- ...then it lies there for a moment, sinks into the ground and fades away.
-			if after >= timing.RemoveDelay then
-				local fade = math.min((after - timing.RemoveDelay) / timing.FadeTime, 1)
-				sink = timing.SinkDepth * fade
-				fadeTree(model, fall, fade)
-				if fade >= 1 then
-					falls[model] = nil -- invisible now; the server removes it any moment
-				end
+			drop = math.max(fall.Drop, slip)
+			if bounce >= 1 then
+				-- ...then the crown vanishes and the trunk turns into logs (the server puts them
+				-- there now, see LogManager.spawnLogs), so the tree disappears.
+				fadeTree(model, fall, 1)
+				falls[model] = nil
+				continue
 			end
 		end
-		model:PivotTo(
-			CFrame.new(fall.Start.Position - Vector3.yAxis * sink) * CFrame.fromAxisAngle(fall.Axis, angle) * fall.Start.Rotation
-		)
+		-- Turn around the break, and drop down as it tips so it lands flat on the ground.
+		local hinge = fall.Start.Position + Vector3.yAxis * fall.Split
+		local turn = CFrame.new(hinge - Vector3.yAxis * drop) * CFrame.fromAxisAngle(fall.Axis, angle) * CFrame.new(-hinge)
+		model:PivotTo(turn * fall.Start)
 	end
 end
 
@@ -549,13 +751,13 @@ end
 ---------------------------------------------------------------------------
 
 -- Your own hit, drawn the moment your swing lands (called by ChopController), so you don't
--- wait for the server. It's drawn right where the server is about to cut the notch.
-function ChopEffectsController.showMyHit(tree: Model, toolId: string, from: Vector3)
+-- wait for the server. It's drawn at `point` (where you aimed), where the server is about to
+-- scoop out its hole.
+function ChopEffectsController.showMyHit(tree: Model, toolId: string, point: Vector3)
 	local trunk = getTrunk(tree)
 	if not trunk then
 		return
 	end
-	local opening = ChopRules.notchOpening(trunk, ChopRules.notchFace(tree, trunk, from - trunk.Position))
 	local now = os.clock()
 	for other, shown in shownAt do
 		if now - shown > cfg.ShownWindow then
@@ -563,7 +765,47 @@ function ChopEffectsController.showMyHit(tree: Model, toolId: string, from: Vect
 		end
 	end
 	shownAt[tree] = now
-	playHit(tree, trunk, opening.Position, opening.LookVector, toolId, player, false)
+	playHit(tree, trunk, point, ChopRules.sideFacing(trunk, point), toolId, player, false)
+end
+
+-- "TIMBER!" pops up over the cut in big orange-yellow letters, stays a moment and fades away
+-- (Config.Timber). Only when Config.ShowTimberText is on.
+local function timber(position: Vector3)
+	local look = Config.Timber
+	local anchor = plainPart("Timber", Vector3.one * 0.2, CFrame.new(position + Vector3.yAxis * look.Above), Color3.new(1, 1, 1))
+	anchor.Anchored = true
+	anchor.CanCollide = false
+	anchor.Transparency = 1
+	local billboard = Instance.new("BillboardGui")
+	billboard.Size = UDim2.fromOffset(look.Size.X, look.Size.Y)
+	billboard.AlwaysOnTop = true
+	billboard.LightInfluence = 0
+	billboard.Parent = anchor
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Text = look.Text
+	label.Font = Style.TitleFont
+	label.TextScaled = true
+	label.TextColor3 = look.Color
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = look.StrokeColor
+	stroke.Thickness = Style.TextStroke
+	stroke.Parent = label
+	local scale = Instance.new("UIScale")
+	scale.Scale = 0
+	scale.Parent = label
+	label.Parent = billboard
+	anchor.Parent = folder
+
+	-- Pop in (a little too big, then settling), stay, then fade.
+	TweenService:Create(scale, TweenInfo.new(look.ScaleIn, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	task.delay(look.ScaleIn + look.Hold, function()
+		local fade = TweenInfo.new(look.FadeTime)
+		TweenService:Create(label, fade, { TextTransparency = 1 }):Play()
+		TweenService:Create(stroke, fade, { Transparency = 1 }):Play()
+	end)
+	Debris:AddItem(anchor, look.ScaleIn + look.Hold + look.FadeTime)
 end
 
 local function onTreeHit(target: unknown, position: unknown, outward: unknown, toolId: unknown, hitter: unknown, falling: unknown)
@@ -585,13 +827,24 @@ local function onTreeHit(target: unknown, position: unknown, outward: unknown, t
 	end
 
 	-- Your own hits were already drawn the moment your swing landed (see showMyHit).
+	local isFalling = typeof(falling) == "Vector3"
 	local shown = shownAt[tree]
 	if near and not (who == player and shown and os.clock() - shown < cfg.ShownWindow) then
-		playHit(tree, trunk, position, outward, toolId, who, typeof(falling) == "Vector3")
+		playHit(tree, trunk, position, outward, toolId, who, isFalling)
 	end
 	-- Every player animates the fall, even far away, because the server doesn't move the tree.
-	if typeof(falling) == "Vector3" then
-		startFall(tree, trunk, falling, near)
+	-- A carved tree first breaks at its deepest dent on this screen (see CarveController).
+	if isFalling then
+		local split = tree:GetAttribute("SplitHeight")
+		task.spawn(function()
+			if typeof(split) == "number" then
+				CarveController.breakTree(tree, split)
+			end
+			startFall(tree, trunk, falling :: Vector3, near)
+		end)
+		if near and Config.ShowTimberText then
+			timber(position)
+		end
 	end
 end
 
@@ -610,6 +863,7 @@ function ChopEffectsController.start()
 		local now = os.clock()
 		updateFalls(now)
 		updatePops(now)
+		updateFloaters(now)
 	end)
 
 	Players.PlayerRemoving:Connect(function(leaving: Player)

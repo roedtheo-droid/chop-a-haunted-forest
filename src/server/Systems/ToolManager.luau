@@ -4,7 +4,8 @@
 -- Tools are real Roblox Tools, so the built-in toolbar gives number keys (1, 2, 3)
 -- and phone buttons for free. Each Tool has a "ToolId" attribute (like "Axe").
 -- Ownership is a player attribute ("Owns_Axe" = true) that only the server sets,
--- and the server only trusts a held tool if the player owns it.
+-- and the server only trusts a held tool if the player owns it (or is trying it: a tool lent
+-- by the trial table has a "Trial" attribute and is taken back when the trial ends).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -155,10 +156,62 @@ function ToolManager.owns(player: Player, toolId: string): boolean
 	return player:GetAttribute(Shop.ownsAttribute(toolId)) == true
 end
 
+-- Is the player trying this tool right now (the trial table, see TrialManager)?
+function ToolManager.hasTrial(player: Player, toolId: string): boolean
+	local ends = player:GetAttribute(Shop.TRIAL_ENDS)
+	return player:GetAttribute(Shop.TRIAL_TOOL) == toolId
+		and typeof(ends) == "number"
+		and workspace:GetServerTimeNow() < ends
+end
+
+-- Take away the copies of a tool that were only lent for a trial (in the backpack, in the
+-- character's hand, and in StarterGear so it doesn't come back on respawn).
+local function removeTrialCopies(player: Player, toolId: string)
+	for _, place in { player:FindFirstChild("Backpack"), player.Character, player:FindFirstChild("StarterGear") } :: { Instance? } do
+		for _, tool in if place then place:GetChildren() else {} do
+			if tool:IsA("Tool") and tool:GetAttribute("ToolId") == toolId and tool:GetAttribute("Trial") == true then
+				tool:Destroy()
+			end
+		end
+	end
+end
+
+-- Lend a player a tool for `seconds`: now, and on respawn until the trial ends (TrialManager
+-- ends it with endTrial).
+function ToolManager.giveTrial(player: Player, toolId: string, seconds: number): number
+	local ends = workspace:GetServerTimeNow() + seconds
+	removeTrialCopies(player, toolId)
+	player:SetAttribute(Shop.TRIAL_TOOL, toolId)
+	player:SetAttribute(Shop.TRIAL_ENDS, ends)
+	for _, name in { "StarterGear", "Backpack" } do
+		local place = player:FindFirstChild(name)
+		if place then
+			local tool = buildTool(toolId)
+			tool:SetAttribute("Trial", true)
+			tool.Parent = place
+		end
+	end
+	return ends
+end
+
+-- The trial is over: take the lent tool back (a bought one stays).
+function ToolManager.endTrial(player: Player)
+	local toolId = player:GetAttribute(Shop.TRIAL_TOOL)
+	player:SetAttribute(Shop.TRIAL_TOOL, nil)
+	player:SetAttribute(Shop.TRIAL_ENDS, nil)
+	if typeof(toolId) == "string" then
+		removeTrialCopies(player, toolId)
+	end
+end
+
 -- Give a player a tool for good: now, and again every time they respawn.
 function ToolManager.give(player: Player, toolId: string)
 	if not LOOKS[toolId] then
 		return
+	end
+	-- Bought it during a trial: the lent copies go, so there's only one in the backpack.
+	if player:GetAttribute(Shop.TRIAL_TOOL) == toolId then
+		ToolManager.endTrial(player)
 	end
 	player:SetAttribute(Shop.ownsAttribute(toolId), true)
 
@@ -173,7 +226,8 @@ function ToolManager.give(player: Player, toolId: string)
 	end
 end
 
--- Which tool is the player holding right now? "Fists" if none (or one they don't own).
+-- Which tool is the player holding right now? "Fists" if none (or one they don't own and
+-- aren't trying).
 function ToolManager.getEquippedId(player: Player): string
 	local character = player.Character
 	local tool = if character then character:FindFirstChildOfClass("Tool") else nil
@@ -181,7 +235,7 @@ function ToolManager.getEquippedId(player: Player): string
 		return "Fists"
 	end
 	local toolId = tool:GetAttribute("ToolId")
-	if typeof(toolId) == "string" and Config.Tools[toolId] and ToolManager.owns(player, toolId) then
+	if typeof(toolId) == "string" and Config.Tools[toolId] and (ToolManager.owns(player, toolId) or ToolManager.hasTrial(player, toolId)) then
 		return toolId
 	end
 	return "Fists"

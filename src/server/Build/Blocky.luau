@@ -410,12 +410,14 @@ function Blocky.tree(base: Vector3, treeType: Types.TreeTypeConfig, random: Rand
 	if shapeName then
 		local model = meshTree(shapeName, base, treeType, random, scale, barkColor, birch)
 		if model then
+			model:SetAttribute("TreeName", Config.Models.Trees[shapeName].Name) -- for the tree HP bar
 			return model
 		end
 	end
 
 	local model = Instance.new("Model")
 	model.Name = "Tree"
+	model:SetAttribute("TreeName", if birch then cfg.BirchName else treeType.Name) -- for the tree HP bar
 
 	local trunk = Blocky.part(
 		"Trunk",

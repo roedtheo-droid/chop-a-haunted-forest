@@ -27,7 +27,8 @@ export type ChopFeelConfig = {
 	Swing: string, -- your character's swing animation ("rbxassetid://...")
 	SwingSpeed: number, -- 1 = the animation's normal speed, 2 = twice as fast
 	SwingSize: number, -- 1 = a full chop; smaller is a smaller, shakier movement (the Chainsaw)
-	Chips: number, -- wood chips that fly out of the cut on each hit
+	ChipsMin: number, -- wood chips that fly out of the cut on each hit: a random number from ChipsMin...
+	ChipsMax: number, -- ...to ChipsMax
 	ChipSize: number, -- how big each chip is, in studs
 	Wobble: number, -- degrees the crown sways when the tree is hit
 	CameraKick: number, -- studs your camera jolts on your own hits
@@ -52,6 +53,7 @@ export type ShopItem = {
 
 -- One kind of tree (see Config.TreeTypes). Each zone has its own kind.
 export type TreeTypeConfig = {
+	Name: string, -- shown on the tree HP bar when it's built from parts (Blender shapes have their own Name)
 	MaxHP: number,
 	LogValue: number, -- coins for each log from this tree
 	Scale: number, -- size compared to Config.Tree (1 = normal, 1.3 = 30% bigger)
@@ -69,6 +71,7 @@ export type TreeTypeConfig = {
 
 -- One tree shape made in Blender (see Config.Models.Trees and blender/models/trees.py).
 export type TreeShapeConfig = {
+	Name: string, -- shown on the tree HP bar, like "Oak"
 	TrunkWidth: number, -- the trunk's width at Scale 1, the same as blender/ builds it
 	LeafColors: { Color3 }?, -- its own leaf colours (not set: the tree type's LeafColors)
 }

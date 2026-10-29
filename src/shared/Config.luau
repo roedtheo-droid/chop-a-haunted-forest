@@ -36,7 +36,8 @@ local chopFeel: { [string]: Types.ChopFeelConfig } = {
 		Swing = SWING,
 		SwingSpeed = 1.6,
 		SwingSize = 1,
-		Chips = 5,
+		ChipsMin = 3, -- 3 to 6 little wood cubes per punch, like in Chop a Forest
+		ChipsMax = 6,
 		ChipSize = 0.35,
 		Wobble = 1.5,
 		CameraKick = 0.06,
@@ -46,7 +47,8 @@ local chopFeel: { [string]: Types.ChopFeelConfig } = {
 		Swing = SWING,
 		SwingSpeed = 1.6,
 		SwingSize = 1,
-		Chips = 8,
+		ChipsMin = 5,
+		ChipsMax = 8,
 		ChipSize = 0.45,
 		Wobble = 2,
 		CameraKick = 0.09,
@@ -56,7 +58,8 @@ local chopFeel: { [string]: Types.ChopFeelConfig } = {
 		Swing = SWING,
 		SwingSpeed = 1.8,
 		SwingSize = 1,
-		Chips = 12,
+		ChipsMin = 8,
+		ChipsMax = 12,
 		ChipSize = 0.55,
 		Wobble = 3,
 		CameraKick = 0.13,
@@ -66,7 +69,8 @@ local chopFeel: { [string]: Types.ChopFeelConfig } = {
 		Swing = SWING,
 		SwingSpeed = 3,
 		SwingSize = 0.35, -- a small, fast sawing movement instead of big chops
-		Chips = 4, -- fewer per hit, but it hits very often
+		ChipsMin = 2, -- fewer per hit, but it hits very often
+		ChipsMax = 4,
 		ChipSize = 0.3,
 		Wobble = 1,
 		CameraKick = 0.04,
@@ -119,6 +123,7 @@ local particles: { [string]: Types.ParticleConfig } = {
 local treeTypes: { [string]: Types.TreeTypeConfig } = {
 	-- Pale Pines: bright, happy and green, with white birches and a few autumn trees.
 	Birch = {
+		Name = "Oak", -- the parts version of these trees is an oak
 		MaxHP = 50, -- 10 punches with Fists, like in Chop a Forest
 		LogValue = 5,
 		Scale = 1,
@@ -148,6 +153,7 @@ local treeTypes: { [string]: Types.TreeTypeConfig } = {
 	},
 	-- Fog Hollow: the same trees, but greyer and gloomier.
 	Willow = {
+		Name = "Willow",
 		MaxHP = 60,
 		LogValue = 8,
 		Scale = 1.15,
@@ -167,6 +173,7 @@ local treeTypes: { [string]: Types.TreeTypeConfig } = {
 	},
 	-- Graveyard Grove: dead, crooked trees with a few dark leaves and bare branches.
 	DeadOak = {
+		Name = "Dead Oak",
 		MaxHP = 100,
 		LogValue = 12,
 		Scale = 1.3,
@@ -188,16 +195,16 @@ local treeTypes: { [string]: Types.TreeTypeConfig } = {
 -- Pines stay green (no autumn colours), a little darker than the oaks.
 local pineGreens = { Color3.fromRGB(47, 107, 42), Color3.fromRGB(58, 127, 51), Color3.fromRGB(70, 138, 56) }
 local treeShapes: { [string]: Types.TreeShapeConfig } = {
-	Oak = { TrunkWidth = 3 },
-	Oak2 = { TrunkWidth = 3 },
-	Pine = { TrunkWidth = 2.2, LeafColors = pineGreens },
-	Pine2 = { TrunkWidth = 2.2, LeafColors = pineGreens },
-	Birch = { TrunkWidth = 2.4 },
-	Birch2 = { TrunkWidth = 2.4 },
-	Willow1 = { TrunkWidth = 3.2 },
-	Willow2 = { TrunkWidth = 3.2 },
-	DeadOak1 = { TrunkWidth = 3 },
-	DeadOak2 = { TrunkWidth = 3 },
+	Oak = { Name = "Oak", TrunkWidth = 3 },
+	Oak2 = { Name = "Oak", TrunkWidth = 3 },
+	Pine = { Name = "Pine", TrunkWidth = 2.2, LeafColors = pineGreens },
+	Pine2 = { Name = "Pine", TrunkWidth = 2.2, LeafColors = pineGreens },
+	Birch = { Name = "Birch", TrunkWidth = 2.4 },
+	Birch2 = { Name = "Birch", TrunkWidth = 2.4 },
+	Willow1 = { Name = "Willow", TrunkWidth = 3.2 },
+	Willow2 = { Name = "Willow", TrunkWidth = 3.2 },
+	DeadOak1 = { Name = "Dead Oak", TrunkWidth = 3 },
+	DeadOak2 = { Name = "Dead Oak", TrunkWidth = 3 },
 }
 
 -- The zones, in order from spawn. Clearing every tree in a zone opens the gate to the next one.
@@ -382,6 +389,10 @@ local Config = {
 	-- When true, Studio playtests show test shortcuts like the "Skip to boss" button.
 	-- They never work in the real game (see Server/Systems/DebugManager).
 	StudioShortcuts = true,
+
+	-- Extra chop text, like in Chop a Forest. Both are off by default to keep the effects clean.
+	ShowTreeHpBar = false, -- true: the tree's name and HP show under the crosshair (see TreeHpBar)
+	ShowTimberText = false, -- true: "TIMBER!" pops up when a tree falls (see Timber)
 
 	-- The forest: zones in a row with walls around them (see Shared/Zones.luau)
 	Forest = {
@@ -805,9 +816,35 @@ local Config = {
 		PuffCubes = 5, -- little beige cubes that puff out where a swing hits
 		PuffSize = 0.5,
 		PuffTime = 0.35,
-		FlashSize = 1.2, -- the small white flash where a swing hits, in studs
-		FlashTime = 0.12,
+		-- A warm glow bursts out of the cut on every hit, like light shining out of the wood.
+		GlowTime = 0.3, -- seconds it takes to fade
+		GlowColor = Color3.fromRGB(255, 236, 175), -- warm white-yellow
+		GlowSize = 1.3, -- how big it starts, compared to the cut's opening
+		GlowGrow = 1.8, -- how much bigger it gets while it fades
+		GlowBrightness = 4, -- the light it casts around the cut
+		GlowRange = 9, -- studs
+		ChipsToPlayer = 0.7, -- 0 = chips fly straight out of the cut, 1 = straight at the player who hit
+		-- Long thin splinters fly out with the chips.
+		SplintersMin = 1,
+		SplintersMax = 2,
+		SplinterSize = Vector3.new(0.1, 0.1, 0.7),
+		-- Fine sawdust drifts down from the cut.
+		SawdustBits = 6,
+		SawdustSize = 0.12,
+		SawdustTime = 1.4, -- seconds before it's gone
+		SawdustFall = 1.5, -- studs per second it sinks
+		-- A few leaves come loose from the crown on every hit and flutter down.
+		HitLeavesMin = 2,
+		HitLeavesMax = 3,
+		LeafSize = 0.5, -- studs
+		LeafFallSpeed = 2.2, -- studs per second they sink
+		LeafFlutter = 1.2, -- studs they sway from side to side while they fall
+		LeafFallTime = 2.5, -- seconds before a falling leaf is gone
+		-- The cut grows smoothly on your screen instead of jumping to its new size.
+		CutGrowTime = 0.1, -- seconds
 		KickTime = 0.12, -- seconds your camera jolts on your own hits
+		KickPush = 0.12, -- studs your camera is pushed towards the tree on your own hits
+		KickTilt = 0.8, -- degrees it nods down with it
 		-- Your own hits show the moment your swing lands. When the server then says the hit
 		-- counted, it isn't shown again if it was shown this many seconds ago.
 		ShownWindow = 0.5,
@@ -822,6 +859,38 @@ local Config = {
 		LeafCubes = 10, -- leaf cubes that fly off the crown when a tree lands
 		LeafCubeSize = 0.9,
 		LeafTime = 1.2,
+	},
+
+	-- The health bar under the crosshair while you aim at a tree (see Client/Controllers/TreeHpController).
+	-- Only shows when ShowTreeHpBar (above) is true.
+	TreeHpBar = {
+		Below = 26, -- pixels from the middle of the screen (or the mouse) down to the tree's name
+		Width = 150, -- pixels
+		BarHeight = 22,
+		NameHeight = 22,
+		Text = "%.1f/%.1f HP", -- HP left / max HP, with one decimal
+		-- The fill changes colour as the tree loses HP: green, then yellow, orange and red, and
+		-- grey at 0. Each colour is used down to its share of HP left.
+		Colors = {
+			{ Above = 0.75, Color = Color3.fromRGB(90, 200, 70) },
+			{ Above = 0.5, Color = Color3.fromRGB(240, 210, 50) },
+			{ Above = 0.25, Color = Color3.fromRGB(240, 140, 40) },
+			{ Above = 0, Color = Color3.fromRGB(220, 50, 50) },
+		},
+		EmptyColor = Color3.fromRGB(125, 118, 110),
+	},
+
+	-- "TIMBER!" over the cut when a tree falls (see Client/Controllers/ChopEffectsController).
+	-- Only shows when ShowTimberText (above) is true.
+	Timber = {
+		Text = "TIMBER!",
+		Color = Color3.fromRGB(255, 190, 40), -- orange-yellow
+		StrokeColor = Color3.fromRGB(80, 45, 20), -- dark brown outline
+		Size = Vector2.new(320, 100), -- pixels: width, height (the same size on screen however far away the tree is)
+		Above = 1, -- studs above the cut
+		ScaleIn = 0.15, -- seconds it pops in
+		Hold = 0.6, -- seconds it stays
+		FadeTime = 0.3, -- seconds it fades away
 	},
 
 	-- First person (see Client/Controllers/ViewmodelController). The camera sits in your head, and
@@ -974,6 +1043,7 @@ local Config = {
 		RootLength = 1.6, -- how far a root sticks out past the trunk
 		RootHeight = 1.6,
 		BirchMarks = 6, -- dark marks on each side of a birch trunk
+		BirchName = "Birch", -- a birch's name on the tree HP bar, when it's built from parts
 		MinTrunkScale = 0.4, -- the boss's trunk width at 0 HP, compared to full width (shows damage)
 		-- Hitting a tree cuts into it where you aim: see Cut below.
 		-- A felled tree cracks, falls, bounces, lies there and fades away. Every player's

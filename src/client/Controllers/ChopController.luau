@@ -65,12 +65,12 @@ local function aimRay(): Ray?
 	return camera:ScreenPointToRay(pointer.X, pointer.Y)
 end
 
--- Find the tree (or awake mimic, or the boss or one of its roots) you're aiming at, and the
--- point where the aim touches it.
-local function findTree(): (Model?, Vector3?)
+-- What you're aiming at: the first thing the aim ray touches (your own character doesn't count).
+-- Also used by TreeHpController, to show the HP of the tree under the crosshair.
+function ChopController.castAim(): RaycastResult?
 	local ray = aimRay()
 	if not ray then
-		return nil, nil
+		return nil
 	end
 
 	local params = RaycastParams.new()
@@ -82,7 +82,13 @@ local function findTree(): (Model?, Vector3?)
 	end
 	params.FilterDescendantsInstances = ignore
 
-	local result = workspace:Raycast(ray.Origin, ray.Direction * MAX_CLICK_DISTANCE, params)
+	return workspace:Raycast(ray.Origin, ray.Direction * MAX_CLICK_DISTANCE, params)
+end
+
+-- Find the tree (or awake mimic, or the boss or one of its roots) you're aiming at, and the
+-- point where the aim touches it.
+local function findTree(): (Model?, Vector3?)
+	local result = ChopController.castAim()
 	if not result then
 		return nil, nil
 	end

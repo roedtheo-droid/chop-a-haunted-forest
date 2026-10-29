@@ -534,12 +534,9 @@ local Config = {
 		-- Output and builds that building from parts instead.
 		Buildings = {
 			ToolShedShell = "ToolShedShell",
-			Stove = "Stove",
-			Armchair = "Armchair",
-			Barrel = "Barrel",
+			Barrel = "Barrel", -- outside, by the porch
 			Crate = "Crate",
-			UpgradeBench = "UpgradeBench",
-			HangingLamp = "HangingLamp",
+			HangingLamp = "HangingLamp", -- the two lanterns inside
 			SawmillShed = "SawmillShed",
 			SawTable = "SawTable",
 			SawBlade = "SawBlade", -- resized to Sawmill.SawSize
@@ -1219,8 +1216,58 @@ local Config = {
 		DoorHeight = 13,
 		RoofHeight = 12,
 		PromptDistance = 10, -- how close to the counter (inside) you must be to see "Open shop"
-		MaxBuyDistance = 20, -- the server refuses purchases from further away than this
+		MaxBuyDistance = 20, -- the shop menu closes when you walk this far from the counter
+		BuyMargin = 6, -- the server refuses purchases from further outside the shed's walls than this
 		BuyCooldown = 0.25, -- seconds between purchases for one player
+
+		-- The framed boards on the walls inside, one per tool (see Server/Build/ShedDisplays).
+		-- Wall: "Back" (facing the door) or "Left" (on your left as you walk in). Along: studs
+		-- from the middle of that wall (on the back wall + is right, on the left wall + is
+		-- towards the door). Big: the big board on dark planks with the turning sunburst.
+		-- Tilt: degrees the tool leans on its board (0 = straight up).
+		Displays = {
+			{ Item = "Axe", Wall = "Back", Along = -14, Tilt = 35 },
+			{ Item = "Chainsaw", Wall = "Back", Along = 0, Tilt = 60, Big = true },
+			{ Item = "LogVacuum", Wall = "Back", Along = 14, Tilt = 55 },
+			{ Item = "SteelAxe", Wall = "Left", Along = -9, Tilt = 35 },
+			{ Item = "Lantern", Wall = "Left", Along = 1, Tilt = 0 },
+			{ Item = "Torch", Wall = "Left", Along = 11, Tilt = 25 },
+		} :: { { Item: string, Wall: string, Along: number, Tilt: number, Big: boolean? } },
+		BoardSize = Vector2.new(9, 9.5), -- width and height of a normal board
+		BigBoardSize = Vector2.new(13, 12),
+		BoardHeight = 8.7, -- how high the middle of a normal board is above the floor
+		ToolScale = 2.2, -- the tool on a board is this many times its normal size
+		BigToolScale = 3,
+		SunburstRays = 14,
+		SunburstSpeed = 0.25, -- radians per second (one turn every 25 seconds)
+		DisplayPromptDistance = 9, -- how close to a board you must be to see "Buy"
+		MysteryItems = 2, -- the "???" signs on the shelf in the top-left corner (tools still to come)
+
+		-- Every text in the Tool Shed. %s is filled in.
+		Text = {
+			Buy = "Buy",
+			Owned = "Owned",
+			OwnedPlate = "OWNED",
+			Max = "MAX",
+			PriceObject = "%s - %s coins", -- the item's name and its price, on the Buy prompt
+			Mystery = "???",
+			ShopAction = "Open shop",
+			Shopkeeper = "Shopkeeper",
+			NotAtShed = "Go to the Tool Shed to buy things.",
+		},
+	},
+
+	-- The trial table in the Tool Shed: try a tool for a few minutes (see Server/Build/ShedDecor).
+	Trial = {
+		ToolId = "Chainsaw",
+		Seconds = 180, -- how long a trial lasts
+		RobuxPrice = 25, -- shown on the table
+		ProductId = 0, -- the developer product. 0: the trial is free, once per run (for testing)
+		Text = {
+			Sign = "TRIAL SAW",
+			Tag = "%d MIN", -- the number of minutes
+			Price = "R$ %s",
+		},
 	},
 
 	-- Mr. Graves, the landowner who hired the party to clear his haunted forest. He stands in

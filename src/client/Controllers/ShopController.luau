@@ -1,5 +1,6 @@
 --!strict
 -- The Tool Shed shop window: a wooden panel that opens when you press E at the shed's counter.
+-- It also keeps the "Buy" prompts and price plates on the shed's boards up to date.
 -- It only SHOWS prices and what you own (from attributes the server sets).
 -- Clicking "Buy" just asks the server; the server decides if the purchase happens.
 
@@ -9,6 +10,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Format = require(ReplicatedStorage.Shared.Format)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Shop = require(ReplicatedStorage.Shared.Shop)
 local Tags = require(ReplicatedStorage.Shared.Tags)
@@ -85,6 +87,45 @@ local function refresh()
 
 		row.ButtonLabel.Text = buttonText
 		row.Button.BackgroundColor3 = buttonColor
+	end
+end
+
+-- The boards on the shed's walls: once you own a tool (or an upgrade is max level), its
+-- "Buy" prompt says "Owned" and its price plate says OWNED, on your screen only.
+-- An upgrade's plate shows the price of its next level.
+local function refreshBoards()
+	local text = Config.Shop.Text
+	for _, instance in CollectionService:GetTagged(Tags.BuyPrompt) do
+		local itemId = instance:GetAttribute("ItemId")
+		local item = if typeof(itemId) == "string" then Shop.getItem(itemId) else nil
+		if not (item and instance:IsA("ProximityPrompt")) then
+			continue
+		end
+		local price: number?
+		local done: string?
+		if item.Kind == "Tool" then
+			if player:GetAttribute(Shop.ownsAttribute(item.Id)) == true then
+				done = text.Owned
+			else
+				price = Shop.priceOf(item, 0)
+			end
+		else
+			price = Shop.priceOf(item, getNumber(Shop.levelAttribute(item.Id)))
+			if not price then
+				done = if Shop.maxLevel(item.Id) == 1 then text.Owned else text.Max
+			end
+		end
+		instance.ActionText = done or text.Buy
+		local plate = instance.Parent
+		local label = if plate then plate:FindFirstChild("Price", true) else nil
+		local coin = if plate then plate:FindFirstChild("Coin", true) else nil
+		if label and label:IsA("TextLabel") then
+			label.Text = if price then Format.number(price) else text.OwnedPlate
+			label.TextColor3 = if price then Style.Gold else Style.Green
+		end
+		if coin and coin:IsA("GuiObject") then
+			coin.Visible = price ~= nil
+		end
 	end
 end
 
@@ -241,8 +282,11 @@ function ShopController.start()
 	end
 	CollectionService:GetInstanceAddedSignal(Tags.ShopPrompt):Connect(hookPrompt)
 
-	-- Keep the window up to date when coins, tools or levels change.
+	-- Keep the window and the boards up to date when coins, tools or levels change.
+	refreshBoards()
+	CollectionService:GetInstanceAddedSignal(Tags.BuyPrompt):Connect(refreshBoards)
 	player.AttributeChanged:Connect(function()
+		refreshBoards()
 		if gui.Enabled then
 			refresh()
 		end

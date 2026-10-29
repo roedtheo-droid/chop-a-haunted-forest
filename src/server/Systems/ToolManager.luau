@@ -67,11 +67,23 @@ local LOOKS: { [string]: Look } = {
 	},
 }
 
+-- Things that are only ever shown on the Tool Shed's walls, never held (the Log Vacuum is an
+-- upgrade): a green body like a leaf blower, with a grey nozzle.
+local DISPLAY_LOOKS: { [string]: Look } = {
+	LogVacuum = {
+		HandleSize = Vector3.new(0.9, 1.1, 1.8),
+		HandleColor = Color3.fromRGB(80, 170, 70),
+		HeadSize = Vector3.new(0.55, 0.55, 2.4),
+		HeadColor = Color3.fromRGB(120, 125, 130),
+		HeadOffset = Vector3.new(0, 0.2, -2),
+	},
+}
+
 local ToolManager = {}
 
 local function buildTool(toolId: string): Tool
 	local item = Shop.getItem(toolId)
-	local look = LOOKS[toolId]
+	local look = LOOKS[toolId] or DISPLAY_LOOKS[toolId]
 
 	local tool = Instance.new("Tool")
 	tool.Name = if item then item.Name else toolId
@@ -123,7 +135,7 @@ local function buildTool(toolId: string): Tool
 end
 
 -- The look of a tool (its handle and head, anchored, in a Model) without the Tool itself,
--- for hanging on the Tool Shed wall (see Build/ToolShed). Its pivot is the handle.
+-- for hanging on the Tool Shed's walls (see Build/ShedDisplays). Its pivot is the handle.
 function ToolManager.buildDisplay(toolId: string): Model
 	local tool = buildTool(toolId)
 	local display = Instance.new("Model")

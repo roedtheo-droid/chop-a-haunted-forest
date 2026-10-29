@@ -75,7 +75,7 @@ When the models change (a new step adds some), delete the old `AllModels` in `Ma
 - landmarks: `Tent`, `Dock`, `Rowboat`, `WindmillTower`, `WindmillSails`, `IronFence`, `Crypt`, `BossStone1`, `BossStone2`
 - camp: `Bridge`, `Well`, `QuestBoard`, `Campfire`, `Bench`, `Signpost`, `SignArrow`
 - logs and the boss: `Log`, `Stump`, `ElderTrunk`, `ElderCrown`, `ElderRoot`
-- the Tool Shed: `ToolShedShell`, `Stove`, `Armchair`, `Barrel`, `Crate`, `UpgradeBench`, `HangingLamp`
+- the Tool Shed: `ToolShedShell`, `Barrel`, `Crate`, `HangingLamp` (the `Stove`, `Armchair` and `UpgradeBench` models aren't used since the shop got its wall boards)
 - the sawmills: `SawmillShed`, `SawTable`, `SawBlade`, `WaterWheel`, `Workshop`, `LogPile`
 
 When you press Play, the Output window says which models the game found

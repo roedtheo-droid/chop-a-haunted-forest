@@ -13,6 +13,8 @@ local Tags = {
 	Spinner = "Spinner", -- a model that turns all the time, like a saw or a water wheel (see SpinnerController)
 	FogBank = "FogBank", -- a fog cloud in zone 2 that drifts slowly (see AmbientController)
 	Flicker = "Flicker", -- a lamp's light that flickers a little (see AmbientController)
+	Landowner = "Landowner", -- Mr. Graves, the NPC at the vault (see LandownerController)
+	LandownerPrompt = "LandownerPrompt", -- his "Talk" prompt
 }
 
 return table.freeze(Tags)

@@ -8,8 +8,8 @@
 --   * the crown wobbles
 --   * your camera is pushed towards the tree and jolts a little on your own hits
 --   * "TIMBER!" over the cut when a tree falls (only with Config.ShowTimberText)
---   * a felled tree cracks, falls, bounces and fades away, with dust, flying leaves, a crash
---     and a camera shake where it lands, and its logs pop out of the fallen trunk
+--   * a felled tree slips, falls away from whoever felled it and bounces, with a crash, a dust
+--     cloud along it, leaves bursting off its crown and a small shake; then it turns into logs
 -- How many chips and how hard things shake depends on the tool (Config.ChopFeel).
 -- Your own hits don't wait for the server: ChopController calls showMyHit the moment your
 -- swing lands, so chopping feels instant.
@@ -546,87 +546,58 @@ local function playHit(
 end
 
 ---------------------------------------------------------------------------
--- A felled tree: crack, fall, bounce, land and fade
+-- A felled tree: slip, fall, bounce, then it turns into logs
 ---------------------------------------------------------------------------
 
--- A puff of grey-brown cubes that grow, drift out and fade.
-local function dustPuff(position: Vector3, count: number)
+-- A tan dust cloud that rolls out along the ground from `position`: cubes that grow, drift out
+-- low and to the sides (`along` is the way the trunk lies), and fade.
+local function dustPuff(position: Vector3, along: Vector3, count: number)
+	local side = Vector3.yAxis:Cross(along)
 	for _ = 1, count do
 		local size = cfg.DustSize * random:NextNumber(0.6, 1.2)
 		local cube = plainPart(
 			"Dust",
 			Vector3.one * size,
-			CFrame.new(position + Vector3.new(random:NextNumber(-1, 1), size / 2, random:NextNumber(-1, 1)))
+			CFrame.new(position + Vector3.new(random:NextNumber(-0.8, 0.8), size / 2, random:NextNumber(-0.8, 0.8)))
 				* CFrame.Angles(0, random:NextNumber(0, 6), 0),
 			cfg.DustColor:Lerp(Color3.new(1, 1, 1), random:NextNumber(0, 0.25))
 		)
 		cube.Anchored = true
 		cube.CanCollide = false
 		cube.Material = Enum.Material.SmoothPlastic
+		cube.Transparency = 0.15
 		cube.Parent = folder
 
-		local angle = random:NextNumber(0, math.pi * 2)
-		local drift = Vector3.new(math.cos(angle), 0, math.sin(angle)) * random:NextNumber(2, 6)
-			+ Vector3.new(0, random:NextNumber(0.5, 2.5), 0)
-		local duration = cfg.DustTime * random:NextNumber(0.7, 1.2)
+		-- Mostly out to the sides of the trunk, a bit along it, and only a little up: it rolls.
+		local drift = side * random:NextNumber(-5, 5) + along * random:NextNumber(-1.5, 1.5) + Vector3.yAxis * random:NextNumber(0.3, 1.5)
+		local duration = cfg.DustTime * random:NextNumber(0.8, 1.4)
 		TweenService:Create(cube, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			CFrame = cube.CFrame + drift,
-			Size = cube.Size * 2,
+			CFrame = (cube.CFrame + drift) * CFrame.Angles(0, random:NextNumber(-1, 1), 0),
+			Size = cube.Size * 2.2,
 			Transparency = 1,
 		}):Play()
 		Debris:AddItem(cube, duration) -- removed on a timer, so it can never be left behind
 	end
 end
 
--- Leaf cubes in the crown's colour fly up and out when it hits the ground, then fade.
-local function leafBurst(crown: BasePart)
-	local size = crown.Size.X
-	for _ = 1, cfg.LeafCubes do
-		local cubeSize = cfg.LeafCubeSize * random:NextNumber(0.6, 1.2)
-		local start = crown.Position
-			+ Vector3.new(random:NextNumber(-0.4, 0.4) * size, random:NextNumber(0, 0.4) * size, random:NextNumber(-0.4, 0.4) * size)
-		local cube = plainPart(
-			"Leaf",
-			Vector3.one * cubeSize,
-			CFrame.new(start) * CFrame.Angles(random:NextNumber(0, 6), random:NextNumber(0, 6), 0),
-			crown.Color:Lerp(Color3.new(1, 1, 1), random:NextNumber(0, 0.15))
-		)
-		cube.Anchored = true
-		cube.CanCollide = false
-		cube.Material = crown.Material
-		cube.Parent = folder
-
-		local angle = random:NextNumber(0, math.pi * 2)
-		local drift = Vector3.new(math.cos(angle), 0, math.sin(angle)) * random:NextNumber(2, 5)
-			+ Vector3.new(0, random:NextNumber(1, 3), 0)
-		local duration = cfg.LeafTime * random:NextNumber(0.7, 1.2)
-		TweenService:Create(cube, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			CFrame = (cube.CFrame + drift) * CFrame.Angles(random:NextNumber(-2, 2), random:NextNumber(-2, 2), 0),
-			Size = cube.Size * 0.5,
-			Transparency = 1,
-		}):Play()
-		Debris:AddItem(cube, duration)
-	end
-end
-
--- The moment a falling tree hits the ground.
+-- The moment a falling tree hits the ground: a crash, a dust cloud rolling along the trunk,
+-- leaves bursting up off the crown and fluttering down, and a small shake if you're close.
 local function land(tree: Model, fall: Fall)
 	local base = fall.Start.Position
-	local landing = base + fall.Away * fall.Height * 0.6
+	local length = fall.Height - fall.Split -- the part that fell
+	local landing = base + fall.Away * length * 0.6
 	Fx.playSound(Config.Sounds.TreeFall, landing, pitchJitter())
 	if not fall.Near then
 		return
 	end
-	-- Dust all along the trunk...
-	for _, along in { 0.3, 0.6, 0.9 } do
-		dustPuff(base + fall.Away * fall.Height * along, math.ceil(cfg.DustCubes / 3))
+	for index = 1, cfg.DustPuffs do
+		local along = (index - 0.5) / cfg.DustPuffs
+		dustPuff(base + fall.Away * length * along, fall.Away, math.ceil(cfg.DustCubes / cfg.DustPuffs))
 	end
-	-- ...leaves flying off the crown...
 	local crown = tree:FindFirstChild("Leaves")
 	if crown and crown:IsA("BasePart") then
-		leafBurst(crown)
+		looseLeaves(crown, cfg.LeafCubes, cfg.LandLeafBurst)
 	end
-	-- ...and the ground shakes if you're close, stronger the closer you are.
 	local distance = distanceTo(landing)
 	if distance <= cfg.ShakeDistance then
 		shakeCamera(cfg.ShakeStrength * (1 - distance / cfg.ShakeDistance * 0.6), cfg.ShakeTime)
@@ -642,7 +613,7 @@ local function fadeTree(tree: Model, fall: Fall, amount: number)
 			if descendant:IsA("BasePart") then
 				start[descendant] = descendant.Transparency
 			elseif descendant:IsA("SurfaceGui") then
-				descendant.Enabled = false -- pictures on parts (birch marks, the cut) don't fade with them
+				descendant.Enabled = false -- pictures on parts (birch marks) don't fade with them
 			end
 		end
 		fall.Fade = start
@@ -688,15 +659,18 @@ local function updateFalls(now: number)
 		end
 		local t = now - fall.Started
 		local angle: number
-		local sink = 0
+		local drop: number
+		local slip = if fall.Split > 0 then timing.SlipDrop else 0
 		if t < timing.CrackTime then
-			-- It creaks: it shudders and starts to lean over.
+			-- It slips: the top sinks a little at the break and starts to lean, with a shudder.
 			local u = t / timing.CrackTime
 			angle = lean * u + CRACK_SHUDDER * math.sin(t * 60) * (1 - u)
+			drop = slip * u * u
 		elseif t < timing.CrackTime + timing.FallTime then
 			-- It falls: slowly at first, then faster and faster.
 			local u = (t - timing.CrackTime) / timing.FallTime
 			angle = lean + (math.pi / 2 - lean) * u * u
+			drop = slip + (math.max(fall.Drop, slip) - slip) * u * u
 		else
 			if not fall.Landed then
 				fall.Landed = true
@@ -706,19 +680,17 @@ local function updateFalls(now: number)
 			-- A little bounce off the ground...
 			local bounce = math.min(after / timing.BounceTime, 1)
 			angle = math.pi / 2 - math.rad(timing.BounceAngle) * math.sin(bounce * math.pi)
-			-- ...then it lies there for a moment, sinks into the ground and fades away.
-			if after >= timing.RemoveDelay then
-				local fade = math.min((after - timing.RemoveDelay) / timing.FadeTime, 1)
-				sink = timing.SinkDepth * fade
-				fadeTree(model, fall, fade)
-				if fade >= 1 then
-					falls[model] = nil -- invisible now; the server removes it any moment
-				end
+			drop = math.max(fall.Drop, slip)
+			if bounce >= 1 then
+				-- ...then the crown vanishes and the trunk turns into logs (the server puts them
+				-- there now, see LogManager.spawnLogs), so the tree disappears.
+				fadeTree(model, fall, 1)
+				falls[model] = nil
+				continue
 			end
 		end
 		-- Turn around the break, and drop down as it tips so it lands flat on the ground.
 		local hinge = fall.Start.Position + Vector3.yAxis * fall.Split
-		local drop = fall.Drop * math.min(angle / (math.pi / 2), 1) + sink
 		local turn = CFrame.new(hinge - Vector3.yAxis * drop) * CFrame.fromAxisAngle(fall.Axis, angle) * CFrame.new(-hinge)
 		model:PivotTo(turn * fall.Start)
 	end

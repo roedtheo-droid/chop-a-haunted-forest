@@ -850,13 +850,13 @@ local Config = {
 		ShakeDistance = 45, -- your camera shakes when a tree lands this close to you
 		ShakeStrength = 0.25, -- studs the camera moves at most
 		ShakeTime = 0.3,
-		DustCubes = 15, -- grey cubes in the puffs along a tree that lands (shared by 3 puffs)
+		DustCubes = 25, -- tan cubes in the dust cloud that rolls along a tree that lands (shared by DustPuffs puffs)
+		DustPuffs = 5,
 		DustSize = 1.4,
 		DustTime = 0.9,
-		DustColor = Color3.fromRGB(205, 190, 165),
-		LeafCubes = 10, -- leaf cubes that fly off the crown when a tree lands
-		LeafCubeSize = 0.9,
-		LeafTime = 1.2,
+		DustColor = Color3.fromRGB(210, 185, 145), -- tan
+		LeafCubes = 25, -- leaves that burst up off the crown when a tree lands, then flutter down
+		LandLeafBurst = 7, -- studs per second they burst up
 	},
 
 	-- The health bar under the crosshair while you aim at a tree (see Client/Controllers/TreeHpController).
@@ -1044,17 +1044,20 @@ local Config = {
 		BirchName = "Birch", -- a birch's name on the tree HP bar, when it's built from parts
 		MinTrunkScale = 0.4, -- the boss's trunk width at 0 HP, compared to full width (shows damage)
 		-- Hitting a tree cuts into it where you aim: see Cut below.
-		-- A felled tree cracks, falls, bounces, lies there and fades away. Every player's
-		-- computer animates it (see Client/Controllers/ChopEffectsController).
-		CrackTime = 0.35, -- seconds it shudders and creaks before it tips over
-		CrackLean = 3, -- degrees it leans while it cracks
-		FallTime = 1.1, -- seconds it takes to fall (slow at first, then faster)
-		BounceAngle = 6, -- degrees it bounces back up when it hits the ground
-		BounceTime = 0.3,
-		RemoveDelay = 1.5, -- seconds a fallen tree lies there before it fades away
-		FadeTime = 0.5, -- seconds it takes to sink into the ground and fade
-		SinkDepth = 1.5, -- studs it sinks while it fades
-		LogsPerTree = 3,
+		-- A felled tree, like in Chop a Forest: the top slips down a little at the break, tips over
+		-- away from the player who felled it and reaches the ground 1.5 s after the break
+		-- (CrackTime + FallTime). It bounces, a dust cloud rolls along it and leaves burst off the
+		-- crown, then the crown vanishes and the trunk turns into logs lying in a row where it
+		-- landed. Every player's computer animates it (see Client/Controllers/ChopEffectsController).
+		CrackTime = 0.2, -- seconds the top slips and creaks before it tips over
+		CrackLean = 2, -- degrees it leans while it slips
+		SlipDrop = 0.3, -- studs the top slips down at the break
+		FallTime = 1.3, -- seconds it takes to fall (slow at first, then faster)
+		BounceAngle = 4, -- degrees it bounces back up when it hits the ground
+		BounceTime = 0.2, -- seconds the bounce takes; then it turns into logs
+		RemoveDelay = 0.3, -- seconds after it lands before the server removes it (it's invisible by then)
+		FadeTime = 0.1, -- (added to RemoveDelay)
+		LogsPerTree = 5, -- logs a felled tree turns into
 		StumpHeight = 1.2, -- the stump a felled tree leaves behind
 	},
 
@@ -1129,12 +1132,13 @@ local Config = {
 	Logs = {
 		CarryLimit = 5, -- starting backpack size
 		PickupDistance = 8, -- how close you must be to see "Pick up"
-		Length = 4,
-		Thickness = 1.2,
-		Scatter = 3, -- logs land up to this many studs to the side of the fallen trunk
-		-- Logs pop out of the fallen trunk in a little arc (every player's computer animates it).
-		PopStart = 1.5, -- studs above the ground they start, inside the fallen trunk
-		PopHeight = 3, -- how high the arc goes
+		Length = 2.4, -- short, square-ish blocks, like in Chop a Forest
+		Thickness = 1.3,
+		Gap = 0.15, -- studs between the logs lying in a row where the trunk landed
+		-- The trunk breaks into the logs: each one hops a little where it lands (every player's
+		-- computer animates it).
+		PopStart = 0.8, -- studs above where it ends up that it starts (inside the fallen trunk)
+		PopHeight = 1.2, -- how high the hop goes
 		PopTime = 0.55, -- seconds from popping out to lying still (the Log Vacuum waits this long)
 	},
 

@@ -120,18 +120,20 @@ end
 -- Each log is worth `value` coins. Called by TreeManager when a tree lands.
 -- Every player's computer makes the logs pop out of the fallen trunk on the way
 -- (Client/Controllers/ChopEffectsController), using the PopFrom and SpawnedAt attributes.
-function LogManager.spawnLogs(origin: Vector3, direction: Vector3, count: number, value: number, cursed: boolean)
+function LogManager.spawnLogs(origin: Vector3, direction: Vector3, length: number, count: number, value: number, cursed: boolean)
 	local cfg = Config.Logs
 	local random = Random.new()
-	local spacing = Config.Tree.TrunkHeight / (count + 1)
-	local side = Vector3.yAxis:Cross(direction)
+	-- The fallen trunk lies from `origin` along `direction`, `length` long. It breaks into
+	-- `count` logs lying end to end along it, like in Chop a Forest.
+	local spacing = math.max(length / count, cfg.Length + cfg.Gap)
+	local yaw = math.atan2(-direction.Z, direction.X) -- a log lies along its X axis
 	local now = workspace:GetServerTimeNow()
 
 	for i = 1, count do
-		local along = origin + direction * (spacing * i)
-		local position = along + side * random:NextNumber(-cfg.Scatter, cfg.Scatter) + Vector3.new(0, cfg.Thickness / 2, 0)
-		local log = createLog(position, random:NextNumber(0, math.pi * 2), value, cursed)
-		log:SetAttribute("PopFrom", along + Vector3.new(0, cfg.PopStart, 0)) -- inside the fallen trunk
+		local along = origin + direction * (spacing * (i - 0.5))
+		local position = along + Vector3.new(0, cfg.Thickness / 2, 0)
+		local log = createLog(position, yaw + random:NextNumber(-0.08, 0.08), value, cursed)
+		log:SetAttribute("PopFrom", position + Vector3.new(0, cfg.PopStart, 0)) -- inside the fallen trunk
 		log:SetAttribute("SpawnedAt", now)
 		log.Parent = logsFolder
 		CollectionService:AddTag(log, Tags.Log)

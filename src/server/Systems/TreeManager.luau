@@ -150,16 +150,19 @@ local function fellTree(tree: Model, trunk: BasePart, away: Vector3, withStump: 
 
 	local cfg = Config.Tree
 	local base = tree:GetPivot().Position
-	task.delay(cfg.CrackTime + cfg.FallTime, function()
-		-- It has landed: the logs pop out of the fallen trunk.
+	-- The part that falls: the trunk above the break (all of it if it fell whole).
+	local length = trunk.Size.Y - getNumberAttribute(tree, "SplitHeight")
+	task.delay(cfg.CrackTime + cfg.FallTime + cfg.BounceTime, function()
+		-- It has landed and bounced: on every screen it turns into logs lying in a row where it landed.
 		LogManager.spawnLogs(
 			base,
 			away,
+			length,
 			cfg.LogsPerTree,
 			getNumberAttribute(tree, "LogValue"),
 			tree:GetAttribute("Cursed") == true
 		)
-		-- It lies there for a moment, then fades away on every screen.
+		-- The tree itself is invisible by now on every screen; remove it.
 		task.delay(cfg.RemoveDelay + cfg.FadeTime, function()
 			tree:Destroy()
 		end)

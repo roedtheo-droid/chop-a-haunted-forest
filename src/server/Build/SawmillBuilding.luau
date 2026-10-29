@@ -97,6 +97,7 @@ end
 -- A model that keeps turning around its main part's X axis (a cylinder's axis).
 local function makeSpinner(spinner: Model, axis: BasePart, speed: number)
 	spinner.PrimaryPart = axis
+	spinner.ModelStreamingMode = Enum.ModelStreamingMode.Atomic -- see Client/SpinnerController
 	spinner:SetAttribute("SpinSpeed", speed)
 	CollectionService:AddTag(spinner, Tags.Spinner)
 	spinner.Parent = sawmill

@@ -1,8 +1,10 @@
 --!strict
 -- Builds the Tool Shed (see Build/ToolShed) and handles every purchase.
 --
--- The client only says "I want to buy item X". The server checks that:
---   the item exists, the player is standing at the shed, they're not clicking too fast,
+-- There are two ways to buy: the "Buy" prompt on a tool's board on the wall, or the shop menu
+-- (the "Open shop" prompt on the counter, whose Buy buttons fire the BuyItem remote).
+-- Either way the server checks that:
+--   the item exists, the player is in (or right outside) the shed, they're not buying too fast,
 --   they don't already own it (or it isn't max level), they own anything it needs first
 --   (Lantern Radius needs the Lantern), and they have enough coins.
 -- Only then does it take the coins and give the tool or upgrade.
@@ -12,6 +14,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Format = require(ReplicatedStorage.Shared.Format)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Shop = require(ReplicatedStorage.Shared.Shop)
 local Tags = require(ReplicatedStorage.Shared.Tags)
@@ -24,7 +27,8 @@ local ToolShed = require(script.Parent.Parent.Build.ToolShed)
 local ShopManager = {}
 
 local notifyRemote: RemoteEvent
-local counter: BasePart
+local shedOrigin: CFrame -- the middle of the shed's floor plan, turned like the shed
+local plates: { [string]: BasePart } = {}
 local lastBuy: { [Player]: number } = {}
 
 local function groundHeightAt(x: number, z: number): number
@@ -32,34 +36,47 @@ local function groundHeightAt(x: number, z: number): number
 	return if result then result.Position.Y else 0
 end
 
-local function buildShed(): BasePart
-	local center = Config.Shop.Position
-	local ground = Vector3.new(center.X, groundHeightAt(center.X, center.Z), center.Z)
-	local shopCounter = ToolShed.build(ground, ToolManager.buildDisplay)
-
-	-- The "Open shop" prompt is on the counter inside, in front of the shopkeeper.
+local function newPrompt(parent: Instance, action: string, object: string, distance: number): ProximityPrompt
 	local prompt = Instance.new("ProximityPrompt")
-	prompt.ActionText = "Open shop"
-	prompt.ObjectText = "Shopkeeper"
+	prompt.ActionText = action
+	prompt.ObjectText = object
 	prompt.KeyboardKeyCode = Enum.KeyCode.E
 	prompt.HoldDuration = 0
-	prompt.MaxActivationDistance = Config.Shop.PromptDistance
+	prompt.MaxActivationDistance = distance
 	prompt.RequiresLineOfSight = false
-	prompt.Parent = shopCounter
-	CollectionService:AddTag(prompt, Tags.ShopPrompt)
-	return shopCounter
+	prompt.Parent = parent
+	return prompt
 end
 
+local function buildShed()
+	local cfg = Config.Shop
+	local center = cfg.Position
+	local ground = Vector3.new(center.X, groundHeightAt(center.X, center.Z), center.Z)
+	local built = ToolShed.build(ground, ToolManager.buildDisplay)
+	shedOrigin = built.Origin
+	plates = built.Plates
+
+	-- The "Open shop" prompt is on the counter by the door, in front of the shopkeeper.
+	local prompt = newPrompt(built.Counter, cfg.Text.ShopAction, cfg.Text.Shopkeeper, cfg.PromptDistance)
+	CollectionService:AddTag(prompt, Tags.ShopPrompt)
+end
+
+-- Is the player inside the shed, or just outside its walls?
 local function isAtShed(player: Player): boolean
 	local character = player.Character
 	local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
 	if not (root and root:IsA("BasePart")) then
 		return false
 	end
-	return (root.Position - counter.Position).Magnitude <= Config.Shop.MaxBuyDistance
+	local size = Config.Shop.BuildingSize
+	local margin = Config.Shop.BuyMargin
+	local offset = shedOrigin:PointToObjectSpace(root.Position)
+	return math.abs(offset.X) <= size.X / 2 + margin
+		and math.abs(offset.Z) <= size.Z / 2 + margin
+		and offset.Y <= size.Y + margin
 end
 
-local function onBuy(player: Player, itemId: unknown)
+local function tryBuy(player: Player, itemId: unknown)
 	-- 1. Is it a real item? (The client could send anything.)
 	if typeof(itemId) ~= "string" then
 		return
@@ -77,7 +94,7 @@ local function onBuy(player: Player, itemId: unknown)
 	end
 	lastBuy[player] = now
 	if not isAtShed(player) then
-		notifyRemote:FireClient(player, "Go to the Tool Shed to buy things.")
+		notifyRemote:FireClient(player, Config.Shop.Text.NotAtShed)
 		return
 	end
 
@@ -128,13 +145,34 @@ local function onBuy(player: Player, itemId: unknown)
 	end
 end
 
+-- A "Buy" prompt on each board's price plate. Triggering it buys the item straight away
+-- (prompts are triggered on the server, so no remote is needed). Each player's computer
+-- changes the text to "Owned" once they have it (see Client/ShopController).
+local function addBuyPrompts()
+	local cfg = Config.Shop
+	for itemId, plate in plates do
+		local item = Shop.getItem(itemId)
+		if not item then
+			continue
+		end
+		local price = Shop.priceOf(item, 0) or 0
+		local prompt = newPrompt(plate, cfg.Text.Buy, string.format(cfg.Text.PriceObject, item.Name, Format.number(price)), cfg.DisplayPromptDistance)
+		prompt:SetAttribute("ItemId", itemId)
+		CollectionService:AddTag(prompt, Tags.BuyPrompt)
+		prompt.Triggered:Connect(function(player: Player)
+			tryBuy(player, itemId)
+		end)
+	end
+end
+
 function ShopManager.init()
-	counter = buildShed()
+	buildShed()
 end
 
 function ShopManager.start()
 	notifyRemote = Remotes.getEvent("Notify")
-	Remotes.getEvent("BuyItem").OnServerEvent:Connect(onBuy)
+	Remotes.getEvent("BuyItem").OnServerEvent:Connect(tryBuy)
+	addBuyPrompts()
 
 	Players.PlayerRemoving:Connect(function(player: Player)
 		lastBuy[player] = nil

@@ -320,6 +320,7 @@ local function buildWindmill()
 	end
 	sails.Name = "WindmillSails"
 	sails.PrimaryPart = hub
+	sails.ModelStreamingMode = Enum.ModelStreamingMode.Atomic -- see Client/SpinnerController
 	sails:SetAttribute("SpinSpeed", Config.Props.WindmillSpin)
 	CollectionService:AddTag(sails, Tags.Spinner)
 	sails.Parent = folder

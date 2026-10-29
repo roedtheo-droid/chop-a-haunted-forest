@@ -1,5 +1,6 @@
 --!strict
--- Turns every model tagged Spinner (the sawmills' saws and water wheels) around and around.
+-- Turns every model tagged Spinner (the sawmills' saws and water wheels, and the sunburst on
+-- the Tool Shed's big board) around and around.
 -- The server builds them standing still; turning them here on each player's own computer
 -- is smooth and sends nothing over the network. They're only for looks.
 
@@ -22,6 +23,19 @@ local spinners: { [Instance]: Spinner } = {}
 
 local function add(instance: Instance)
 	if not instance:IsA("Model") then
+		return
+	end
+	-- With StreamingEnabled the model can arrive before its parts. Its pivot is only right once
+	-- its main part is here (the server streams each spinner in whole: ModelStreamingMode
+	-- Atomic), so wait for that; otherwise it would be turned around the middle of the map.
+	if not instance.PrimaryPart then
+		local connection: RBXScriptConnection
+		connection = instance:GetPropertyChangedSignal("PrimaryPart"):Connect(function()
+			if instance.PrimaryPart then
+				connection:Disconnect()
+				add(instance)
+			end
+		end)
 		return
 	end
 	local speed = instance:GetAttribute("SpinSpeed")

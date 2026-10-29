@@ -6,6 +6,7 @@ local Tags = {
 	Tree = "Tree", -- a standing tree that can be chopped
 	Log = "Log", -- a log lying on the ground
 	ShopPrompt = "ShopPrompt", -- the "Open shop" prompt at the Tool Shed
+	BuyPrompt = "BuyPrompt", -- a "Buy" prompt on a tool's board in the Tool Shed (its ItemId attribute says which)
 	AwakeMimic = "AwakeMimic", -- a mimic that woke up and is chasing players (it can still be chopped)
 	RevivePrompt = "RevivePrompt", -- the "Revive" prompt on a knocked-down player
 	ElderHollow = "ElderHollow", -- the final boss (its trunk can't be chopped)

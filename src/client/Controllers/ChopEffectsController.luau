@@ -3,8 +3,7 @@
 -- player about each hit (the TreeHit remote), and each player draws the effects on their own screen:
 --   * the tool's chop sound, a little higher or lower each time
 --   * a warm glow bursts out of the cut with a few rays of light and a soft beige puff
---   * the blocks the hit knocked out of the trunk fly off towards the player who hit, with a
---     splinter or two, and drop (your own fly the moment your swing lands)
+--   * little wood cubes and a splinter or two fly out towards the player who hit, and drop
 --   * fine sawdust drifts down from the cut, and a few leaves come loose and flutter down
 --   * the crown wobbles
 --   * your camera is pushed towards the tree and jolts a little on your own hits
@@ -15,7 +14,7 @@
 -- Your own hits don't wait for the server: ChopController calls showMyHit the moment your
 -- swing lands, so chopping feels instant.
 -- None of this changes the game, so it's fine that it runs on the client.
--- (The carving itself is done by the server, so every player sees the same dents.)
+-- (The round dents themselves are cut by the server, so every player sees the same ones.)
 
 local ContentProvider = game:GetService("ContentProvider")
 local Debris = game:GetService("Debris")
@@ -28,7 +27,6 @@ local ChopRules = require(ReplicatedStorage.Shared.ChopRules)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Fx = require(ReplicatedStorage.Shared.Fx)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
-local Shop = require(ReplicatedStorage.Shared.Shop)
 local Types = require(ReplicatedStorage.Shared.Types)
 
 local cfg = Config.ChopEffects
@@ -37,7 +35,6 @@ local CRACK_SHUDDER = math.rad(1) -- how much a cracking tree shakes, besides le
 local MAX_FLOATERS = 150 -- never more sawdust and falling leaves than this at once (keeps phones fast)
 local GLOW_RAYS = 5 -- thin rays of light that shoot out of the cut with the glow
 local GLOW_RAY_LENGTH = 1.6 -- studs
-local GUESS_TIMEOUT = 0.8 -- seconds before blocks we knocked out ourselves come back if the server didn't knock them out
 
 -- Something light that drifts and sinks on our screen: sawdust or a falling leaf.
 type Floater = {
@@ -54,19 +51,6 @@ type Floater = {
 	Started: number,
 	Life: number, -- seconds before it's gone (it fades out at the end)
 	Transparency: number, -- how see-through it is to begin with
-}
-
--- A block knocked out of a trunk (the server sends these with each hit, see Server/Build/Carve).
-type Chunk = {
-	Key: number,
-	Position: Vector3,
-	Color: Color3,
-}
-
--- The blocks we knocked out of a tree on our own screen, before the server said which ones go.
-type Guess = {
-	Blocks: { [number]: BasePart }, -- by key; hidden on our screen until the server answers
-	Made: number, -- os.clock() when we guessed
 }
 
 type Wobble = {
@@ -111,7 +95,6 @@ local falls: { [Model]: Fall } = {}
 local pops: { Pop } = {}
 local chipCount = 0
 local floaters: { Floater } = {}
-local guesses: { [Model]: Guess } = {}
 local shakeUntil = 0
 local shakeStrength = 0
 local shakeTime = 1
@@ -240,47 +223,21 @@ local function flyDirection(outward: Vector3, toward: Vector3): Vector3
 	return (aim + spread).Unit
 end
 
--- The blocks knocked out of the trunk fly off (`chunks`, at most `limit` of them, each `size`
--- big and in its own colour), or little wood cubes if we don't know the blocks.
--- And a long splinter or two.
-local function spawnChips(
-	position: Vector3,
-	outward: Vector3,
-	toward: Vector3,
-	barkColor: Color3,
-	feel: Types.ChopFeelConfig,
-	chunks: { Chunk }?,
-	size: Vector3,
-	limit: number
-)
+-- Little wood cubes (mostly pale inner wood, some bark) and a long splinter or two.
+local function spawnChips(position: Vector3, outward: Vector3, toward: Vector3, barkColor: Color3, feel: Types.ChopFeelConfig)
 	local start = position + outward * 0.4
-	if chunks then
-		for index, chunk in chunks do
-			if index > limit or chipCount >= cfg.MaxChips then
-				break
-			end
-			throwWood(
-				"Chunk",
-				size * Config.Cut.ChunkScale,
-				CFrame.new(chunk.Position) * CFrame.Angles(random:NextNumber(-0.4, 0.4), random:NextNumber(0, 6), 0),
-				chunk.Color,
-				flyDirection(outward, toward) * cfg.ChipSpeed * random:NextNumber(0.6, 1)
-			)
+	for index = 1, random:NextInteger(feel.ChipsMin, feel.ChipsMax) do
+		if chipCount >= cfg.MaxChips then
+			return
 		end
-	else
-		for index = 1, random:NextInteger(feel.ChipsMin, feel.ChipsMax) do
-			if chipCount >= cfg.MaxChips then
-				return
-			end
-			local size = feel.ChipSize * random:NextNumber(0.6, 1.3)
-			throwWood(
-				"Chip",
-				Vector3.one * size,
-				CFrame.new(start) * CFrame.Angles(random:NextNumber(0, 6), random:NextNumber(0, 6), 0),
-				if index % 3 == 0 then barkColor else Style.InnerWood,
-				flyDirection(outward, toward) * cfg.ChipSpeed * random:NextNumber(0.6, 1)
-			)
-		end
+		local size = feel.ChipSize * random:NextNumber(0.6, 1.3)
+		throwWood(
+			"Chip",
+			Vector3.one * size,
+			CFrame.new(start) * CFrame.Angles(random:NextNumber(0, 6), random:NextNumber(0, 6), 0),
+			if index % 3 == 0 then barkColor else Style.InnerWood,
+			flyDirection(outward, toward) * cfg.ChipSpeed * random:NextNumber(0.6, 1)
+		)
 	end
 	for _ = 1, random:NextInteger(cfg.SplintersMin, cfg.SplintersMax) do
 		if chipCount >= cfg.MaxChips then
@@ -330,10 +287,9 @@ local function hitPuff(position: Vector3, outward: Vector3)
 	end
 end
 
--- The size of one of a trunk's blocks (see ChopRules.grid).
-local function blockSize(trunk: BasePart): Vector3
-	local grid = ChopRules.grid(trunk)
-	return Vector3.new(grid.Size, grid.LayerHeight, grid.Size)
+-- How big a punch's hole in this trunk is across (see Config.Cut.HoleSize): the glow covers it.
+local function holeSize(trunk: BasePart): number
+	return trunk.Size.X * Config.Cut.HoleSize * 2
 end
 
 -- A warm white-yellow glow bursts out of the cut, like light shining out of the wood: a glowing
@@ -541,102 +497,6 @@ local function updateWobbles()
 end
 
 ---------------------------------------------------------------------------
--- Blocks knocked out of the trunk
----------------------------------------------------------------------------
-
--- The blocks still standing in a carved trunk on our screen, by key (see Server/Build/Carve).
-local function standingBlocks(tree: Model): { [number]: BasePart }
-	local blocks: { [number]: BasePart } = {}
-	local carved = tree:FindFirstChild("Carved")
-	if not carved then
-		return blocks
-	end
-	for _, part in carved:GetChildren() do
-		local key = tonumber(string.match(part.Name, "^Block(%d+)$"))
-		if key and part:IsA("BasePart") and part.LocalTransparencyModifier < 1 then
-			blocks[key] = part
-		end
-	end
-	return blocks
-end
-
--- Your own hit: knock out, on your screen only, the blocks the server is about to knock out
--- (picked with the same rules, ChopRules.pickBlocks), so they fly off the moment your swing
--- lands. Returns them, or nil when we can't guess: the spot you hit isn't blocks yet (the
--- server makes them first, and then sends which ones went).
-local function guessBlocks(tree: Model, trunk: BasePart, toolId: string, point: Vector3): { Chunk }?
-	local grid = ChopRules.grid(trunk)
-	local layer = ChopRules.layerAt(trunk, grid, point)
-	local blocks = standingBlocks(tree)
-	local ready = false
-	for x = 0, grid.Across - 1 do
-		for z = 0, grid.Across - 1 do
-			if blocks[ChopRules.blockKey(grid, layer, x, z)] then
-				ready = true
-			end
-		end
-	end
-	if not ready then
-		return nil
-	end
-
-	local level = player:GetAttribute(Shop.levelAttribute("ChopDamage"))
-	local maxHp = tree:GetAttribute("MaxHP")
-	local count = ChopRules.blocksPerHit(
-		ChopRules.damage(toolId, if typeof(level) == "number" then level else 0),
-		if typeof(maxHp) == "number" then maxHp else 1
-	)
-	local list = {}
-	for key, part in blocks do
-		table.insert(list, { Key = key, Position = part.Position })
-	end
-	local guess = guesses[tree] or { Blocks = {}, Made = 0 }
-	guesses[tree] = guess
-	guess.Made = os.clock()
-	local chunks: { Chunk } = {}
-	for _, key in ChopRules.pickBlocks(list, point, count) do
-		local part = blocks[key]
-		part.LocalTransparencyModifier = 1 -- hidden on our screen only
-		part.CanQuery = false
-		guess.Blocks[key] = part
-		table.insert(chunks, { Key = key, Position = part.Position, Color = part.Color })
-	end
-	return chunks
-end
-
--- A guess the server didn't confirm in time (another player's hit got there first, or an
--- upgrade we didn't know about) is put back: those blocks show again.
-local function updateGuesses(now: number)
-	for tree, guess in guesses do
-		if now - guess.Made < GUESS_TIMEOUT and tree.Parent then
-			continue
-		end
-		for _, part in guess.Blocks do
-			if part.Parent then
-				part.LocalTransparencyModifier = 0
-				part.CanQuery = true
-			end
-		end
-		guesses[tree] = nil
-	end
-end
-
--- The server's list of knocked-out blocks (the client could get anything, so it's checked).
-local function readChunks(value: unknown): { Chunk }
-	local chunks: { Chunk } = {}
-	if typeof(value) ~= "table" then
-		return chunks
-	end
-	for _, entry in value :: { unknown } do
-		if typeof(entry) == "table" then
-			local chunk = entry :: { [string]: unknown }
-			if typeof(chunk.Key) == "number" and typeof(chunk.Position) == "Vector3" and typeof(chunk.Color) == "Color3" then
-				table.insert(chunks, { Key = chunk.Key :: number, Position = chunk.Position :: Vector3, Color = chunk.Color :: Color3 })
-			end
-		end
-	end
-	return chunks
-end
 
 -- Chips fly towards whoever hit: your own camera, or the other player's head.
 local function towardHitter(hitter: Player?, position: Vector3, outward: Vector3): Vector3
@@ -652,12 +512,9 @@ local function towardHitter(hitter: Player?, position: Vector3, outward: Vector3
 	return if from and (from - position).Magnitude > 0.1 then (from - position).Unit else outward
 end
 
----------------------------------------------------------------------------
-
 -- Draw one hit. `position` is where it hit the trunk, `outward` the way that side faces.
--- `hitter` is the player who swung (nil if they just left the game). `chunks` are the blocks
--- it knocked out (they fly off), or nil to throw little wood cubes instead; with `chips`
--- false nothing flies yet (your own hit, before the server says which blocks went).
+-- `hitter` is the player who swung (nil if they just left the game).
+-- (The dent itself is cut by the server, see Server/Build/Carve.)
 local function playHit(
 	tree: Model,
 	trunk: BasePart,
@@ -665,19 +522,13 @@ local function playHit(
 	outward: Vector3,
 	toolId: string,
 	hitter: Player?,
-	falling: boolean,
-	chunks: { Chunk }?,
-	chips: boolean
+	falling: boolean
 )
 	local feel = Config.ChopFeel[toolId] or Config.ChopFeel.Fists
-	local size = blockSize(trunk)
+	local hole = holeSize(trunk)
 	playChopSound(feel, position, hitter)
-	hitGlow(position, outward, Vector2.new(size.X * 3, size.Y * 3))
-	if chips then
-		-- When it falls, the whole layer it broke at bursts out.
-		local limit = if falling then cfg.MaxChips else feel.ChipsMax
-		spawnChips(position, outward, towardHitter(hitter, position, outward), trunk.Color, feel, chunks, size, limit)
-	end
+	hitGlow(position, outward, Vector2.new(hole, hole))
+	spawnChips(position, outward, towardHitter(hitter, position, outward), trunk.Color, feel)
 	hitPuff(position, outward)
 	sawdust(position, outward)
 	local crown = tree:FindFirstChild("Leaves")
@@ -927,8 +778,8 @@ end
 ---------------------------------------------------------------------------
 
 -- Your own hit, drawn the moment your swing lands (called by ChopController), so you don't
--- wait for the server. It's drawn right where the server is about to cut, worked out from
--- `point` (where you aimed) with the same rules the server uses.
+-- wait for the server. It's drawn at `point` (where you aimed), where the server is about to
+-- scoop out its hole.
 function ChopEffectsController.showMyHit(tree: Model, toolId: string, point: Vector3)
 	local trunk = getTrunk(tree)
 	if not trunk then
@@ -941,10 +792,7 @@ function ChopEffectsController.showMyHit(tree: Model, toolId: string, point: Vec
 		end
 	end
 	shownAt[tree] = now
-	-- If that spot is already blocks, its blocks fly off right away; if not, they fly when the
-	-- server has made them and says which ones went (see onTreeHit).
-	local chunks = guessBlocks(tree, trunk, toolId, point)
-	playHit(tree, trunk, point, ChopRules.sideFacing(trunk, point), toolId, player, false, chunks, chunks ~= nil)
+	playHit(tree, trunk, point, ChopRules.sideFacing(trunk, point), toolId, player, false)
 end
 
 -- "TIMBER!" pops up over the cut in big orange-yellow letters, stays a moment and fades away
@@ -987,15 +835,7 @@ local function timber(position: Vector3)
 	Debris:AddItem(anchor, look.ScaleIn + look.Hold + look.FadeTime)
 end
 
-local function onTreeHit(
-	target: unknown,
-	position: unknown,
-	outward: unknown,
-	toolId: unknown,
-	hitter: unknown,
-	falling: unknown,
-	knocked: unknown
-)
+local function onTreeHit(target: unknown, position: unknown, outward: unknown, toolId: unknown, hitter: unknown, falling: unknown)
 	if typeof(target) ~= "Instance" or not (target :: Instance):IsA("Model") then
 		return
 	end
@@ -1013,30 +853,11 @@ local function onTreeHit(
 		who = hitter :: Player
 	end
 
-	-- The blocks the server knocked out. The ones we already knocked out ourselves (our own
-	-- hit, see guessBlocks) have flown off already; the rest fly now.
+	-- Your own hits were already drawn the moment your swing landed (see showMyHit).
 	local isFalling = typeof(falling) == "Vector3"
-	local guess = guesses[tree]
-	local fresh: { Chunk } = {}
-	for _, chunk in readChunks(knocked) do
-		if guess and guess.Blocks[chunk.Key] then
-			guess.Blocks[chunk.Key] = nil
-		else
-			table.insert(fresh, chunk)
-		end
-	end
-
-	if near then
-		local shown = shownAt[tree]
-		if not (who == player and shown and os.clock() - shown < cfg.ShownWindow) then
-			playHit(tree, trunk, position, outward, toolId, who, isFalling, fresh, true)
-		elseif #fresh > 0 then
-			-- Your own hit was drawn the moment your swing landed (see showMyHit), but these
-			-- blocks weren't there yet to guess, or the tree broke: throw them now.
-			local feel = Config.ChopFeel[toolId] or Config.ChopFeel.Fists
-			local limit = if isFalling then cfg.MaxChips else feel.ChipsMax
-			spawnChips(position, outward, towardHitter(who, position, outward), trunk.Color, feel, fresh, blockSize(trunk), limit)
-		end
+	local shown = shownAt[tree]
+	if near and not (who == player and shown and os.clock() - shown < cfg.ShownWindow) then
+		playHit(tree, trunk, position, outward, toolId, who, isFalling)
 	end
 	-- Every player animates the fall, even far away, because the server doesn't move the tree.
 	if isFalling then
@@ -1060,7 +881,6 @@ function ChopEffectsController.start()
 	RunService:BindToRenderStep("ChopCameraShake", Enum.RenderPriority.Camera.Value + 1, updateShake)
 	RunService.Heartbeat:Connect(function()
 		local now = os.clock()
-		updateGuesses(now)
 		updateFalls(now)
 		updatePops(now)
 		updateFloaters(now)

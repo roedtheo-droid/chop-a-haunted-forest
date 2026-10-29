@@ -98,7 +98,7 @@ local function leaveRoots(tree: Model, charred: boolean)
 end
 
 -- A short square stump with a light, ringed top, for a tree that was never carved (or a
--- charred black one for a burned mimic). A carved tree leaves its real bottom instead (Carve.split).
+-- charred black one for a burned mimic). A carved tree leaves its real carved bottom instead (Carve.split).
 local function leaveStump(tree: Model, trunk: BasePart, charred: boolean)
 	local width = getNumberAttribute(tree, "TrunkWidth")
 	local height = Config.Tree.StumpHeight
@@ -125,17 +125,17 @@ end
 -- The server doesn't move the tree: every player's computer animates the crack, fall and
 -- bounce itself (Client/Controllers/ChopEffectsController), so it's smooth on every screen.
 -- The server only waits for it to land, then drops the logs and removes the tree.
--- Returns the blocks that popped out where it broke (for the chop effects).
-local function fellTree(tree: Model, trunk: BasePart, away: Vector3, withStump: boolean): { Carve.Chunk }
+-- It yields for a moment first: the last holes are cut and the trunk is cut through.
+local function fellTree(tree: Model, trunk: BasePart, away: Vector3, withStump: boolean)
 	-- Remove the tag first, so nobody can hit it while it falls.
 	CollectionService:RemoveTag(tree, Tags.Tree)
 	tree:SetAttribute("Felled", true)
-	local popped: { Carve.Chunk } = {}
+	-- Its parts must not change while it falls on every screen, so all carving finishes now.
+	Carve.finish(tree)
 	if withStump then
 		-- It breaks at its deepest dent: the bottom stays as the stump, and every player's
 		-- computer tips the top over from there (the "SplitHeight" attribute).
-		local splitHeight, chunks = Carve.split(tree, stumpsFolder)
-		popped = chunks
+		local splitHeight = Carve.split(tree, stumpsFolder)
 		if splitHeight then
 			tree:SetAttribute("SplitHeight", splitHeight)
 		else
@@ -167,7 +167,6 @@ local function fellTree(tree: Model, trunk: BasePart, away: Vector3, withStump: 
 			tree:Destroy()
 		end)
 	end)
-	return popped
 end
 
 -- A sleeping mimic was hit with the Torch: it catches fire, chars black and crumbles away.
@@ -177,6 +176,7 @@ local function burnMimic(player: Player, tree: Model, trunk: BasePart)
 	CollectionService:RemoveTag(tree, Tags.Tree)
 	tree:SetAttribute("Felled", true)
 	MimicManager.forget(tree)
+	Carve.finish(tree) -- so the parts that char black don't change while it burns
 	leaveStump(tree, trunk, true)
 	leaveRoots(tree, true)
 	ZoneManager.treeCleared(getNumberAttribute(tree, "ZoneId"))
@@ -318,19 +318,18 @@ local function onSwing(player: Player, target: unknown, aimed: unknown)
 	end
 
 	-- 6. All good: chop it.
-	-- Visible damage: blocks knocked out of the trunk where the player aimed (see Build/Carve).
-	-- Bigger hits knock out more; it only looks like damage, the HP above is what counts.
+	-- Visible damage: a round hole scooped out of the trunk where the player aimed (see
+	-- Build/Carve). Bigger hits scoop bigger holes; it only looks like damage, the HP is what counts.
 	local maxHp = math.max(getNumberAttribute(tree, "MaxHP"), 1)
 	local hp = math.max(getNumberAttribute(tree, "HP") - damage, 0)
 	tree:SetAttribute("HP", hp)
-	local chunks = Carve.hit(tree, trunk, point, ChopRules.blocksPerHit(damage, maxHp))
+	Carve.hit(tree, trunk, point, damage / maxHp)
 	local falling = if hp <= 0 then fallDirection(tree, root.Position) else nil
 
 	if falling then
 		local wasMimic = MimicManager.isMimic(tree)
 		MimicManager.forget(tree)
-		local popped = fellTree(tree, trunk, falling, not wasMimic)
-		table.move(popped, 1, #popped, #chunks + 1, chunks)
+		fellTree(tree, trunk, falling, not wasMimic)
 		QuestManager.report(player, "FellTree")
 		RunManager.record(player, "TreesFelled", 1) -- counts for whoever landed the last hit
 		if wasMimic then
@@ -342,7 +341,7 @@ local function onSwing(player: Player, target: unknown, aimed: unknown)
 	-- Every player draws the hit (and the fall) themselves: Client/Controllers/ChopEffectsController.
 	-- Sent after fellTree, so every player already has the stump, the "Felled" mark and the
 	-- "SplitHeight" when the tree starts to fall on their screen.
-	treeHitRemote:FireAllClients(tree, point, ChopRules.sideFacing(trunk, point), toolId, player, falling, chunks)
+	treeHitRemote:FireAllClients(tree, point, ChopRules.sideFacing(trunk, point), toolId, player, falling)
 
 	if not falling and MimicManager.isMimic(tree) then
 		MimicManager.wake(tree, player) -- does nothing if it's already awake

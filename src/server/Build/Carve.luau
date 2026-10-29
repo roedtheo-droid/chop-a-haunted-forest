@@ -1,47 +1,40 @@
 --!strict
--- Carving a tree's trunk, like in Chop a Forest (numbers in Config.Cut, shared rules in
--- Shared/ChopRules):
---   * Wherever a player hits a trunk, that part of it (a band of layers around the hit) turns
---     into small blocks: bark ones on the outside, pale wood in rings inside.
---   * Every hit knocks out the blocks closest to where the player aimed, so the same spot gets
---     a wider and deeper dent each time, and a hit somewhere else starts a new dent there.
---   * At 0 HP the tree breaks at its deepest dent: that layer pops out, everything below stays
---     as the stump (with its dents and a pale, ringed top), and the top falls.
--- A part can't have a hole in it, so the first hit hides the real Trunk (it stays as the
--- tree's invisible body, which other code still uses) and draws the trunk again: blocks in the
--- bands, and plain trunk pieces between them.
+-- Carving a tree's trunk, like in Chop a Forest (numbers in Config.Cut):
+--   * Every hit scoops a round hole out of the trunk where the player aimed. Holes overlap, so
+--     hitting the same spot makes one smooth, rounded dent that gets wider and deeper, and a hit
+--     somewhere else starts a new dent there. Bigger tools scoop bigger holes.
+--   * The trunk is made of layers, like a real one: a thin skin of bark, pale wood inside it, a
+--     darker ring deeper in and a pale heart. So a dent shows a dark bark rim, then pale wood,
+--     then the ring as it gets deep.
+--   * At 0 HP the trunk is cut clean through at its deepest dent: everything below stays as the
+--     stump (with its dents and a ringed top), and the top falls.
+-- The holes are cut with Roblox's solid modelling (GeometryService:SubtractAsync), which gives
+-- real round holes. A part can't be cut while you look at it, so each cut makes a new part that
+-- replaces the old one. The real Trunk stays as the tree's invisible body, which other code
+-- still uses; the layers are drawn over it, in the tree's "Carved" folder.
 -- The server does the carving, so every player sees the same dents. It never changes the
 -- damage: that's TreeManager's job. Used by TreeManager. It's not a system, so it has no init()/start().
 
+local GeometryService = game:GetService("GeometryService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local ChopRules = require(ReplicatedStorage.Shared.ChopRules)
 local Config = require(ReplicatedStorage.Shared.Config)
-local Assets = require(script.Parent.Assets)
 
--- A block that was knocked out: every player's computer throws a copy of it (see
--- Client/Controllers/ChopEffectsController).
-export type Chunk = {
-	Key: number,
-	Position: Vector3,
-	Color: Color3,
-}
+local FINISH_TIMEOUT = 3 -- seconds Carve.finish waits for carving that's still going on, at most
 
--- A plain piece of trunk between the bands, covering layers From to To.
-type Solid = {
-	Part: BasePart,
-	From: number,
-	To: number,
+-- A hole waiting to be cut, in the trunk's own space (so it's right even if the tree moves).
+type Hole = {
+	Offset: Vector3,
+	Radius: number,
 }
 
 type State = {
 	Trunk: BasePart,
-	Grid: ChopRules.Grid,
-	Folder: Folder, -- the blocks and pieces, inside the tree
-	Blocks: { [number]: BasePart }, -- the blocks still there, by key
-	Banded: { [number]: boolean }, -- the layers that are blocks
-	Solids: { Solid },
-	Knocked: { [number]: number }, -- how many blocks each layer has lost
+	Folder: Folder, -- the layers, inside the tree
+	Layers: { BasePart }, -- bark, pale wood, ring, heart (a layer cut away completely is gone)
+	Waiting: { Hole }, -- holes not cut yet
+	Cut: { Hole }, -- holes already cut (to find the deepest dent)
+	Busy: boolean, -- true while holes are being cut
 	Random: Random,
 }
 
@@ -50,215 +43,290 @@ local Carve = {}
 -- Each carved tree's state. Weak keys: a tree that's removed is forgotten by itself.
 local states: { [Model]: State } = setmetatable({} :: { [Model]: State }, { __mode = "k" })
 
--- A plain piece of trunk: same colour and material as the trunk, never in the way.
--- A Blender trunk (a MeshPart) is drawn with stretched bark blocks, so the pieces keep its bark.
-local function trunkPiece(trunk: BasePart, parent: Instance): BasePart
-	local bark = if trunk:IsA("MeshPart") then Assets.part(Config.Models.BarkBlock) else nil
-	local piece: BasePart = bark or Instance.new("Part")
-	piece.Name = "TrunkPiece"
-	piece.Color = trunk.Color
-	piece.Material = trunk.Material
-	piece.Anchored = true
-	piece.CanCollide = false
-	piece.CanTouch = false
-	piece.TopSurface = Enum.SurfaceType.Smooth
-	piece.BottomSurface = Enum.SurfaceType.Smooth
-	-- Pictures on the trunk (birch marks) go on every piece.
-	for _, child in trunk:GetChildren() do
-		if child:IsA("SurfaceGui") then
-			local copy = child:Clone()
-			copy.Enabled = true
-			copy.Parent = piece
-		end
-	end
-	piece.Parent = parent
-	return piece
+local function plainPart(name: string, size: Vector3, cframe: CFrame, color: Color3, material: Enum.Material): Part
+	local part = Instance.new("Part")
+	part.Name = name
+	part.Size = size
+	part.CFrame = cframe
+	part.Color = color
+	part.Material = material
+	part.Anchored = true
+	part.CanCollide = false
+	part.CanTouch = false
+	part.TopSurface = Enum.SurfaceType.Smooth
+	part.BottomSurface = Enum.SurfaceType.Smooth
+	return part
 end
 
--- A block's colour: bark on the outside (a little lighter or darker each), rings of pale wood inside.
-local function blockColor(state: State, x: number, z: number): Color3
-	local cfg = Config.Cut
-	local last = state.Grid.Across - 1
-	local ring = math.min(x, z, last - x, last - z) -- 0 on the outside, 1 just inside...
-	if ring == 0 then
-		local shade = state.Random:NextNumber(-cfg.BarkShade, cfg.BarkShade)
-		local bark = state.Trunk.Color
-		return if shade >= 0 then bark:Lerp(Color3.new(1, 1, 1), shade) else bark:Lerp(Color3.new(0, 0, 0), -shade)
+-- Cut `cutters` out of `part`. Returns the new pieces, placed where `part` is NOW (the tree may
+-- have moved while it was cutting, like an awake mimic), each a copy of `part` in every other
+-- way. The old part is removed. Returns nil (and keeps the old part) if cutting failed.
+-- The faces a cut leaves get the cutters' colour, so the cutters are first painted in the
+-- part's "CutColor" (the colour of the wood just inside it: dark for the bark, pale or ring
+-- colour for the layers inside).
+local function cut(part: BasePart, cutters: { BasePart }, splitApart: boolean): { BasePart }?
+	local before = part.CFrame
+	local inside = part:GetAttribute("CutColor")
+	if typeof(inside) == "Color3" then
+		for _, cutter in cutters do
+			cutter.Color = inside
+		end
 	end
-	return cfg.InnerColors[(ring - 1) % #cfg.InnerColors + 1]
+	local ok, result = pcall(function()
+		return GeometryService:SubtractAsync(part, cutters, {
+			SplitApart = splitApart,
+			CollisionFidelity = Enum.CollisionFidelity.Box, -- the layers never collide, so keep it cheap
+		})
+	end)
+	if not ok or typeof(result) ~= "table" or not part.Parent then
+		return nil
+	end
+	local pieces: { BasePart } = {}
+	for _, piece in result :: { Instance } do
+		if piece:IsA("BasePart") then
+			piece.Name = part.Name
+			piece.CFrame = part.CFrame * before:ToObjectSpace(piece.CFrame)
+			piece.Anchored = true
+			piece.CanCollide = false
+			piece.CanTouch = false
+			piece.CastShadow = part.CastShadow
+			for name, value in part:GetAttributes() do
+				piece:SetAttribute(name, value)
+			end
+			for _, child in part:GetChildren() do
+				if child:IsA("SurfaceGui") then
+					child.Parent = piece -- birch marks
+				end
+			end
+			piece.Parent = part.Parent
+			table.insert(pieces, piece)
+		end
+	end
+	part:Destroy()
+	return pieces
 end
 
--- Draw the plain trunk again between the bands of blocks (after a new band was added).
-local function rebuildSolids(state: State)
-	for _, solid in state.Solids do
-		solid.Part:Destroy()
-	end
-	table.clear(state.Solids)
-	local trunk = state.Trunk
-	local grid = state.Grid
-	local layer = 0
-	while layer < grid.Layers do
-		if state.Banded[layer] then
-			layer += 1
-			continue
+-- Cut every waiting hole out of every layer, until none are left (more can arrive meanwhile:
+-- they're cut together in the next round).
+local function cutWaiting(state: State)
+	state.Busy = true
+	while #state.Waiting > 0 and state.Trunk.Parent do
+		local holes = state.Waiting
+		state.Waiting = {}
+		local balls: { BasePart } = {}
+		for _, hole in holes do
+			local ball = plainPart(
+				"Hole",
+				Vector3.one * hole.Radius * 2,
+				state.Trunk.CFrame * CFrame.new(hole.Offset),
+				Color3.new(1, 1, 1),
+				Enum.Material.Wood
+			)
+			ball.Shape = Enum.PartType.Ball
+			table.insert(balls, ball)
 		end
-		local from = layer
-		while layer + 1 < grid.Layers and not state.Banded[layer + 1] do
-			layer += 1
+		local layers: { BasePart } = {}
+		for _, layer in state.Layers do
+			local pieces = cut(layer, balls, false)
+			if not pieces then
+				table.insert(layers, layer) -- couldn't cut it: keep it as it was
+			elseif pieces[1] then
+				table.insert(layers, pieces[1])
+			end
+			-- (no pieces: the holes took the whole layer, so it's gone)
 		end
-		local count = layer - from + 1
-		local piece = trunkPiece(trunk, state.Folder)
-		piece.Size = Vector3.new(trunk.Size.X, count * grid.LayerHeight, trunk.Size.Z)
-		piece.CFrame = trunk.CFrame * CFrame.new(0, -trunk.Size.Y / 2 + grid.LayerHeight * (from + count / 2), 0)
-		table.insert(state.Solids, { Part = piece, From = from, To = layer })
-		layer += 1
+		state.Layers = layers
+		for _, ball in balls do
+			ball:Destroy()
+		end
+		table.move(holes, 1, #holes, #state.Cut + 1, state.Cut)
 	end
+	state.Busy = false
 end
 
--- Get a tree ready for carving: hide the real trunk and draw it as one plain piece.
+-- Get a tree ready for carving: hide the real trunk and draw it as layers. Each layer is a
+-- hollow tube around the next one (so where a hole cuts through two layers, their cut faces
+-- don't fight over who's in front), except the heart. Yields while it cuts the tubes.
 local function getState(tree: Model, trunk: BasePart): State
 	local existing = states[tree]
 	if existing then
 		return existing
 	end
+	local cfg = Config.Cut
 	local folder = Instance.new("Folder")
 	folder.Name = "Carved"
 	folder.Parent = tree
 	local state: State = {
 		Trunk = trunk,
-		Grid = ChopRules.grid(trunk),
 		Folder = folder,
-		Blocks = {},
-		Banded = {},
-		Solids = {},
-		Knocked = {},
+		Layers = {},
+		Waiting = {},
+		Cut = {},
+		Busy = true, -- until the layers are ready
 		Random = Random.new(),
 	}
 	states[tree] = state
-	rebuildSolids(state)
-	trunk.Transparency = 1
-	trunk.CanQuery = false -- aiming now finds the blocks and pieces, so you can aim into a dent
+
+	local width, height = trunk.Size.X, trunk.Size.Y
+	local widths = {
+		width,
+		width * (1 - cfg.BarkThickness * 2),
+		width * cfg.RingWidth,
+		width * cfg.HeartWidth,
+	}
+	local colors = { trunk.Color, cfg.InnerColors[1], cfg.InnerColors[2], cfg.InnerColors[1] }
+	-- The colour of each layer's cut faces: the bark's are a darker bark (the dark rim around a
+	-- dent), the others are the colour of that layer's wood.
+	local cutColors = { trunk.Color:Lerp(Color3.new(0, 0, 0), cfg.RimShade), colors[2], colors[3], colors[4] }
+	for index, layerWidth in widths do
+		local layer = plainPart(
+			`Layer{index}`,
+			Vector3.new(layerWidth, height, layerWidth),
+			trunk.CFrame,
+			colors[index],
+			Enum.Material.Wood
+		)
+		layer:SetAttribute("CutColor", cutColors[index])
+		layer.Parent = folder
+		local inner = widths[index + 1]
+		if inner then
+			-- Hollow it out (the hole is a bit taller, so the tube is open at both ends).
+			local core = plainPart("Core", Vector3.new(inner, height + 1, inner), trunk.CFrame, colors[index], Enum.Material.Wood)
+			local tube = cut(layer, { core }, false)
+			core:Destroy()
+			if tube and tube[1] then
+				layer = tube[1]
+			end
+		end
+		table.insert(state.Layers, layer)
+	end
+	-- Pictures on the trunk (birch marks) go on the bark.
 	for _, child in trunk:GetChildren() do
 		if child:IsA("SurfaceGui") then
+			local copy = child:Clone()
+			copy.Enabled = true
+			copy.Parent = state.Layers[1]
 			child.Enabled = false
 		end
+	end
+	trunk.Transparency = 1
+	state.Busy = false
+	-- Hits that came in while the layers were being made are cut now.
+	if #state.Waiting > 0 then
+		task.spawn(cutWaiting, state)
 	end
 	return state
 end
 
--- Turn the layers around `layer` into blocks (the ones that aren't yet).
-local function addBand(state: State, layer: number)
-	local grid = state.Grid
-	local trunk = state.Trunk
-	local reach = Config.Cut.BandLayers
-	local added = false
-	for band = math.max(layer - reach, 0), math.min(layer + reach, grid.Layers - 1) do
-		if state.Banded[band] then
-			continue
-		end
-		state.Banded[band] = true
-		added = true
-		for x = 0, grid.Across - 1 do
-			for z = 0, grid.Across - 1 do
-				local key = ChopRules.blockKey(grid, band, x, z)
-				local block = Instance.new("Part")
-				block.Name = `Block{key}`
-				block.Size = Vector3.new(grid.Size, grid.LayerHeight, grid.Size)
-				block.CFrame = trunk.CFrame * CFrame.new(ChopRules.blockOffset(trunk, grid, band, x, z))
-				block.Color = blockColor(state, x, z)
-				block.Material = Enum.Material.Wood
-				block.TopSurface = Enum.SurfaceType.Smooth
-				block.BottomSurface = Enum.SurfaceType.Smooth
-				block.Anchored = true
-				block.CanCollide = false
-				block.CanTouch = false
-				block.Parent = state.Folder
-				state.Blocks[key] = block
+-- A hit at `point` (where the player aimed) scoops a round hole out of the trunk. `share` is
+-- how much of the tree's HP the hit took (0.1 = a tenth): bigger hits scoop bigger holes.
+-- The hole is cut in the background (it takes a moment), so this returns right away.
+function Carve.hit(tree: Model, trunk: BasePart, point: Vector3, share: number)
+	local cfg = Config.Cut
+	local state = getState(tree, trunk)
+	local scale = math.clamp((share * cfg.HitsPerTree) ^ (1 / 3), cfg.MinHoleScale, cfg.MaxHoleScale)
+	local radius = trunk.Size.X * cfg.HoleSize * scale
+	-- Aiming always finds the outside of the trunk (its invisible box), so we work out how deep
+	-- to dig ourselves. `out` points from the middle of the trunk out to where you hit (flat).
+	local offset = trunk.CFrame:PointToObjectSpace(point)
+	local out = Vector3.new(offset.X, 0, offset.Z)
+	out = if out.Magnitude > 0.01 then out.Unit else Vector3.zAxis
+	-- A new dent: the hole's middle sits a little outside the bark, so it scoops a shallow bowl.
+	local center = offset + out * radius * cfg.HoleOut
+	-- Hitting a dent again digs it deeper: the deepest hole already on this line goes a step further in.
+	local deepest: Hole? = nil
+	for _, list in { state.Cut, state.Waiting } do
+		for _, hole in list do
+			local apart = hole.Offset - offset
+			local sideways = (apart - out * apart:Dot(out)).Magnitude -- how far off the line in from where you hit
+			if sideways < math.max(hole.Radius, radius) and (not deepest or hole.Offset:Dot(out) < deepest.Offset:Dot(out)) then
+				deepest = hole
 			end
 		end
 	end
-	if added then
-		rebuildSolids(state)
+	if deepest then
+		local inward = deepest.Offset - out * radius * cfg.DigStep
+		-- Never further in than almost through to the other side.
+		local limit = -trunk.Size.X / 2 * cfg.MaxDepth
+		center = inward - out * math.min(inward:Dot(out) - limit, 0)
+	end
+	local jitter = radius * cfg.HoleJitter
+	local wobble = Vector3.new(
+		state.Random:NextNumber(-jitter, jitter),
+		state.Random:NextNumber(-jitter, jitter),
+		state.Random:NextNumber(-jitter, jitter)
+	)
+	table.insert(state.Waiting, { Offset = center + wobble, Radius = radius })
+	if not state.Busy then
+		task.spawn(cutWaiting, state)
 	end
 end
 
-local function knockOut(state: State, key: number, chunks: { Chunk })
-	local block = state.Blocks[key]
-	if not block then
-		return
+-- Wait until every hole in this tree is cut (at most a few seconds). Call it before the tree
+-- falls, so the falling tree's parts don't change under it.
+function Carve.finish(tree: Model)
+	local state = states[tree]
+	local started = os.clock()
+	while state and (state.Busy or #state.Waiting > 0) and os.clock() - started < FINISH_TIMEOUT do
+		task.wait()
 	end
-	table.insert(chunks, { Key = key, Position = block.Position, Color = block.Color })
-	block:Destroy()
-	state.Blocks[key] = nil
-	local layer = ChopRules.blockFromKey(state.Grid, key)
-	state.Knocked[layer] = (state.Knocked[layer] or 0) + 1
 end
 
--- A hit at `point` (where the player aimed) knocks `count` blocks out of the trunk.
--- Returns the blocks that were knocked out.
-function Carve.hit(tree: Model, trunk: BasePart, point: Vector3, count: number): { Chunk }
-	local state = getState(tree, trunk)
-	addBand(state, ChopRules.layerAt(trunk, state.Grid, point))
-	local blocks = {}
-	for key, block in state.Blocks do
-		table.insert(blocks, { Key = key, Position = block.Position })
+-- Where the trunk was dug into the most: the height (studs above the bottom of the trunk)
+-- with the most hole around it.
+local function deepestHeight(state: State): number
+	local trunk = state.Trunk
+	local band = trunk.Size.X * 0.25 -- holes this close in height count as the same dent
+	local amount: { [number]: number } = {}
+	local best, bestAmount = nil :: number?, 0
+	for _, hole in state.Cut do
+		local slot = math.floor((hole.Offset.Y + trunk.Size.Y / 2) / band)
+		amount[slot] = (amount[slot] or 0) + hole.Radius ^ 3
+		if amount[slot] > bestAmount then
+			best, bestAmount = slot, amount[slot]
+		end
 	end
-	local chunks: { Chunk } = {}
-	for _, key in ChopRules.pickBlocks(blocks, point, count) do
-		knockOut(state, key, chunks)
-	end
-	return chunks
+	local height = if best then (best + 0.5) * band else trunk.Size.Y * 0.2
+	return math.clamp(height, 0.3, trunk.Size.Y * 0.8)
 end
 
--- A felled tree breaks at its deepest dent (the layer that lost the most blocks): the rest of
--- that layer pops out, and everything below it moves into a "Stump" model in `stumpParent`.
--- Returns the height it broke at (studs above the bottom of the trunk, the middle of that
--- layer: the falling top turns around there) and the blocks that popped out.
--- Returns nil if the tree was never carved.
-function Carve.split(tree: Model, stumpParent: Instance): (number?, { Chunk })
+-- A felled tree breaks at its deepest dent: every layer is cut in two there (a copy of it loses
+-- everything above the break and becomes part of a "Stump" model in `stumpParent`; the layer
+-- itself loses everything below and stays in the tree). Returns the height it broke at (studs
+-- above the bottom of the trunk; the falling top turns around there), or nil if the tree was
+-- never carved. Yields while it cuts (call Carve.finish first).
+function Carve.split(tree: Model, stumpParent: Instance): number?
 	local state = states[tree]
 	if not state then
-		return nil, {}
+		return nil
 	end
-	local grid = state.Grid
-	local split: number? = nil
-	for layer, knocked in state.Knocked do
-		local best = if split then state.Knocked[split] else 0
-		if knocked > best or (knocked == best and split ~= nil and layer < split) then
-			split = layer
-		end
-	end
-	if not split then
-		return nil, {}
-	end
-
-	local chunks: { Chunk } = {}
-	for x = 0, grid.Across - 1 do
-		for z = 0, grid.Across - 1 do
-			knockOut(state, ChopRules.blockKey(grid, split, x, z), chunks)
-		end
-	end
-
-	-- Everything below the break stays behind as the stump.
+	local trunk = state.Trunk
+	local height = deepestHeight(state)
+	local gap = Config.Cut.SplitGap
+	local breakY = height - trunk.Size.Y / 2 -- in the trunk's own space
+	local bigSize = Vector3.new(trunk.Size.X * 3, trunk.Size.Y * 2, trunk.Size.Z * 3)
+	local above = plainPart("Above", bigSize, trunk.CFrame * CFrame.new(0, breakY + gap / 2 + trunk.Size.Y, 0), Color3.new(1, 1, 1), Enum.Material.Wood)
+	local below = plainPart("Below", bigSize, trunk.CFrame * CFrame.new(0, breakY - gap / 2 - trunk.Size.Y, 0), Color3.new(1, 1, 1), Enum.Material.Wood)
 	local stump = Instance.new("Model")
 	stump.Name = "Stump"
-	for key, block in state.Blocks do
-		if ChopRules.blockFromKey(grid, key) < split then
-			block.Parent = stump
+	for _, layer in state.Layers do
+		local bottom = layer:Clone()
+		bottom.Parent = layer.Parent
+		local pieces = cut(bottom, { above }, false)
+		if pieces and pieces[1] then
+			pieces[1].Parent = stump
 		end
+		cut(layer, { below }, false)
 	end
-	for _, solid in state.Solids do
-		if solid.To < split then
-			solid.Part.Parent = stump
-		end
-	end
+	above:Destroy()
+	below:Destroy()
 	if #stump:GetChildren() > 0 then
 		stump.Parent = stumpParent
 	else
 		stump:Destroy()
 	end
 	states[tree] = nil
-	return (split + 0.5) * grid.LayerHeight, chunks
+	return height
 end
 
 return Carve

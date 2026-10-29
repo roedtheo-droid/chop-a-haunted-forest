@@ -1058,22 +1058,29 @@ local Config = {
 		StumpHeight = 1.2, -- the stump a felled tree leaves behind
 	},
 
-	-- Carving (see Server/Build/Carve and Shared/ChopRules), like in Chop a Forest: wherever
-	-- you hit a trunk, that part of it turns into small blocks, and every hit knocks out the
-	-- blocks closest to where you aimed. Hit the same spot and the dent gets wider and deeper;
-	-- hit somewhere else and a new dent starts there. Blocks on the outside are bark, the ones
-	-- inside are pale wood in rings. At 0 HP the tree breaks at its deepest dent.
+	-- Carving (see Server/Build/Carve), like in Chop a Forest: every hit scoops a round hole out
+	-- of the trunk where you aim. Hit the same spot and the dent gets wider and deeper; hit
+	-- somewhere else and a new dent starts there. The trunk has layers like a real one (bark,
+	-- pale wood, a darker ring, a pale heart), so a dent shows a dark bark rim, then pale wood,
+	-- then the ring. At 0 HP the tree breaks at its deepest dent.
 	Cut = {
-		Across = 6, -- blocks across the trunk, each way
-		BandLayers = 3, -- layers of blocks above and below the one you hit
-		BlocksPerTree = 90, -- blocks a tree loses from full HP to 0 (bigger tools knock out more per hit)
-		MaxBlocksPerHit = 40,
-		BarkShade = 0.05, -- bark blocks are up to this much lighter or darker, so the bark looks rough
-		InnerColors = { -- the inside, from the bark inwards (the rings repeat if there are more blocks)
-			Color3.fromRGB(235, 200, 150),
-			Color3.fromRGB(212, 168, 114),
+		BarkThickness = 0.1, -- how thick the bark is, as a share of the trunk's width
+		RimShade = 0.3, -- the bark around a dent is this much darker than the bark (0 = the same, 1 = black)
+		RingWidth = 0.55, -- the darker ring's outside, as a share of the trunk's width
+		HeartWidth = 0.3, -- the pale heart in the middle
+		InnerColors = {
+			Color3.fromRGB(235, 200, 150), -- pale wood (and the heart)
+			Color3.fromRGB(205, 160, 105), -- the darker ring
 		},
-		ChunkScale = 0.8, -- the blocks that fly off are this size compared to the ones in the trunk
+		HoleSize = 0.24, -- a punch's hole: its radius as a share of the trunk's width
+		HitsPerTree = 10, -- HoleSize is for a hit that takes this share of a tree's HP (1/10: a punch on an oak)
+		MinHoleScale = 0.7, -- smaller hits still scoop at least this big a hole (compared to HoleSize)...
+		MaxHoleScale = 2, -- ...and big tools at most this big
+		HoleOut = 0.45, -- how far out of the wood each hole's middle sits (share of its radius): a new dent starts as a shallow bowl
+		DigStep = 0.45, -- each hit on a dent digs this much deeper (share of the hole's radius)
+		MaxDepth = 0.5, -- the deepest a hole's middle goes: this far past the middle of the trunk (share of half its width), so a dent gets almost all the way through
+		HoleJitter = 0.15, -- holes are shifted a little at random, so dents look natural
+		SplitGap = 0.2, -- studs of wood that vanish where the tree breaks
 		PointMargin = 1, -- studs the aimed point may be outside the trunk (lag, moving mimics)
 		HeadReachExtra = 2, -- studs added to the tool's Reach, measured from your head to the point you hit
 	},

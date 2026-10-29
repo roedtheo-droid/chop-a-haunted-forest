@@ -14,7 +14,7 @@
 -- Your own hits don't wait for the server: ChopController calls showMyHit the moment your
 -- swing lands, so chopping feels instant.
 -- None of this changes the game, so it's fine that it runs on the client.
--- (The round dents themselves are cut by the server, so every player sees the same ones.)
+-- (The dents are cut by CarveController, from holes the server picks, so everyone sees the same ones.)
 
 local ContentProvider = game:GetService("ContentProvider")
 local Debris = game:GetService("Debris")
@@ -28,6 +28,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Fx = require(ReplicatedStorage.Shared.Fx)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Types = require(ReplicatedStorage.Shared.Types)
+local CarveController = require(script.Parent.CarveController)
 
 local cfg = Config.ChopEffects
 local Style = Config.Style
@@ -860,8 +861,15 @@ local function onTreeHit(target: unknown, position: unknown, outward: unknown, t
 		playHit(tree, trunk, position, outward, toolId, who, isFalling)
 	end
 	-- Every player animates the fall, even far away, because the server doesn't move the tree.
+	-- A carved tree first breaks at its deepest dent on this screen (see CarveController).
 	if isFalling then
-		startFall(tree, trunk, falling :: Vector3, near)
+		local split = tree:GetAttribute("SplitHeight")
+		task.spawn(function()
+			if typeof(split) == "number" then
+				CarveController.breakTree(tree, split)
+			end
+			startFall(tree, trunk, falling :: Vector3, near)
+		end)
 		if near and Config.ShowTimberText then
 			timber(position)
 		end

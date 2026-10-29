@@ -1079,7 +1079,22 @@ local Config = {
 		HoleOut = 0.45, -- how far out of the wood each hole's middle sits (share of its radius): a new dent starts as a shallow bowl
 		DigStep = 0.45, -- each hit on a dent digs this much deeper (share of the hole's radius)
 		MaxDepth = 0.5, -- the deepest a hole's middle goes: this far past the middle of the trunk (share of half its width), so a dent gets almost all the way through
-		HoleJitter = 0.15, -- holes are shifted a little at random, so dents look natural
+		HoleJitter = 0.25, -- holes are shifted a little at random, so dents look natural
+		-- Each hit is a rough bite, not a perfect bowl (see Carve: roughHole). Sizes and distances
+		-- are a share of the hole's radius; pairs are the smallest and biggest (picked at random).
+		Rough = {
+			MainSize = { 0.8, 1 }, -- the big ball in the middle
+			GrainLumps = 2, -- lumps above and below it (wood tears along the grain, up the trunk)
+			GrainSize = { 0.45, 0.7 },
+			GrainReach = { 0.55, 1 },
+			SideLumps = { 2, 3 }, -- lumps to the sides
+			SideSize = { 0.3, 0.5 },
+			SideReach = { 0.6, 1 },
+			Splinters = { 4, 6 }, -- thin, tilted blocks around the edge that leave sharp, splintery corners
+			SplinterLength = { 0.8, 1.4 },
+			SplinterReach = { 0.75, 1.15 },
+			SplinterDepth = { -0.6, -0.1 }, -- how far into the wood they reach from the middle ball (below 0 = deeper)
+		},
 		SplitGap = 0.2, -- studs of wood that vanish where the tree breaks
 		PointMargin = 1, -- studs the aimed point may be outside the trunk (lag, moving mimics)
 		HeadReachExtra = 2, -- studs added to the tool's Reach, measured from your head to the point you hit

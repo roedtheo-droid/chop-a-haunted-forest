@@ -98,7 +98,7 @@ local function leaveRoots(tree: Model, charred: boolean)
 end
 
 -- A short square stump with a light, ringed top, for a tree that was never carved (or a
--- charred black one for a burned mimic). A carved tree leaves its real carved bottom instead (Carve.split).
+-- charred black one for a burned mimic). A carved tree leaves its carved bottom instead (Carve.split).
 local function leaveStump(tree: Model, trunk: BasePart, charred: boolean)
 	local width = getNumberAttribute(tree, "TrunkWidth")
 	local height = Config.Tree.StumpHeight
@@ -125,17 +125,14 @@ end
 -- The server doesn't move the tree: every player's computer animates the crack, fall and
 -- bounce itself (Client/Controllers/ChopEffectsController), so it's smooth on every screen.
 -- The server only waits for it to land, then drops the logs and removes the tree.
--- It yields for a moment first: the last holes are cut and the trunk is cut through.
 local function fellTree(tree: Model, trunk: BasePart, away: Vector3, withStump: boolean)
 	-- Remove the tag first, so nobody can hit it while it falls.
 	CollectionService:RemoveTag(tree, Tags.Tree)
 	tree:SetAttribute("Felled", true)
-	-- Its parts must not change while it falls on every screen, so all carving finishes now.
-	Carve.finish(tree)
 	if withStump then
 		-- It breaks at its deepest dent: the bottom stays as the stump, and every player's
 		-- computer tips the top over from there (the "SplitHeight" attribute).
-		local splitHeight = Carve.split(tree, stumpsFolder)
+		local splitHeight = Carve.split(tree, trunk, stumpsFolder)
 		if splitHeight then
 			tree:SetAttribute("SplitHeight", splitHeight)
 		else
@@ -176,7 +173,6 @@ local function burnMimic(player: Player, tree: Model, trunk: BasePart)
 	CollectionService:RemoveTag(tree, Tags.Tree)
 	tree:SetAttribute("Felled", true)
 	MimicManager.forget(tree)
-	Carve.finish(tree) -- so the parts that char black don't change while it burns
 	leaveStump(tree, trunk, true)
 	leaveRoots(tree, true)
 	ZoneManager.treeCleared(getNumberAttribute(tree, "ZoneId"))
@@ -318,8 +314,8 @@ local function onSwing(player: Player, target: unknown, aimed: unknown)
 	end
 
 	-- 6. All good: chop it.
-	-- Visible damage: a round hole scooped out of the trunk where the player aimed (see
-	-- Build/Carve). Bigger hits scoop bigger holes; it only looks like damage, the HP is what counts.
+	-- Visible damage: a rough hole bitten out of the trunk where the player aimed (see Build/Carve;
+	-- every computer cuts it). Bigger hits bite bigger holes; it only looks like damage, the HP is what counts.
 	local maxHp = math.max(getNumberAttribute(tree, "MaxHP"), 1)
 	local hp = math.max(getNumberAttribute(tree, "HP") - damage, 0)
 	tree:SetAttribute("HP", hp)

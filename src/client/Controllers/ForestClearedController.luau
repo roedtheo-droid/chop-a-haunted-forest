@@ -60,6 +60,7 @@ local function buildGui()
 	gui.ResetOnSpawn = false
 	gui.DisplayOrder = 10 -- on top of the HUD and the knockdown screen
 	gui.Enabled = false
+	UiKit.freeMouse(gui) -- so you can click the buttons in first person
 
 	-- Darken the whole screen behind the panel.
 	local shade = Instance.new("Frame")

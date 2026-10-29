@@ -1,5 +1,7 @@
 --!strict
 -- Click (or tap) a tree to swing at it. Hold the button to keep chopping.
+-- In first person (Config.FirstPerson) you aim with the crosshair in the middle of the screen,
+-- and ViewmodelController swings your fists or tool.
 -- The client only tells the server WHICH tree. The server checks distance and
 -- cooldown and decides the damage, so changing numbers here can't cheat.
 --
@@ -22,6 +24,7 @@ local Tags = require(ReplicatedStorage.Shared.Tags)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Zones = require(ReplicatedStorage.Shared.Zones)
 local ChopEffectsController = require(script.Parent.ChopEffectsController)
+local ViewmodelController = require(script.Parent.ViewmodelController)
 
 local MAX_CLICK_DISTANCE = 200
 
@@ -48,14 +51,27 @@ local function hasAnyTag(model: Model, tags: { string }): boolean
 	return false
 end
 
--- Find the tree (or awake mimic, or the boss or one of its roots) under a point on the screen.
-local function findTreeAt(screenPosition: Vector3): Model?
+-- The ray from the camera through what you're aiming at: the crosshair in the middle of the
+-- screen in first person (see ViewmodelController), otherwise the mouse or your finger.
+local function aimRay(): Ray?
 	local camera = workspace.CurrentCamera
 	if not camera then
 		return nil
 	end
+	if ViewmodelController.isActive() then
+		local size = camera.ViewportSize
+		return camera:ViewportPointToRay(size.X / 2, size.Y / 2)
+	end
+	return camera:ScreenPointToRay(pointer.X, pointer.Y)
+end
 
-	local ray = camera:ScreenPointToRay(screenPosition.X, screenPosition.Y)
+-- Find the tree (or awake mimic, or the boss or one of its roots) you're aiming at.
+local function findTree(): Model?
+	local ray = aimRay()
+	if not ray then
+		return nil
+	end
+
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
 	local ignore: { Instance } = {}
@@ -151,17 +167,24 @@ local function trySwing()
 	end
 	-- Don't spam the server faster than the server would accept anyway.
 	local now = os.clock()
-	if now - lastSwing < Config.Tools[toolId].Cooldown then
+	local cooldown = Config.Tools[toolId].Cooldown
+	if now - lastSwing < cooldown then
 		return
 	end
+	-- The Torch has no feel of its own: it swings like Fists.
+	local feel = Config.ChopFeel[toolId] or Config.ChopFeel.Fists
 
-	local tree = findTreeAt(pointer)
+	local tree = findTree()
+	-- In first person your fists (or tool) swing on every click, even at thin air.
+	if ViewmodelController.isActive() then
+		lastSwing = now
+		ViewmodelController.swing(cooldown, feel.SwingSize)
+	end
 	if not tree then
 		return
 	end
 	lastSwing = now
-	-- The Torch has no feel of its own: it swings like Fists.
-	playSwing(Config.ChopFeel[toolId] or Config.ChopFeel.Fists)
+	playSwing(feel)
 
 	-- The hit lands partway through the swing.
 	task.delay(Config.ChopEffects.ImpactDelay, function()

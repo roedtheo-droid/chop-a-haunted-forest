@@ -824,6 +824,29 @@ local Config = {
 		LeafTime = 1.2,
 	},
 
+	-- First person (see Client/Controllers/ViewmodelController). The camera sits in your head, and
+	-- only you see your own two blocky forearms and fists at the bottom of the screen. Each swing
+	-- jabs one fist (left, right, left...), or swings the tool you hold in your right hand.
+	-- A small hollow circle in the middle of the screen shows what you'll hit.
+	FirstPerson = {
+		FirstPersonOnly = true, -- false = the old camera behind your character, aiming with the mouse
+		SkinColor = Color3.fromRGB(245, 205, 160), -- only used if your character's arm colour can't be found
+		ForearmSize = Vector3.new(0.8, 0.8, 2.6), -- studs: width, height, length
+		FistSize = Vector3.new(1.05, 1.05, 1.05),
+		RestOffset = Vector3.new(1.15, -1.05, -2.3), -- where the right fist rests, seen from the camera (the left one is mirrored)
+		RestPitch = 14, -- degrees the forearms tilt up from the bottom of the screen
+		RestYaw = 10, -- degrees they point in towards the middle
+		PunchOut = 0.12, -- seconds a jab takes to go forward...
+		PunchBack = 0.2, -- ...and to come back
+		PunchReach = 1.3, -- studs a fist moves forward in a jab
+		ToolPitch = 30, -- degrees a held tool leans up from pointing straight ahead
+		ToolGrip = 0.25, -- where your fist holds a tool's handle: 0 = its end, 0.5 = its middle
+		ToolSwingAngle = 65, -- degrees a tool chops down in a swing (smaller for the Chainsaw, see SwingSize in chopFeel)
+		CrosshairSize = 14, -- pixels across
+		CrosshairThickness = 2, -- pixels
+		CrosshairColor = Color3.fromRGB(255, 255, 255),
+	},
+
 	-- The glowing line to the nearest tree when a zone is almost cleared
 	NearestTree = {
 		ShowAtPercent = 95, -- show it when the zone you're in is at least this % cleared

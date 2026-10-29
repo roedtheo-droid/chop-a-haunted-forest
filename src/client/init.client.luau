@@ -25,6 +25,7 @@ local controllers: { Types.Module } = {
 	require(Controllers.QuestController),
 	require(Controllers.BackpackController),
 	require(Controllers.ChopEffectsController), -- before ChopController, which uses it
+	require(Controllers.ViewmodelController), -- first-person arms; also used by ChopController
 	require(Controllers.ChopController),
 	require(Controllers.ShopController),
 	require(Controllers.SprintController),

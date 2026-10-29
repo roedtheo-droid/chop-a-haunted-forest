@@ -1072,12 +1072,12 @@ local Config = {
 			Color3.fromRGB(235, 200, 150), -- pale wood (and the heart)
 			Color3.fromRGB(205, 160, 105), -- the darker ring
 		},
-		HoleSize = 0.24, -- a punch's hole: its radius as a share of the trunk's width
+		HoleSize = 0.34, -- a punch's hole: its radius as a share of the trunk's width
 		HitsPerTree = 10, -- HoleSize is for a hit that takes this share of a tree's HP (1/10: a punch on an oak)
 		MinHoleScale = 0.7, -- smaller hits still scoop at least this big a hole (compared to HoleSize)...
 		MaxHoleScale = 2, -- ...and big tools at most this big
-		HoleOut = 0.45, -- how far out of the wood each hole's middle sits (share of its radius): a new dent starts as a shallow bowl
-		DigStep = 0.45, -- each hit on a dent digs this much deeper (share of the hole's radius)
+		HoleOut = 0.65, -- how far out of the wood each hole's middle sits (share of its radius): a new dent starts as a shallow bowl
+		DigStep = 0.25, -- each hit on a dent digs this much deeper (share of the hole's radius)
 		MaxDepth = 0.5, -- the deepest a hole's middle goes: this far past the middle of the trunk (share of half its width), so a dent gets almost all the way through
 		HoleJitter = 0.25, -- holes are shifted a little at random, so dents look natural
 		-- Each hit is a rough bite, not a perfect bowl (see Carve: roughHole). Sizes and distances
@@ -1087,9 +1087,9 @@ local Config = {
 			GrainLumps = 2, -- lumps above and below it (wood tears along the grain, up the trunk)
 			GrainSize = { 0.45, 0.7 },
 			GrainReach = { 0.55, 1 },
-			SideLumps = { 2, 3 }, -- lumps to the sides
-			SideSize = { 0.3, 0.5 },
-			SideReach = { 0.6, 1 },
+			SideLumps = { 2, 4 }, -- lumps to the sides
+			SideSize = { 0.35, 0.55 },
+			SideReach = { 0.75, 1.2 },
 			Splinters = { 4, 6 }, -- thin, tilted blocks around the edge that leave sharp, splintery corners
 			SplinterLength = { 0.8, 1.4 },
 			SplinterReach = { 0.75, 1.15 },

@@ -92,6 +92,16 @@ local function menuOpen(): boolean
 	return false
 end
 
+-- Is a screen open that takes over the camera (the Garage; see UiKit.HIDES_ARMS)?
+local function cameraTaken(): boolean
+	for _, gui in playerGui:GetChildren() do
+		if gui:IsA("ScreenGui") and gui.Enabled and gui:GetAttribute(UiKit.HIDES_ARMS) then
+			return true
+		end
+	end
+	return false
+end
+
 local function plainPart(name: string, size: Vector3, shape: Enum.PartType): Part
 	local part = Instance.new("Part")
 	part.Name = name
@@ -354,6 +364,13 @@ end
 local function update(dt: number)
 	local camera = workspace.CurrentCamera
 	if not (active and camera) then
+		return
+	end
+	if cameraTaken() then
+		-- The camera is looking at something else: no arms, no crosshair, and a free mouse.
+		viewmodel.Parent = nil
+		crosshair.Visible = false
+		UserInputService.MouseIconEnabled = not isTouch()
 		return
 	end
 	viewmodel.Parent = camera

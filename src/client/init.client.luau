@@ -31,6 +31,7 @@ local controllers: { Types.Module } = {
 	require(Controllers.TreeHpController), -- the tree HP bar under the crosshair (Config.ShowTreeHpBar)
 	require(Controllers.ShopController),
 	require(Controllers.LandownerController), -- Mr. Graves at the vault: his idle, the bird and the dialogue box
+	require(Controllers.GarageController), -- the Garage's showroom screen, where you buy log trucks
 	require(Controllers.SprintController),
 	require(Controllers.KnockdownController),
 	require(Controllers.LanternController),

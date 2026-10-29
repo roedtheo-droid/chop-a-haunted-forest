@@ -15,6 +15,7 @@ local Tags = {
 	Flicker = "Flicker", -- a lamp's light that flickers a little (see AmbientController)
 	Landowner = "Landowner", -- Mr. Graves, the NPC at the vault (see LandownerController)
 	LandownerPrompt = "LandownerPrompt", -- his "Talk" prompt
+	GaragePad = "GaragePad", -- the glowing pad in front of the Garage (see GarageController)
 }
 
 return table.freeze(Tags)

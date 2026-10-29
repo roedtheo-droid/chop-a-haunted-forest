@@ -247,4 +247,8 @@ function UiKit.freeMouse(gui: ScreenGui)
 	button.Parent = gui
 end
 
+-- A screen with this attribute takes over the camera (like the Garage's showroom), so
+-- ViewmodelController hides the first-person arms while it's open.
+UiKit.HIDES_ARMS = "HidesArms"
+
 return UiKit

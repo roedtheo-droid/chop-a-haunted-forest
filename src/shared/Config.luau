@@ -367,6 +367,51 @@ local zoneDetails: { { Types.DetailConfig } } = {
 	},
 }
 
+-- The log trucks in the Garage, in order (tier 1 first). Coin trucks are yours for this run;
+-- Ember and Robux trucks are saved forever. See Types.TruckConfig and Server/Systems/GarageManager.
+local trucks: { Types.TruckConfig } = {
+	{
+		Id = "RustyRattler", Name = "Rusty Rattler", Speed = 36, Carry = 50, Currency = "Coins", Price = 425, ProductId = 0, Skins = true,
+		Look = { Cab = Color3.fromRGB(196, 62, 50), Body = Color3.fromRGB(168, 105, 58), Trim = Color3.fromRGB(70, 66, 62), Bed = "Wood", Axles = 2, Length = 11, Scale = 0.9, Rounded = true },
+	},
+	{
+		Id = "MossyPickup", Name = "Mossy Pickup", Speed = 39, Carry = 75, Currency = "Coins", Price = 2400, ProductId = 0, Skins = false,
+		Look = { Cab = Color3.fromRGB(165, 205, 150), Body = Color3.fromRGB(168, 105, 58), Trim = Color3.fromRGB(80, 80, 80), Bed = "Stakes", Axles = 2, Length = 12, Scale = 0.95 },
+	},
+	{
+		Id = "BonebedFlatbed", Name = "Bonebed Flatbed", Speed = 42, Carry = 100, Currency = "Coins", Price = 5600, ProductId = 0, Skins = true,
+		Look = { Cab = Color3.fromRGB(60, 112, 205), Body = Color3.fromRGB(150, 95, 55), Trim = Color3.fromRGB(70, 70, 75), Bed = "Flatbed", Axles = 2, Length = 15, Scale = 1 },
+	},
+	{
+		Id = "StakeHauler", Name = "Stake Hauler", Speed = 45, Carry = 125, Currency = "Embers", Price = 300, ProductId = 0, Skins = false,
+		Look = { Cab = Color3.fromRGB(242, 195, 50), Body = Color3.fromRGB(160, 100, 55), Trim = Color3.fromRGB(60, 60, 60), Bed = "TallStakes", Axles = 2, Length = 14, Scale = 1 },
+	},
+	{
+		Id = "GraveDumper", Name = "Grave Dumper", Speed = 48, Carry = 150, Currency = "Embers", Price = 600, ProductId = 0, Skins = true,
+		Look = { Cab = Color3.fromRGB(200, 50, 45), Body = Color3.fromRGB(140, 142, 148), Trim = Color3.fromRGB(55, 55, 55), Bed = "Dump", Axles = 3, Length = 15, Scale = 1.05 },
+	},
+	{
+		Id = "FogRanger", Name = "Fog Ranger 6x6", Speed = 51, Carry = 175, Currency = "Embers", Price = 1200, ProductId = 0, Skins = false,
+		Look = { Cab = Color3.fromRGB(70, 92, 58), Body = Color3.fromRGB(95, 105, 70), Trim = Color3.fromRGB(45, 48, 40), Bed = "Canvas", Axles = 3, Length = 16, Scale = 1.05 },
+	},
+	{
+		Id = "HollowHauler", Name = "Hollow Hauler", Speed = 54, Carry = 200, Currency = "Embers", Price = 2000, ProductId = 0, Skins = false,
+		Look = { Cab = Color3.fromRGB(215, 120, 45), Body = Color3.fromRGB(70, 70, 75), Trim = Color3.fromRGB(50, 50, 55), Bed = "LogTrailer", Axles = 3, Length = 19, Scale = 1.05 },
+	},
+	{
+		Id = "BigHauntRig", Name = "Big Haunt Rig", Speed = 57, Carry = 225, Currency = "Robux", Price = 149, ProductId = 0, Skins = true,
+		Look = { Cab = Color3.fromRGB(120, 60, 160), Body = Color3.fromRGB(65, 65, 72), Trim = Color3.fromRGB(200, 205, 215), Bed = "LogTrailer", Axles = 3, Length = 20, Scale = 1.1, Sleeper = true },
+	},
+	{
+		Id = "Ironbark", Name = "Ironbark 8x8", Speed = 60, Carry = 260, Currency = "Robux", Price = 299, ProductId = 0, Skins = false,
+		Look = { Cab = Color3.fromRGB(238, 238, 236), Body = Color3.fromRGB(70, 72, 78), Trim = Color3.fromRGB(60, 62, 66), Bed = "LogTrailer", Axles = 4, Length = 20, Scale = 1.1 },
+	},
+	{
+		Id = "ElderKing", Name = "Elder King", Speed = 64, Carry = 300, Currency = "Robux", Price = 499, ProductId = 0, Skins = true,
+		Look = { Cab = Color3.fromRGB(28, 28, 32), Body = Color3.fromRGB(28, 28, 32), Trim = Color3.fromRGB(240, 190, 50), Bed = "LogBed", Axles = 4, Length = 20, Scale = 1.15, Sleeper = true },
+	},
+}
+
 -- Tutorial quests, in order. They teach new players the core loop.
 local quests: { Types.QuestConfig } = {
 	{ Event = "FellTree", Goal = 1, Text = "Chop down a tree" },
@@ -1224,6 +1269,72 @@ local Config = {
 		BirdRadius = 6, -- studs from its home spot that it hops around in
 		BirdHopTime = 0.25, -- seconds per hop
 		BirdRest = { 0.6, 1.8 }, -- seconds it waits between hops (a random number in this range)
+	},
+
+	Trucks = trucks,
+
+	-- The Garage: a log barn on the camp's right side where you buy log trucks (see
+	-- Server/Build/GarageBuilding, Server/Systems/GarageManager and Client/Controllers/GarageController).
+	-- Walking onto the glowing pad in front of its doors opens the showroom screen.
+	Garage = {
+		Position = Vector3.new(108, 0, 440), -- the middle of the barn's floor (height is found automatically)
+		FaceToward = Vector3.new(0, 0, 440), -- the doors face this spot (the camp's middle)
+		BuildingSize = Vector3.new(26, 13, 22), -- width (the door side), wall height, depth
+		DoorWidth = 14,
+		DoorHeight = 10.5,
+		RoofHeight = 7,
+		SignColor = Color3.fromRGB(240, 130, 30), -- the orange GARAGE sign over the doors
+		GravelColor = Color3.fromRGB(150, 145, 135),
+		DrivewayLength = 18, -- the gravel in front of the doors
+		PadSize = Vector2.new(12, 8), -- the glowing rectangle: across the doors, and away from them
+		PadGap = 2, -- studs between the doors and the pad
+		PadColor = Color3.fromRGB(255, 220, 40),
+		BuyMargin = 4, -- the server still accepts purchases this many studs outside the pad (for lag)
+		BuyCooldown = 0.5, -- seconds between purchases for one player
+
+		-- The showroom: built on each player's own computer, far outside the map, and only seen
+		-- through its fixed camera. Its back wall is towards +Z; the camera looks at it from -Z.
+		ShowroomPosition = Vector3.new(5000, 100, 0),
+		CameraOffset = Vector3.new(0, 11, -40), -- where the camera stands, from the turntable's middle
+		CameraLookAt = Vector3.new(0, 4, 0),
+		CameraFieldOfView = 45,
+		TurntableRadius = 13,
+		TurnSpeed = 0.35, -- radians per second the truck turns on the turntable
+		SinkTime = 0.4, -- seconds the turntable takes to sink into the pit when you change truck...
+		RiseTime = 0.4, -- ...and to rise back up with the new one
+		SinkDepth = 9, -- studs it sinks
+		NeonYellow = Color3.fromRGB(255, 215, 40),
+		NeonOrange = Color3.fromRGB(255, 140, 30),
+		FloorColor = Color3.fromRGB(70, 70, 76),
+		LightColor = Color3.fromRGB(255, 244, 220),
+
+		-- Every text on the Garage screen, and the server's messages. %s / %d are filled in.
+		Text = {
+			Title = "GARAGE",
+			Tier = "TIER %d · %d / %d", -- tier, position in the list, number of trucks
+			Speed = "Speed",
+			Carry = "Carry",
+			Buy = "BUY",
+			Owned = "OWNED",
+			Back = "BACK",
+			Permanent = "*PERMANENT*",
+			ComingSoon = "Coming soon",
+			Robux = "R$ %s",
+			Skins = "SKINS",
+			SkinsOwned = "%d owned",
+			Standard = "Standard",
+			Equipped = "EQUIPPED",
+			HalloweenSkin = "Pumpkin Night",
+			HalloweenTag = "HALLOWEEN",
+			SkinsFooter = "Looks only - same Speed and Carry",
+			Bought = "You bought the %s!",
+			BoughtForRun = "You bought the %s! It's yours until the end of this run.",
+			AlreadyOwned = "You already own the %s.",
+			NeedCoins = "You need %s more Coins.",
+			NeedEmbers = "You need %s more Embers.",
+			NotOnPad = "Stand on the Garage pad to buy trucks.",
+			NotOnSale = "The %s isn't for sale yet.",
+		},
 	},
 
 	-- UI

@@ -144,6 +144,10 @@ local function show(player: Player, data: Types.SaveData)
 	for name, value in data.Stats do
 		player:SetAttribute(`Stat_{name}`, value)
 	end
+	-- One attribute per unlock, like "Unlock_Truck_StakeHauler" = true (the Garage reads these).
+	for _, unlock in data.Unlocks do
+		player:SetAttribute(`Unlock_{unlock}`, true)
+	end
 end
 
 -- Write a profile to the DataStore. `release` also removes the lock (the player is leaving).
@@ -235,6 +239,11 @@ local function merge(saved: Types.SaveData, early: Types.SaveData)
 	saved.Embers += early.Embers
 	for name, value in early.Stats do
 		saved.Stats[name] = (saved.Stats[name] or 0) + value
+	end
+	for _, unlock in early.Unlocks do
+		if not table.find(saved.Unlocks, unlock) then
+			table.insert(saved.Unlocks, unlock)
+		end
 	end
 end
 
@@ -364,6 +373,35 @@ function SaveManager.addStat(player: Player, name: string, amount: number)
 	end
 	data.Stats[name] = (data.Stats[name] or 0) + amount
 	player:SetAttribute(`Stat_{name}`, data.Stats[name])
+end
+
+-- Does the player own this permanent unlock (like "Truck_StakeHauler")?
+function SaveManager.hasUnlock(player: Player, name: string): boolean
+	local data = SaveManager.getData(player)
+	return data ~= nil and table.find(data.Unlocks, name) ~= nil
+end
+
+-- Give the player a permanent unlock. It's saved with the next save (or call saveNow).
+function SaveManager.addUnlock(player: Player, name: string)
+	local data = SaveManager.getData(player)
+	if not data then
+		return
+	end
+	if not table.find(data.Unlocks, name) then
+		table.insert(data.Unlocks, name)
+	end
+	player:SetAttribute(`Unlock_{name}`, true)
+end
+
+-- Save the player right away (for Robux purchases: Roblox wants them saved before we say
+-- "done"). Returns true if it worked; false if saving is off, their save hasn't loaded yet,
+-- or the DataStore failed.
+function SaveManager.saveNow(player: Player): boolean
+	local profile = profiles[player]
+	if not profile or profile.Released then
+		return false
+	end
+	return writeSave(player.UserId, profile, false) == "Saved"
 end
 
 function SaveManager.init() end

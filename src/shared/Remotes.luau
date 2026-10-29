@@ -32,6 +32,10 @@ local list: { [string]: Types.RemoteKind } = {
 	-- The server checks the price, your coins and that you're at the Tool Shed.
 	BuyItem = "Event",
 
+	-- Client -> server: "I want to buy this truck" (a truck Id from Config.Trucks).
+	-- The server checks the price, your Coins or Embers and that you're on the Garage pad.
+	BuyTruck = "Event",
+
 	-- Client -> server: "I'm holding sprint" (true) or "I let go" (false).
 	-- The server decides the actual speed.
 	SetSprint = "Event",

@@ -50,6 +50,21 @@ function LogManager.takeAll(player: Player): (number, number)
 	return carry, value
 end
 
+-- Take up to `count` logs out of the player's backpack (to load them into a truck). Returns
+-- how many were taken and what they're worth: their share of the backpack's value.
+function LogManager.take(player: Player, count: number): (number, number)
+	local carry = LogManager.getCarry(player)
+	local taken = math.clamp(math.floor(count), 0, carry)
+	if taken <= 0 then
+		return 0, 0
+	end
+	local total = getNumberAttribute(player, "CarryValue")
+	local value = if taken == carry then total else math.floor(total * taken / carry)
+	LogManager.setCarry(player, carry - taken)
+	player:SetAttribute("CarryValue", total - value)
+	return taken, value
+end
+
 function LogManager.hasRoom(player: Player): boolean
 	return LogManager.getCarry(player) < getNumberAttribute(player, "CarryLimit")
 end

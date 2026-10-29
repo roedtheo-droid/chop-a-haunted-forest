@@ -9,6 +9,7 @@
 --   * bottom-right on some trucks: the SKINS panel (only for looks, the Halloween skin is locked)
 -- BACK puts the camera back on you, standing on the pad. To open it again, step off and on.
 -- It only SHOWS prices and what you own; BUY just asks the server (see GarageManager).
+-- For a truck you own, BUY becomes SPAWN: the server parks it by the Garage (see TruckManager).
 
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
@@ -39,6 +40,7 @@ local GarageController = {}
 
 local player = Players.LocalPlayer
 local buyRemote: RemoteEvent
+local spawnRemote: RemoteEvent
 local gui: ScreenGui
 local scales: { UIScale } = {}
 
@@ -342,7 +344,10 @@ local function buildBottom()
 	end
 	button.Activated:Connect(function()
 		local truck = Trucks.List[index]
-		if not Trucks.owns(player, truck.Id) and not (truck.Currency == "Robux" and truck.ProductId == 0) then
+		if Trucks.owns(player, truck.Id) then
+			spawnRemote:FireServer(truck.Id)
+			GarageController.close()
+		elseif not (truck.Currency == "Robux" and truck.ProductId == 0) then
 			buyRemote:FireServer(truck.Id)
 		end
 	end)
@@ -493,7 +498,7 @@ function GarageController.refresh()
 
 	local white = Color3.new(1, 1, 1)
 	if Trucks.owns(player, truck.Id) then
-		setBuy(Text.Owned, nil, "", Style.Grey, false)
+		setBuy(Text.Spawn, nil, "", Style.Green, false)
 	elseif truck.Currency == "Robux" then
 		if truck.ProductId == 0 then
 			setBuy(Text.ComingSoon, nil, "", Style.Grey, false)
@@ -598,6 +603,7 @@ end
 
 function GarageController.init()
 	buyRemote = Remotes.getEvent("BuyTruck")
+	spawnRemote = Remotes.getEvent("SpawnTruck")
 	buildGui()
 end
 

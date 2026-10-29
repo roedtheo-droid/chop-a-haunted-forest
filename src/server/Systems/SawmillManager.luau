@@ -105,6 +105,11 @@ local function build(center: Vector3, index: number): BasePart
 	return dropPad
 end
 
+-- Every DROP LOGS pad (TruckManager sells a truck's bed when it drives onto one).
+function SawmillManager.getPads(): { BasePart }
+	return pads
+end
+
 function SawmillManager.init()
 	for index, zone in Config.Zones do
 		table.insert(pads, build(zone.Sawmill, index))

@@ -1334,6 +1334,39 @@ local Config = {
 			NeedEmbers = "You need %s more Embers.",
 			NotOnPad = "Stand on the Garage pad to buy trucks.",
 			NotOnSale = "The %s isn't for sale yet.",
+			Spawn = "SPAWN",
+		},
+	},
+
+	-- Driving the trucks you own (see Server/Build/TruckRig and Server/Systems/TruckManager).
+	-- Speed (studs per second) and Carry (logs) are each truck's own, in Trucks above.
+	Truck = {
+		-- Where trucks park when you press SPAWN: studs to the side of the Garage's driveway
+		-- (one spot per player; the first free one is used), and how far out from the doors.
+		SpawnSides = { 14, -14, 24, -24 },
+		SpawnOut = 12,
+		OwnerOnlyLoading = true, -- false: teammates can load your bed too (you get paid for it)
+		LoadDistance = 10, -- how close to the back of the bed you must be to see "Load logs"
+		SellMargin = 4, -- the truck's middle may be this far outside a DROP LOGS pad and still sell
+		SellCooldown = 1, -- seconds between two sells of the same truck
+		-- How it drives. The wheels are real: motors turn them, and the front ones steer.
+		WheelFriction = 1.4,
+		MotorTorque = 60000, -- how hard the wheels push (and brake)
+		SteerAngle = 32, -- degrees the front wheels turn at full lock
+		SteerSpeed = 3, -- how fast the wheels turn to that angle (radians per second)
+		LogSize = 1.3, -- the logs piled in the bed (they show how full it is)
+		Text = {
+			DriveAction = "Drive",
+			TruckName = "%s's %s", -- the owner's name and the truck's name, on the Drive prompt
+			LoadAction = "Load logs",
+			BedCount = "%d / %d logs",
+			Spawned = "Your %s is parked by the Garage. Hop in!",
+			NotYourTruck = "This is %s's truck. Only they can drive it.",
+			NotYourBed = "This is %s's truck. Only they can load it.",
+			NothingToLoad = "You have no logs to load.",
+			BedFull = "The truck is full! Drive it to a sawmill's DROP LOGS pad.",
+			Loaded = "Loaded %d log(s). The truck has %d / %d.",
+			Sold = "Sold %d log(s) from your truck for %s coins!",
 		},
 	},
 

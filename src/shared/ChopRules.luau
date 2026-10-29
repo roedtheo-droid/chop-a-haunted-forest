@@ -1,13 +1,13 @@
 --!strict
 -- Swing rules that the server and the client both need, kept in ONE place so they agree.
--- The server uses them to decide if a swing counts and where the cut goes
--- (see Server/Systems/TreeManager and Server/Build/Blocky). The client uses the same rules
+-- The server uses them to decide if a swing counts and which blocks a hit knocks out
+-- (see Server/Systems/TreeManager and Server/Build/Carve). The client uses the same rules
 -- to show your hit right away, in the right spot, without waiting for the server
 -- (see Client/Controllers/ChopController).
 --
 -- You aim at a tree, and the client sends the point on the trunk where your crosshair hit it.
 -- The server never just believes that point: it checks it's really on that trunk and close to
--- your head, and keeps the cut between a lowest and highest height (Config.Cut).
+-- your head. The point only decides where the trunk gets carved, never the damage.
 
 local Config = require(script.Parent.Config)
 
@@ -61,47 +61,99 @@ function ChopRules.pointInReach(headPosition: Vector3, point: Vector3, toolId: s
 	return (headPosition - point).Magnitude <= tool.Reach + Config.Cut.HeadReachExtra
 end
 
--- Which side of the trunk the cut is on, in the trunk's own space (like (0, 0, -1)).
--- After the first hit that's the side the cut already has (the "CutFace" attribute);
--- before it, the side of the trunk that `point` (where you aimed) is on.
-function ChopRules.cutFace(tree: Model, trunk: BasePart, point: Vector3): Vector3
-	local stored = tree:GetAttribute("CutFace")
-	if typeof(stored) == "Vector3" then
-		return stored
-	end
-	local direction = trunk.CFrame:PointToObjectSpace(point)
-	if math.abs(direction.X) > math.abs(direction.Z) then
-		return Vector3.new(math.sign(direction.X), 0, 0)
-	end
-	return Vector3.new(0, 0, if direction.Z >= 0 then 1 else -1)
+-- Which way the side of the trunk that `point` is on faces (out of the trunk, in the world).
+-- The chips and the glow of a hit come out of that side.
+function ChopRules.sideFacing(trunk: BasePart, point: Vector3): Vector3
+	local offset = trunk.CFrame:PointToObjectSpace(point)
+	local side = if math.abs(offset.X) > math.abs(offset.Z)
+		then Vector3.new(math.sign(offset.X), 0, 0)
+		else Vector3.new(0, 0, if offset.Z >= 0 then 1 else -1)
+	return trunk.CFrame:VectorToWorldSpace(side)
 end
 
--- How high the middle of the cut is, in studs above the bottom of the trunk.
--- After the first hit it's where the cut already is (the "CutHeight" attribute); before it,
--- where you aimed, kept between Config.Cut.MinHeight and MaxHeight, and low enough that the
--- biggest cut still fits inside the trunk.
-function ChopRules.cutHeight(tree: Model, trunk: BasePart, point: Vector3): number
-	local stored = tree:GetAttribute("CutHeight")
-	if typeof(stored) == "number" then
-		return stored
-	end
+---------------------------------------------------------------------------
+-- Carving: where you hit a trunk, it turns into small blocks, and every hit knocks out the
+-- blocks closest to where you aimed (see Server/Build/Carve). The client uses the same rules
+-- to knock your blocks out the moment your swing lands.
+---------------------------------------------------------------------------
+
+-- How a trunk is split into blocks: Across blocks each way, in layers of about the same height.
+export type Grid = {
+	Across: number,
+	Size: number, -- a block's width and depth
+	Layers: number,
+	LayerHeight: number,
+}
+
+function ChopRules.grid(trunk: BasePart): Grid
+	local across = Config.Cut.Across
+	local size = trunk.Size.X / across
+	local layers = math.max(math.round(trunk.Size.Y / size), 1)
+	return { Across = across, Size = size, Layers = layers, LayerHeight = trunk.Size.Y / layers }
+end
+
+-- Each block has a number (its "key") made from its layer (0 at the bottom) and its column
+-- (0 to Across - 1 each way). Blocks are named "Block<key>".
+function ChopRules.blockKey(grid: Grid, layer: number, x: number, z: number): number
+	return (layer * grid.Across + x) * grid.Across + z
+end
+
+function ChopRules.blockFromKey(grid: Grid, key: number): (number, number, number)
+	local z = key % grid.Across
+	local rest = (key - z) // grid.Across
+	local x = rest % grid.Across
+	return (rest - x) // grid.Across, x, z
+end
+
+-- Where a block's middle is, in the trunk's own space.
+function ChopRules.blockOffset(trunk: BasePart, grid: Grid, layer: number, x: number, z: number): Vector3
+	local size = trunk.Size
+	return Vector3.new(
+		-size.X / 2 + grid.Size * (x + 0.5),
+		-size.Y / 2 + grid.LayerHeight * (layer + 0.5),
+		-size.Z / 2 + grid.Size * (z + 0.5)
+	)
+end
+
+-- The layer a point on the trunk is in.
+function ChopRules.layerAt(trunk: BasePart, grid: Grid, point: Vector3): number
+	local height = trunk.CFrame:PointToObjectSpace(point).Y + trunk.Size.Y / 2
+	return math.clamp(math.floor(height / grid.LayerHeight), 0, grid.Layers - 1)
+end
+
+-- How much damage a tool does for a player with this many Chop Damage upgrade levels.
+-- (The server works this out itself; the client only uses it to guess how many blocks go.)
+function ChopRules.damage(toolId: string, chopDamageLevel: number): number
+	return Config.Tools[toolId].Damage * (1 + chopDamageLevel * Config.Upgrades.ChopDamage.PerLevel)
+end
+
+-- How many blocks a hit knocks out. A tree loses Config.Cut.BlocksPerTree blocks on its way
+-- from full HP to 0, so bigger tools knock out more per hit.
+function ChopRules.blocksPerHit(damage: number, maxHp: number): number
 	local cfg = Config.Cut
-	local height = trunk.Size.Y
-	local aimed = trunk.CFrame:PointToObjectSpace(point).Y + height / 2
-	local halfOpening = trunk.Size.X * cfg.OpeningMax / 2 + 0.2
-	local lowest = math.max(cfg.MinHeight, halfOpening)
-	local highest = math.min(cfg.MaxHeight, height * cfg.MaxHeightShare, height - halfOpening)
-	return math.clamp(aimed, lowest, math.max(highest, lowest))
+	return math.clamp(math.round(cfg.BlocksPerTree * damage / math.max(maxHp, 1)), 1, cfg.MaxBlocksPerHit)
 end
 
--- The trunk's space turned so that -Z points out of the cut side, with Y up.
-function ChopRules.cutSpace(trunk: BasePart, face: Vector3): CFrame
-	return trunk.CFrame * CFrame.lookAt(Vector3.zero, face)
-end
-
--- Where the cut opens on the bark, facing out of the trunk.
-function ChopRules.cutOpening(trunk: BasePart, face: Vector3, height: number): CFrame
-	return ChopRules.cutSpace(trunk, face) * CFrame.new(0, height - trunk.Size.Y / 2, -trunk.Size.X / 2)
+-- The `count` blocks closest to `point` (where you aimed), so the same spot gets a wider and
+-- deeper dent with every hit. `blocks` are the blocks still there. Returns their keys.
+function ChopRules.pickBlocks(blocks: { { Key: number, Position: Vector3 } }, point: Vector3, count: number): { number }
+	local sorted = table.clone(blocks)
+	local distance: { [number]: number } = {}
+	for _, block in sorted do
+		distance[block.Key] = (block.Position - point).Magnitude
+	end
+	table.sort(sorted, function(a, b)
+		local da, db = distance[a.Key], distance[b.Key]
+		if math.abs(da - db) > 1e-4 then
+			return da < db
+		end
+		return a.Key < b.Key -- the same choice on every computer
+	end)
+	local keys = {}
+	for index = 1, math.min(count, #sorted) do
+		table.insert(keys, sorted[index].Key)
+	end
+	return keys
 end
 
 return table.freeze(ChopRules)

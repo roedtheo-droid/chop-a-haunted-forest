@@ -2,7 +2,7 @@
 -- One manager for EVERY tree (no scripts inside trees).
 -- The client only says "I swung at tree X, and hit its trunk at this point". This module checks
 -- that the swing is allowed (real tree, the point is on its trunk and within reach, not too fast)
--- and then decides the damage. The point only decides where the cut goes, never the damage.
+-- and then decides the damage. The point only decides where the trunk gets carved, never the damage.
 -- Mimics are trees too: hitting a sleeping one wakes it (MimicManager), and an awake
 -- one can still be chopped down.
 -- The Torch doesn't chop: it burns a sleeping mimic safely and does nothing to anything
@@ -32,6 +32,7 @@ local ToolManager = require(script.Parent.ToolManager)
 local UpgradeManager = require(script.Parent.UpgradeManager)
 local ZoneManager = require(script.Parent.ZoneManager)
 local Blocky = require(script.Parent.Parent.Build.Blocky)
+local Carve = require(script.Parent.Parent.Build.Carve)
 
 local CHAR_COLOR = Color3.fromRGB(30, 25, 22) -- a burned mimic turns this colour
 local CRUMBLE_TIME = 0.8 -- seconds a burned mimic takes to fade away
@@ -74,16 +75,6 @@ local function getHead(player: Player): BasePart?
 	return if head and head:IsA("BasePart") then head else nil
 end
 
--- Visible damage: a cut where the player aimed, wider and deeper as HP goes down
--- (see Blocky.cut). It never gets smaller, even when a waking mimic's HP goes up.
--- Returns where the cut opens on the bark, facing out.
-local function cutTree(tree: Model, trunk: BasePart, point: Vector3): CFrame
-	local hpFraction = getNumberAttribute(tree, "HP") / math.max(getNumberAttribute(tree, "MaxHP"), 1)
-	local amount = math.max(1 - hpFraction, getNumberAttribute(tree, "CutAmount"))
-	tree:SetAttribute("CutAmount", amount)
-	return Blocky.cut(tree, trunk, point, amount)
-end
-
 -- The way a tree falls: away from the player who felled it, flat on the ground.
 local function fallDirection(tree: Model, fromPosition: Vector3): Vector3
 	local base = tree:GetPivot().Position
@@ -94,12 +85,23 @@ local function fallDirection(tree: Model, fromPosition: Vector3): Vector3
 	return away.Unit
 end
 
--- A square stump with a light, ringed top stays where the tree stood, so cleared areas are
--- easy to spot. It's as tall as where the tree broke (`height`), or a short one.
--- The tree's roots stay with it. A burned mimic leaves a charred black stump.
-local function leaveStump(tree: Model, trunk: BasePart, charred: boolean, height: number?)
+-- The tree's roots stay behind where it stood (a burned mimic's turn black).
+local function leaveRoots(tree: Model, charred: boolean)
+	for _, part in tree:GetChildren() do
+		if part.Name == "Root" and part:IsA("BasePart") then
+			part.Parent = stumpsFolder
+			if charred then
+				part.Color = CHAR_COLOR
+			end
+		end
+	end
+end
+
+-- A short square stump with a light, ringed top, for a tree that was never carved (or a
+-- charred black one for a burned mimic). A carved tree leaves its real bottom instead (Carve.split).
+local function leaveStump(tree: Model, trunk: BasePart, charred: boolean)
 	local width = getNumberAttribute(tree, "TrunkWidth")
-	local height = height or Config.Tree.StumpHeight
+	local height = Config.Tree.StumpHeight
 	-- Normal stumps are a bit darker than the bark.
 	local color = if charred then CHAR_COLOR else trunk.Color:Lerp(Color3.new(0, 0, 0), 0.25)
 	-- The Stump model from Blender when that's imported (the same size), or a plain block.
@@ -116,14 +118,6 @@ local function leaveStump(tree: Model, trunk: BasePart, charred: boolean, height
 	if not charred then
 		Blocky.rings(stump, Enum.NormalId.Top)
 	end
-	for _, part in tree:GetChildren() do
-		if part.Name == "Root" and part:IsA("BasePart") then
-			part.Parent = stumpsFolder
-			if charred then
-				part.Color = CHAR_COLOR
-			end
-		end
-	end
 end
 
 -- The tree falls over (`away` is the way it falls), then the logs pop out and it's removed.
@@ -131,18 +125,23 @@ end
 -- The server doesn't move the tree: every player's computer animates the crack, fall and
 -- bounce itself (Client/Controllers/ChopEffectsController), so it's smooth on every screen.
 -- The server only waits for it to land, then drops the logs and removes the tree.
-local function fellTree(tree: Model, trunk: BasePart, away: Vector3, withStump: boolean)
+-- Returns the blocks that popped out where it broke (for the chop effects).
+local function fellTree(tree: Model, trunk: BasePart, away: Vector3, withStump: boolean): { Carve.Chunk }
 	-- Remove the tag first, so nobody can hit it while it falls.
 	CollectionService:RemoveTag(tree, Tags.Tree)
 	tree:SetAttribute("Felled", true)
+	local popped: { Carve.Chunk } = {}
 	if withStump then
-		-- It breaks at the cut: the bottom stays as the stump, and every player's computer
-		-- tips the top over from there (the "SplitHeight" attribute).
-		local splitHeight = Blocky.split(tree, trunk)
+		-- It breaks at its deepest dent: the bottom stays as the stump, and every player's
+		-- computer tips the top over from there (the "SplitHeight" attribute).
+		local splitHeight, chunks = Carve.split(tree, stumpsFolder)
+		popped = chunks
 		if splitHeight then
 			tree:SetAttribute("SplitHeight", splitHeight)
+		else
+			leaveStump(tree, trunk, false)
 		end
-		leaveStump(tree, trunk, false, splitHeight)
+		leaveRoots(tree, false)
 	end
 	ZoneManager.treeCleared(getNumberAttribute(tree, "ZoneId"))
 
@@ -168,6 +167,7 @@ local function fellTree(tree: Model, trunk: BasePart, away: Vector3, withStump: 
 			tree:Destroy()
 		end)
 	end)
+	return popped
 end
 
 -- A sleeping mimic was hit with the Torch: it catches fire, chars black and crumbles away.
@@ -178,6 +178,7 @@ local function burnMimic(player: Player, tree: Model, trunk: BasePart)
 	tree:SetAttribute("Felled", true)
 	MimicManager.forget(tree)
 	leaveStump(tree, trunk, true)
+	leaveRoots(tree, true)
 	ZoneManager.treeCleared(getNumberAttribute(tree, "ZoneId"))
 
 	local embers = Config.Embers.PerMimic
@@ -317,15 +318,19 @@ local function onSwing(player: Player, target: unknown, aimed: unknown)
 	end
 
 	-- 6. All good: chop it.
+	-- Visible damage: blocks knocked out of the trunk where the player aimed (see Build/Carve).
+	-- Bigger hits knock out more; it only looks like damage, the HP above is what counts.
+	local maxHp = math.max(getNumberAttribute(tree, "MaxHP"), 1)
 	local hp = math.max(getNumberAttribute(tree, "HP") - damage, 0)
 	tree:SetAttribute("HP", hp)
-	local cut = cutTree(tree, trunk, point)
+	local chunks = Carve.hit(tree, trunk, point, ChopRules.blocksPerHit(damage, maxHp))
 	local falling = if hp <= 0 then fallDirection(tree, root.Position) else nil
 
 	if falling then
 		local wasMimic = MimicManager.isMimic(tree)
 		MimicManager.forget(tree)
-		fellTree(tree, trunk, falling, not wasMimic)
+		local popped = fellTree(tree, trunk, falling, not wasMimic)
+		table.move(popped, 1, #popped, #chunks + 1, chunks)
 		QuestManager.report(player, "FellTree")
 		RunManager.record(player, "TreesFelled", 1) -- counts for whoever landed the last hit
 		if wasMimic then
@@ -337,7 +342,7 @@ local function onSwing(player: Player, target: unknown, aimed: unknown)
 	-- Every player draws the hit (and the fall) themselves: Client/Controllers/ChopEffectsController.
 	-- Sent after fellTree, so every player already has the stump, the "Felled" mark and the
 	-- "SplitHeight" when the tree starts to fall on their screen.
-	treeHitRemote:FireAllClients(tree, cut.Position, cut.LookVector, toolId, player, falling)
+	treeHitRemote:FireAllClients(tree, point, ChopRules.sideFacing(trunk, point), toolId, player, falling, chunks)
 
 	if not falling and MimicManager.isMimic(tree) then
 		MimicManager.wake(tree, player) -- does nothing if it's already awake

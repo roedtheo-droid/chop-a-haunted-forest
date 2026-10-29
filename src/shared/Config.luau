@@ -421,7 +421,7 @@ local Config = {
 	-- Anything that isn't imported yet is built from plain parts, so the game always works.
 	Models = {
 		Folder = "MapAssets", -- the folder in ServerStorage
-		BarkBlock = "BarkBlock", -- stretched copies of it make up a chopped trunk (see Blocky.cut)
+		BarkBlock = "BarkBlock", -- stretched copies of it make up a chopped trunk (see Build/Carve)
 		Rocks = { "Rock1", "Rock2" }, -- each rock picks one of these at random
 		Trees = treeShapes, -- which tree types use them: Shapes in TreeTypes above
 		Patches = { "Patch1", "Patch2", "Patch3" }, -- flat blobs on the ground (see Ground below)
@@ -840,8 +840,6 @@ local Config = {
 		LeafFallSpeed = 2.2, -- studs per second they sink
 		LeafFlutter = 1.2, -- studs they sway from side to side while they fall
 		LeafFallTime = 2.5, -- seconds before a falling leaf is gone
-		-- The cut grows smoothly on your screen instead of jumping to its new size.
-		CutGrowTime = 0.1, -- seconds
 		KickTime = 0.12, -- seconds your camera jolts on your own hits
 		KickPush = 0.12, -- studs your camera is pushed towards the tree on your own hits
 		KickTilt = 0.8, -- degrees it nods down with it
@@ -1060,28 +1058,24 @@ local Config = {
 		StumpHeight = 1.2, -- the stump a felled tree leaves behind
 	},
 
-	-- The cut a tree gets where you hit it (see Server/Build/Blocky and Shared/ChopRules).
-	-- The first hit picks where it goes: the side and the height your crosshair touched. Every
-	-- hit makes it wider and deeper: a pocket of pale inner wood with a dark bark edge, with
-	-- rings once half the HP is gone, almost all the way through at 0 HP. The tree breaks there:
-	-- the bottom stays as the stump and the top falls.
-	-- Sizes are a share of the trunk's width: "First" right after the first hit, "Max" at 0 HP.
+	-- Carving (see Server/Build/Carve and Shared/ChopRules), like in Chop a Forest: wherever
+	-- you hit a trunk, that part of it turns into small blocks, and every hit knocks out the
+	-- blocks closest to where you aimed. Hit the same spot and the dent gets wider and deeper;
+	-- hit somewhere else and a new dent starts there. Blocks on the outside are bark, the ones
+	-- inside are pale wood in rings. At 0 HP the tree breaks at its deepest dent.
 	Cut = {
-		MinHeight = 1.2, -- studs from the ground to the middle of the cut, at least...
-		MaxHeight = 6, -- ...and at most
-		MaxHeightShare = 0.6, -- and never higher than this share of the trunk's height
+		Across = 6, -- blocks across the trunk, each way
+		BandLayers = 3, -- layers of blocks above and below the one you hit
+		BlocksPerTree = 90, -- blocks a tree loses from full HP to 0 (bigger tools knock out more per hit)
+		MaxBlocksPerHit = 40,
+		BarkShade = 0.05, -- bark blocks are up to this much lighter or darker, so the bark looks rough
+		InnerColors = { -- the inside, from the bark inwards (the rings repeat if there are more blocks)
+			Color3.fromRGB(235, 200, 150),
+			Color3.fromRGB(212, 168, 114),
+		},
+		ChunkScale = 0.8, -- the blocks that fly off are this size compared to the ones in the trunk
 		PointMargin = 1, -- studs the aimed point may be outside the trunk (lag, moving mimics)
 		HeadReachExtra = 2, -- studs added to the tool's Reach, measured from your head to the point you hit
-		DepthFirst = 0.15,
-		DepthMax = 0.92,
-		WidthFirst = 0.45,
-		WidthMax = 0.9,
-		OpeningFirst = 0.3, -- how tall the cut is at the bark
-		OpeningMax = 0.6,
-		RingsFrom = 0.5, -- rings show at the back of the pocket once half the HP is gone
-		RimWidth = 0.05, -- the dark bark edge around the cut
-		RimShade = -0.25, -- how much darker than the bark the edge is (-1 = black)
-		Chunks = 0.35, -- splinters in the corners of the cut that make its edge ragged, compared to its height
 	},
 
 	Tools = tools,

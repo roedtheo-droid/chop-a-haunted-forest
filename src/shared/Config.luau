@@ -29,7 +29,7 @@ local TOOL_GOLD = Color3.fromRGB(215, 170, 70)
 local toolModels: { [string]: Types.ToolModelConfig } = {
 	Axe = {
 		Forward = Vector3.yAxis, -- the head is at the top
-		Up = -Vector3.xAxis, -- the blade sticks out to -X
+		Up = Vector3.xAxis, -- the blade sticks out to -X, so +X up turns its edge down, to the tree
 		Size = 3.6,
 		Grip = "Grip",
 		GripAt = Vector3.new(0, 0, 1),
@@ -46,7 +46,7 @@ local toolModels: { [string]: Types.ToolModelConfig } = {
 	},
 	SteelAxe = {
 		Forward = Vector3.yAxis,
-		Up = -Vector3.xAxis,
+		Up = Vector3.xAxis,
 		Size = 4.2,
 		Grip = "Grip",
 		GripAt = Vector3.new(0, 0, 1.3),

@@ -76,6 +76,12 @@ When the models change (a new step adds some), delete the old `AllModels` in `Ma
 - the Tool Shed: `ToolShedShell`, `Barrel`, `Crate`, `HangingLamp` (the `Stove`, `Armchair` and `UpgradeBench` models aren't used since the shop got its wall boards)
 - the sawmills: `SawmillShed`, `SawTable`, `SawBlade`, `WaterWheel`, `Workshop`, `LogPile`
 
+**Tool models.** The tools you hold (and the ones on the Tool Shed's walls) can use your own
+models too. Put a model called `AllTools` in `ServerStorage > MapAssets`, with one model inside
+for each tool, named after it: `Axe`, `SteelAxe`, `Chainsaw`, `Lantern`, `Torch`, `GhostVacuum`,
+`LogVacuum`. Name each part `<Tool>_<Part>` (like `Axe_Head`). The game colours, sizes and
+turns them itself (see `ToolModels` in `Config.luau`); a tool without a model stays blocky.
+
 When you press Play, the Output window says which models the game found
 (`[Assets] Using the Blender model "Oak"`) and which ones are missing.
 

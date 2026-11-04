@@ -10,7 +10,7 @@
 --
 -- Used by Blocky (trees, the chop cut, and Blocky.block for logs, stumps and the boss),
 -- Props, Details, Landmarks, CampProps, Ground, CampManager, Edges, SceneryManager, ToolShed
--- and SawmillBuilding.
+-- and SawmillBuilding. Systems/ToolManager uses Assets.tool for the tools you hold.
 -- It's not a system, so it has no init()/start().
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -323,6 +323,53 @@ function Assets.placed(parent: Instance, name: string, frame: CFrame, scale: num
 	local model = Assets.prop(parent, { Model = name, Part = "Pivot", Width = PIVOT_SIZE }, scale or 1, frame)
 	if model then
 		Assets.remove(model, "Pivot")
+	end
+	return model
+end
+
+-- A copy of one of Theo's imported tool models (a model called Config.ToolModels.Folder in
+-- MapAssets, holding one model per tool, named after it: "Axe", "Chainsaw"). It's a Model
+-- holding the parts directly, with their imported names ("Axe_Head"), sizes and places, not
+-- anchored and not parented. ToolManager colours, sizes and turns it. nil if not imported.
+function Assets.tool(name: string): Model?
+	local folder = ServerStorage:FindFirstChild(Config.Models.Folder)
+	local tools = if folder then folder:FindFirstChild(Config.ToolModels.Folder) else nil
+	local source = if tools then tools:FindFirstChild(name) else nil
+	local key = `{Config.ToolModels.Folder}.{name}`
+	if not reported[key] and Config.DebugPrints then
+		reported[key] = true
+		if source then
+			print(`[Assets] Using the tool model "{name}"`)
+		else
+			print(`[Assets] No "{name}" in ServerStorage.{Config.Models.Folder}.{Config.ToolModels.Folder} yet: using the blocky tool`)
+		end
+	end
+	if not source then
+		return nil
+	end
+	local model = Instance.new("Model")
+	model.Name = name
+	for _, descendant in source:GetDescendants() do
+		if not descendant:IsA("BasePart") then
+			continue
+		end
+		local part = descendant:Clone()
+		for _, child in part:GetChildren() do
+			if
+				child:IsA("SurfaceAppearance")
+				or child:IsA("Decal")
+				or child:IsA("JointInstance")
+				or child:IsA("WeldConstraint")
+				or child:IsA("BasePart")
+			then
+				child:Destroy()
+			end
+		end
+		if part:IsA("MeshPart") then
+			part.TextureID = "" -- so the part's Color shows
+		end
+		part.Anchored = false
+		part.Parent = model
 	end
 	return model
 end

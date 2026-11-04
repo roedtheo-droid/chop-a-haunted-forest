@@ -463,22 +463,22 @@ local zones: { Types.ZoneConfig } = {
 		Sawmill = Vector3.new(50, 0, 410), -- in the camp, by the river
 		ClearRadius = 30, -- no trees this close to the sawmill
 		MimicPercent = 5, -- this % of the zone's trees are secretly mimics
-		-- A sunny, cartoony midday: bright colours, soft shadows, almost no fog.
+		-- A sunny, cartoony midday: clear colours, soft shadows, almost no fog.
 		Look = {
 			ClockTime = 13,
-			Brightness = 3,
-			Ambient = Color3.fromRGB(110, 110, 115),
-			FogDensity = 0.25,
+			Brightness = 2.3,
+			Ambient = Color3.fromRGB(95, 95, 100),
+			FogDensity = 0.28,
 			FogOffset = 0.3,
 			FogColor = Color3.fromRGB(200, 225, 240),
 			FogDecay = Color3.fromRGB(150, 180, 210),
 			Haze = 0,
-			Saturation = 0.2,
+			Saturation = 0.05,
 			Tint = Color3.fromRGB(255, 250, 240),
 			CloudCover = 0.55, -- fluffy white clouds and a little sunshine through the trees
 			CloudDensity = 0.3,
 			CloudColor = Color3.fromRGB(255, 255, 255),
-			SunRays = 0.1,
+			SunRays = 0.06,
 			Ambience = { Id = "rbxassetid://9112832288", Volume = 0.25 }, -- light birds, mountain air
 		},
 	},
@@ -495,12 +495,12 @@ local zones: { Types.ZoneConfig } = {
 		-- Thick grey fog: you can only see a short way ahead.
 		Look = {
 			ClockTime = 14.5,
-			Brightness = 2,
-			Ambient = Color3.fromRGB(80, 85, 85),
+			Brightness = 1.6,
+			Ambient = Color3.fromRGB(68, 72, 72),
 			FogDensity = 0.7,
 			FogOffset = 0,
-			FogColor = Color3.fromRGB(170, 178, 175),
-			FogDecay = Color3.fromRGB(140, 145, 145),
+			FogColor = Color3.fromRGB(150, 158, 155),
+			FogDecay = Color3.fromRGB(120, 125, 125),
 			Haze = 3,
 			Saturation = -0.1,
 			Tint = Color3.fromRGB(235, 242, 242),
@@ -524,8 +524,8 @@ local zones: { Types.ZoneConfig } = {
 		-- Dusk: dark and gloomy, with a purple haze. The Lantern's glow really helps here.
 		Look = {
 			ClockTime = 17.7,
-			Brightness = 1.5,
-			Ambient = Color3.fromRGB(75, 62, 88),
+			Brightness = 1.2,
+			Ambient = Color3.fromRGB(64, 52, 76),
 			FogDensity = 0.45,
 			FogOffset = 0.1,
 			FogColor = Color3.fromRGB(70, 60, 85),
@@ -677,6 +677,8 @@ local Config = {
 	-- When true, Studio playtests show test shortcuts like the "Skip to boss" button.
 	-- They never work in the real game (see Server/Systems/DebugManager).
 	StudioShortcuts = true,
+	-- How many Coins one click on the Studio-only "+ Coins" button gives you.
+	DebugCoins = 1000,
 
 	-- Extra chop text, like in Chop a Forest. Both are off by default to keep the effects clean.
 	ShowTreeHpBar = false, -- true: the tree's name and HP show under the crosshair (see TreeHpBar)
@@ -962,6 +964,10 @@ local Config = {
 		FadeTime = 3, -- seconds the change takes
 		Refresh = 0.5, -- seconds between checks of which zone you're in
 		ShadowSoftness = 0.3, -- 0 = sharp shadows, 1 = very soft
+		-- The master darkness knob: it darkens (below 0) or brightens (above 0) EVERY zone at once,
+		-- like a camera's exposure. -0.25 = a little darker. Try -0.5 for gloomier, 0 for the old look.
+		Exposure = -0.25,
+		Contrast = 0.05, -- a touch more contrast so trees stand out in the darker light (0 = none)
 		BloomIntensity = 0.4, -- a soft glow around bright things
 		BloomSize = 24,
 		BloomThreshold = 0.95,

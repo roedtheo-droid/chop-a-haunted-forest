@@ -24,14 +24,91 @@ export type ToolConfig = {
 -- Client/Controllers/ChopEffectsController). Only looks and sounds: its damage is in ToolConfig.
 export type ChopFeelConfig = {
 	Sound: string, -- a name in Config.Sounds
-	Swing: string, -- your character's swing animation ("rbxassetid://...")
-	SwingSpeed: number, -- 1 = the animation's normal speed, 2 = twice as fast
-	SwingSize: number, -- 1 = a full chop; smaller is a smaller, shakier movement (the Chainsaw)
+	-- Your character's swing: a Roblox animation ("rbxassetid://..."), played at SwingSpeed
+	-- (1 = its normal speed). Tools in Config.ChopAnims or Config.SawAnims have none: code moves
+	-- the arms instead (see Client/Controllers/ToolAnimController).
+	Swing: string?,
+	SwingSpeed: number?,
 	ChipsMin: number, -- wood chips that fly out of the cut on each hit: a random number from ChipsMin...
 	ChipsMax: number, -- ...to ChipsMax
 	ChipSize: number, -- how big each chip is, in studs
 	Wobble: number, -- degrees the crown sways when the tree is hit
 	CameraKick: number, -- studs your camera jolts on your own hits
+}
+
+-- Where your hands are in one moment of a tool animation (see Config.ChopAnims and SawAnims).
+-- First person (ViewmodelController): Move is studs from where your right fist rests
+-- (right, up, back), Turn is degrees (tip back, turn left, lean left) around your forearm.
+-- Third person (ToolAnimController): degrees added to each joint of your character.
+-- X lifts an arm forward (and leans the waist back), Y twists it, Z swings it sideways
+-- (for the left arm: in towards the middle).
+export type HandPose = {
+	Move: Vector3,
+	Turn: Vector3,
+}
+export type BodyPose = {
+	RightArm: Vector3,
+	LeftArm: Vector3,
+	Waist: Vector3,
+}
+
+-- How an axe swings (see Config.ChopAnims): lift it back, chop down faster and faster, stick
+-- in the bark for a split second (or swing on through the air on a miss), then come back.
+-- The times are seconds; a whole swing is sped up when the tool's cooldown is shorter.
+export type ChopAnimConfig = {
+	WindUpTime: number, -- lifting the axe back
+	StrikeTime: number, -- chopping down (the hit lands at WindUpTime + StrikeTime)
+	HitStop: number, -- stuck in the bark
+	HitShake: number, -- studs it shivers while stuck
+	FollowTime: number, -- on a miss: swinging on through the air
+	ReturnTime: number, -- back to rest
+	Bounce: number, -- how far it swings past rest on the way back (0 = none)
+	-- First person
+	ToolPitch: number, -- degrees the axe leans up from your fist
+	Pivot: number, -- studs behind your fist that your arm turns around (your elbow)
+	RightHand: Vector3, -- where your right fist holds the tool, from the middle of its handle
+	LeftHand: Vector3, -- ...and your left fist
+	LeftTurn: Vector3, -- degrees the left fist is turned from the right one
+	Rest: HandPose,
+	WindUp: HandPose,
+	Strike: HandPose,
+	Follow: HandPose,
+	-- Third person
+	BodyHold: BodyPose,
+	BodyWindUp: BodyPose,
+	BodyStrike: BodyPose,
+}
+
+-- How the Chainsaw moves (see Config.SawAnims): it buzzes in your hands while you hold it.
+-- Hold the mouse button and it pushes forward, saws back and forth, shakes harder, the chain
+-- runs and the engine revs.
+export type SawAnimConfig = {
+	RevHold: number, -- seconds after your last swing that it still counts as cutting
+	Blend: number, -- how fast it moves between holding and cutting (higher = faster)
+	StrokeSpeed: number, -- saw strokes per second while cutting
+	-- First person
+	ToolPitch: number,
+	Pivot: number,
+	RightHand: Vector3,
+	LeftHand: Vector3,
+	LeftTurn: Vector3,
+	Rest: HandPose,
+	Cut: HandPose,
+	Stroke: number, -- studs it moves forward and back with each stroke
+	IdleShake: number, -- studs it buzzes while you just hold it...
+	CutShake: number, -- ...and while you cut
+	ChainSpeed: number, -- studs per second the chain teeth run along the bar while you cut
+	-- Third person
+	BodyHold: BodyPose,
+	BodyCut: BodyPose,
+	BodyStroke: number, -- degrees the arms move with each stroke
+	BodyIdleShake: number, -- degrees the arms buzz while holding...
+	BodyCutShake: number, -- ...and while cutting
+	-- The engine: a looped sound in the saw, heard by everyone near you.
+	Engine: string, -- a name in Config.Sounds
+	IdleSpeed: number, -- the engine sound's speed while you just hold it...
+	CutSpeed: number, -- ...and while you cut (higher sounds like revving)
+	IdleVolume: number, -- share of the sound's Volume while you just hold it (1 while cutting)
 }
 
 -- Numbers for one upgrade (see Config.Upgrades).

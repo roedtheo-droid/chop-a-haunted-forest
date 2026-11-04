@@ -28,6 +28,15 @@ local list: { [string]: Types.RemoteKind } = {
 	-- the Player who swung, and the way it falls if this hit felled it (nil otherwise).
 	TreeHit = "Event",
 
+	-- Client -> server: "I swung my axe (or I'm sawing with my Chainsaw)", even at thin air.
+	-- No numbers: the server checks which tool you hold and how often you swing
+	-- (see Server/Systems/SwingRelayManager), then tells everyone else with ToolSwung.
+	SwingTool = "Event",
+
+	-- Server -> other clients: this Player swung this tool (an Id like "Axe"), so move their
+	-- arms (only for looks, see Client/Controllers/ToolAnimController).
+	ToolSwung = "Event",
+
 	-- Client -> server: "I want to buy this item" (an item Id from Shared/Shop).
 	-- The server checks the price, your coins and that you're at the Tool Shed.
 	BuyItem = "Event",

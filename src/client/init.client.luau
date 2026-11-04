@@ -26,6 +26,7 @@ local controllers: { Types.Module } = {
 	require(Controllers.BackpackController),
 	require(Controllers.CarveController), -- draws carved trunks; used by ChopEffectsController
 	require(Controllers.ChopEffectsController), -- before ChopController, which uses it
+	require(Controllers.ToolAnimController), -- everyone's arms swinging axes and sawing; used by the two below
 	require(Controllers.ViewmodelController), -- first-person arms; also used by ChopController
 	require(Controllers.MouseController), -- Left Alt frees the mouse; used by ChopController
 	require(Controllers.ChopController),

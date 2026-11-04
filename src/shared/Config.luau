@@ -203,7 +203,8 @@ local upgrades: { [string]: Types.UpgradeConfig } = {
 
 -- How each chopping tool FEELS (see Client/Controllers/ChopEffectsController): its sound, your
 -- swing, the chips and how hard things shake. Bigger tools hit harder and messier.
--- The swing is Roblox's own tool-slash animation, which every game is allowed to use.
+-- Fists swing with Roblox's own tool-slash animation, which every game is allowed to use.
+-- The axes and the Chainsaw have no Swing: they move with code instead (chopAnims and sawAnims below).
 local SWING = "rbxassetid://522635514"
 local chopFeel: { [string]: Types.ChopFeelConfig } = {
 	-- The Torch has no entry: it swings like Fists, but burning is its only effect.
@@ -211,7 +212,6 @@ local chopFeel: { [string]: Types.ChopFeelConfig } = {
 		Sound = "ChopFists",
 		Swing = SWING,
 		SwingSpeed = 1.6,
-		SwingSize = 1,
 		ChipsMin = 3, -- 3 to 6 little wood cubes per punch, like in Chop a Forest
 		ChipsMax = 6,
 		ChipSize = 0.35,
@@ -220,9 +220,6 @@ local chopFeel: { [string]: Types.ChopFeelConfig } = {
 	},
 	Axe = {
 		Sound = "ChopAxe",
-		Swing = SWING,
-		SwingSpeed = 1.6,
-		SwingSize = 1,
 		ChipsMin = 5,
 		ChipsMax = 8,
 		ChipSize = 0.45,
@@ -231,9 +228,6 @@ local chopFeel: { [string]: Types.ChopFeelConfig } = {
 	},
 	SteelAxe = {
 		Sound = "ChopSteelAxe",
-		Swing = SWING,
-		SwingSpeed = 1.8,
-		SwingSize = 1,
 		ChipsMin = 8,
 		ChipsMax = 12,
 		ChipSize = 0.55,
@@ -242,14 +236,83 @@ local chopFeel: { [string]: Types.ChopFeelConfig } = {
 	},
 	Chainsaw = {
 		Sound = "ChopChainsaw",
-		Swing = SWING,
-		SwingSpeed = 3,
-		SwingSize = 0.35, -- a small, fast sawing movement instead of big chops
 		ChipsMin = 2, -- fewer per hit, but it hits very often
 		ChipsMax = 4,
 		ChipSize = 0.3,
 		Wobble = 1,
 		CameraKick = 0.04,
+	},
+}
+
+-- How the axes swing and the Chainsaw saws. Made with code (Client/Controllers/ViewmodelController
+-- for your own first-person hands, ToolAnimController for what other players see), not with
+-- uploaded Roblox animations, so there's nothing to upload and every number is here to tweak.
+-- A hand pose: Move is studs from where your right fist rests (right, up, back) and Turn is
+-- degrees (tip back, turn left, lean left). A body pose is degrees added to each joint of your
+-- character: X lifts an arm forward (or leans the waist back), Z swings it sideways.
+local axeSwing: Types.ChopAnimConfig = {
+	WindUpTime = 0.13,
+	StrikeTime = 0.08,
+	HitStop = 0.05,
+	HitShake = 0.03,
+	FollowTime = 0.08,
+	ReturnTime = 0.16,
+	Bounce = 1.2,
+	ToolPitch = 30,
+	Pivot = 1,
+	RightHand = Vector3.new(0, 0, 0.1), -- up the handle...
+	LeftHand = Vector3.new(0, 0, 1.25), -- ...and the left fist down by its end
+	LeftTurn = Vector3.new(0, 20, 0),
+	Rest = { Move = Vector3.new(0.05, 0.25, 0), Turn = Vector3.new(0, 0, -10) },
+	WindUp = { Move = Vector3.new(0.45, 0.3, -0.1), Turn = Vector3.new(45, -10, -25) }, -- lifted back over your shoulder
+	Strike = { Move = Vector3.new(-0.35, 0.2, -0.55), Turn = Vector3.new(-8, 14, 8) }, -- the blade in the bark, at the crosshair
+	Follow = { Move = Vector3.new(-0.45, -0.3, -0.45), Turn = Vector3.new(-40, 18, 12) }, -- a miss swings on down
+	BodyHold = { RightArm = Vector3.new(10, 0, 0), LeftArm = Vector3.new(95, 0, 30), Waist = Vector3.zero },
+	BodyWindUp = { RightArm = Vector3.new(70, 0, 0), LeftArm = Vector3.new(155, 0, 20), Waist = Vector3.new(8, 0, 0) },
+	BodyStrike = { RightArm = Vector3.new(-20, 0, 0), LeftArm = Vector3.new(70, 0, 25), Waist = Vector3.new(-15, 0, 0) },
+}
+-- The Steel Axe is bigger and heavier: a bigger lift and a harder stop.
+local steelAxeSwing = table.clone(axeSwing)
+steelAxeSwing.WindUpTime = 0.14
+steelAxeSwing.StrikeTime = 0.07
+steelAxeSwing.HitStop = 0.06
+steelAxeSwing.HitShake = 0.04
+steelAxeSwing.FollowTime = 0.07
+steelAxeSwing.ReturnTime = 0.14
+steelAxeSwing.RightHand = Vector3.new(0, 0, 0.4)
+steelAxeSwing.LeftHand = Vector3.new(0, 0, 1.55)
+steelAxeSwing.WindUp = { Move = Vector3.new(0.5, 0.35, -0.1), Turn = Vector3.new(50, -10, -28) }
+
+local chopAnims: { [string]: Types.ChopAnimConfig } = {
+	Axe = axeSwing,
+	SteelAxe = steelAxeSwing,
+}
+
+local sawAnims: { [string]: Types.SawAnimConfig } = {
+	Chainsaw = {
+		RevHold = 0.25,
+		Blend = 10,
+		StrokeSpeed = 3,
+		ToolPitch = 8,
+		Pivot = 2,
+		RightHand = Vector3.new(0, 0.29, 1.06), -- on the rear grip...
+		LeftHand = Vector3.new(-0.55, 0.3, -0.1), -- ...and the left fist on the side of the top handle
+		LeftTurn = Vector3.new(0, -30, 0),
+		Rest = { Move = Vector3.new(0.45, -0.55, 0.1), Turn = Vector3.new(0, 14, 0) },
+		Cut = { Move = Vector3.new(0.45, -0.45, -0.45), Turn = Vector3.new(-3, 18, 0) }, -- pushed into the tree
+		Stroke = 0.15,
+		IdleShake = 0.012,
+		CutShake = 0.035,
+		ChainSpeed = 6,
+		BodyHold = { RightArm = Vector3.new(-10, 0, 0), LeftArm = Vector3.new(80, 0, 35), Waist = Vector3.zero },
+		BodyCut = { RightArm = Vector3.new(-5, 0, 0), LeftArm = Vector3.new(85, 0, 35), Waist = Vector3.new(-12, 0, 0) },
+		BodyStroke = 5,
+		BodyIdleShake = 0.8,
+		BodyCutShake = 2.5,
+		Engine = "ChainsawEngine",
+		IdleSpeed = 1,
+		CutSpeed = 1.35,
+		IdleVolume = 0.5,
 	},
 }
 
@@ -263,6 +326,7 @@ local sounds: { [string]: Types.SoundConfig } = {
 	ChopAxe = { Id = "rbxassetid://9113974103", Volume = 0.6 }, -- slam into a wooden box
 	ChopSteelAxe = { Id = "rbxassetid://9120965080", Volume = 0.6 }, -- wood splintering
 	ChopChainsaw = { Id = "rbxassetid://133850299035625", Volume = 0.45, MinGap = 0.3 }, -- chainsaw bite
+	ChainsawEngine = { Id = "rbxassetid://129562586053031", Volume = 0.35, Range = 70 }, -- looped while you hold the Chainsaw (see sawAnims)
 	TreeCrack = { Id = "rbxassetid://9120801590", Volume = 0.5, Range = 100 }, -- wood breaking, as a felled tree starts to tip
 	TreeFall = { Id = "rbxassetid://9120957463", Volume = 0.7, Range = 120 }, -- heavy wooden crash when it lands
 
@@ -1037,7 +1101,7 @@ local Config = {
 	-- How many chips, how big, how hard the crown sways and your camera jolts is set per
 	-- tool in chopFeel at the top of this file.
 	ChopEffects = {
-		ImpactDelay = 0.12, -- seconds from your click to the moment your swing hits the tree (in first person: when the fist lands, FirstPerson.PunchOut)
+		ImpactDelay = 0.12, -- seconds from your click to the moment your swing hits the tree (in first person: when the fist lands, FirstPerson.PunchOut). The axes land when their chop does (see chopAnims)
 		PitchJitter = 0.08, -- each hit sounds up to 8% higher or lower, so it never sounds the same twice
 		ChipSpeed = 16, -- the little wood cubes that fly out of the cut
 		ChipLifetime = 1.2, -- seconds before a chip fades away
@@ -1151,7 +1215,7 @@ local Config = {
 		CounterPull = 0.12, -- the other fist pulls back this share of the jab
 		ToolPitch = 30, -- degrees a held tool leans up from pointing straight ahead
 		ToolGrip = 0.25, -- where your fist holds a tool's handle: 0 = its end, 0.5 = its middle
-		ToolSwingAngle = 65, -- degrees a tool chops down in a swing (smaller for the Chainsaw, see SwingSize in chopFeel)
+		ToolSwingAngle = 65, -- degrees the Torch chops down in a swing (the axes and the Chainsaw move as in chopAnims and sawAnims)
 		CrosshairSize = 14, -- pixels across
 		CrosshairThickness = 2, -- pixels
 		CrosshairColor = Color3.fromRGB(255, 255, 255),
@@ -1398,6 +1462,8 @@ local Config = {
 
 	Tools = tools,
 	ChopFeel = chopFeel,
+	ChopAnims = chopAnims,
+	SawAnims = sawAnims,
 	Upgrades = upgrades,
 	Quests = quests,
 

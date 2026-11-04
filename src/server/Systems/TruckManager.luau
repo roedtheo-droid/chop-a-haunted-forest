@@ -22,6 +22,7 @@ local RunService = game:GetService("RunService")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Format = require(ReplicatedStorage.Shared.Format)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local Shop = require(ReplicatedStorage.Shared.Shop)
 local TruckBuilder = require(ReplicatedStorage.Shared.TruckBuilder)
 local Trucks = require(ReplicatedStorage.Shared.Trucks)
 local Types = require(ReplicatedStorage.Shared.Types)
@@ -299,7 +300,7 @@ local function trySell(truck: Truck)
 		if math.abs(offset.X) <= pad.Size.X / 2 + margin and math.abs(offset.Z) <= pad.Size.Z / 2 + margin and math.abs(offset.Y) < 8 then
 			truck.LastSell = now
 			local owner = truck.Owner
-			local logs, coins = truck.Load, truck.Value
+			local logs, coins = truck.Load, truck.Value * Shop.coinMultiplier(owner) -- 2x with the 2X COINS pass
 			truck.Load = 0
 			truck.Value = 0
 			drawLoad(truck)

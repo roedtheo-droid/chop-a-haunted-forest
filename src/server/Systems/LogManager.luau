@@ -15,6 +15,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local Shop = require(ReplicatedStorage.Shared.Shop)
 local Tags = require(ReplicatedStorage.Shared.Tags)
 local QuestManager = require(script.Parent.QuestManager)
 local Blocky = require(script.Parent.Parent.Build.Blocky)
@@ -65,8 +66,9 @@ function LogManager.take(player: Player, count: number): (number, number)
 	return taken, value
 end
 
+-- The Infinite Bag game pass has room for any number of logs.
 function LogManager.hasRoom(player: Player): boolean
-	return LogManager.getCarry(player) < getNumberAttribute(player, "CarryLimit")
+	return Shop.hasPerk(player, "InfiniteBag") or LogManager.getCarry(player) < getNumberAttribute(player, "CarryLimit")
 end
 
 -- All logs lying on the ground right now.

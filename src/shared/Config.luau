@@ -1309,6 +1309,38 @@ local Config = {
 		},
 	},
 
+	-- The shop extras beside each sell pad (see Server/Build/YardShop and
+	-- Server/Systems/PerkManager): the Log Sack upgrade on a stump, and two Robux game passes.
+	-- A game pass is bought once and kept forever (Roblox remembers it, nothing is saved by us).
+	-- While a GamePassId is 0 it shows "Coming soon".
+	Perks = {
+		InfiniteBag = { GamePassId = 0, RobuxPrice = 149 }, -- carry as many logs as you like
+		DoubleCoins = { GamePassId = 0, RobuxPrice = 199, Multiplier = 2 }, -- logs sell for 2x coins
+		BigBeaverPrice = 129, -- the Big Beaver pet is only a decoration for now
+		PromptDistance = 8,
+		BagColor = Color3.fromRGB(70, 35, 95), -- the Infinite Bag, dark purple
+		SackColor = Color3.fromRGB(150, 100, 55), -- the Log Sack, brown leather
+		BeaverColor = Color3.fromRGB(125, 80, 45),
+		Text = {
+			SackName = "Log Sack",
+			SackObject = "%s: %d logs", -- its name and how many logs you'll carry after buying it
+			SackAction = "Buy %s", -- the coins it costs
+			Max = "MAX",
+			InfiniteBag = "Infinite Bag",
+			DoubleCoins = "2X COINS",
+			TwoX = "2X",
+			Buy = "BUY!",
+			Robux = "R$ %s",
+			RobuxAction = "Buy R$%s",
+			ComingSoon = "Coming soon",
+			NotOnSale = "The %s is coming soon!",
+			Owned = "You already have the %s.",
+			Bought = "You got the %s!",
+			InfiniteCount = "Logs %d/∞", -- the backpack counter with the Infinite Bag
+			BigBeaver = "Big Beaver",
+		},
+	},
+
 	-- Mr. Graves, the landowner who hired the party to clear his haunted forest. He stands in
 	-- front of his steel vault on the camp's right side (see Server/Systems/LandownerManager,
 	-- Server/Build/Vault and Client/Controllers/LandownerController).

@@ -1,7 +1,7 @@
 --!strict
 -- Builds a sawmill in every zone (the building is in Build/SawmillBuilding), each with a sell
 -- yard in front (Build/SellYard): the striped "DROP LOGS" pad, signs, and a conveyor into a
--- wood chipper.
+-- wood chipper, with shop extras beside it (Build/YardShop, sold by PerkManager).
 -- When a player steps on a pad, the SERVER takes all their logs and pays them coins.
 -- The client never says how many logs it has or what they're worth, so it can't fake the amount.
 -- Every player's computer then shows the logs dropping onto the pad and riding the conveyor
@@ -13,6 +13,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Format = require(ReplicatedStorage.Shared.Format)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
+local Shop = require(ReplicatedStorage.Shared.Shop)
 local Zones = require(ReplicatedStorage.Shared.Zones)
 local CoinManager = require(script.Parent.CoinManager)
 local EffectsManager = require(script.Parent.EffectsManager)
@@ -21,12 +22,14 @@ local QuestManager = require(script.Parent.QuestManager)
 local RunManager = require(script.Parent.RunManager)
 local SawmillBuilding = require(script.Parent.Parent.Build.SawmillBuilding)
 local SellYard = require(script.Parent.Parent.Build.SellYard)
+local YardShop = require(script.Parent.Parent.Build.YardShop)
 
 local SawmillManager = {}
 
 local notifyRemote: RemoteEvent
 local soldRemote: RemoteEvent
 local pads: { BasePart } = {}
+local shopSpots: { YardShop.Spots } = {}
 -- When each player last sold, so standing on the pad doesn't sell over and over.
 local lastSell: { [Player]: number } = {}
 
@@ -62,10 +65,11 @@ local function onPadTouched(pad: BasePart, hit: BasePart)
 		return
 	end
 
-	local logs, coins = LogManager.takeAll(player)
+	local logs, value = LogManager.takeAll(player)
 	if logs <= 0 then
 		return
 	end
+	local coins = value * Shop.coinMultiplier(player) -- 2x with the 2X COINS pass
 	lastSell[player] = now
 
 	CoinManager.add(player, coins)
@@ -99,6 +103,9 @@ local function build(center: Vector3, index: number): BasePart
 	local treeType = Config.TreeTypes[zone.TreeType]
 	local perLog = if treeType then treeType.LogValue else 0
 	local pad = SellYard.build(ground, wear, perLog, model)
+	-- The shop extras beside the pad (PerkManager puts their prompts on).
+	local padZ, padRight = SellYard.padSpot()
+	table.insert(shopSpots, YardShop.build(ground, wear, padZ, padRight, model))
 
 	model.Parent = workspace
 	return pad
@@ -107,6 +114,11 @@ end
 -- Every DROP LOGS pad (TruckManager sells a truck's bed when it drives onto one).
 function SawmillManager.getPads(): { BasePart }
 	return pads
+end
+
+-- The Log Sack stump, Infinite Bag stump and 2X COINS board beside every pad.
+function SawmillManager.getShopSpots(): { YardShop.Spots }
+	return shopSpots
 end
 
 function SawmillManager.init()

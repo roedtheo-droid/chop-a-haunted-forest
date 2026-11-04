@@ -46,6 +46,7 @@ local systems: { Types.Module } = {
 	require(Systems.GarageManager), -- the Garage and truck purchases
 	require(Systems.TruckManager), -- driving, loading and selling with your trucks
 	require(Systems.TreeManager),
+	require(Systems.SwingRelayManager), -- tells everyone when someone swings an axe or saws (for their arms)
 	require(Systems.DebugManager), -- Studio-only test shortcuts
 }
 

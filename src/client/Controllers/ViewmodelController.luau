@@ -4,13 +4,18 @@
 --   * two big blocky forearms and fists with rounded corners sit at the bottom of the screen.
 --     Each swing punches with one fist, taking turns: left, right, left...
 --   * when you hold a tool, a copy of it sits in your right hand instead, and chops down
+--   * an axe is held in both hands: a swing lifts it back over your shoulder, chops it down
+--     faster and faster, sticks in the bark for a split second (or swings on through the air on
+--     a miss) and comes back with a little bounce (Config.ChopAnims)
+--   * the Chainsaw is held in both hands and buzzes. Hold the button and it pushes forward,
+--     saws back and forth, shakes harder and its chain runs (Config.SawAnims)
 --   * a small hollow circle in the middle of the screen shows what you'll hit
 -- A punch moves like a real one: the fist pulls back a little (wind-up), then jabs forward
 -- faster and faster and turns as it goes. On a hit it stops right at the bark, freezes for a
 -- split second and bounces back off it; on a miss it carries on a bit. Then it springs back to
 -- rest with a small bounce, and the other fist pulls back a little while it punches.
 -- The arms are parts inside the camera. Parts in the camera only exist on your own computer, so
--- nobody else sees them (they see your character's normal swing, see ChopController).
+-- nobody else sees them (they see your character swing, see ChopController and ToolAnimController).
 -- Only for looks: ChopController still decides when you can swing, and the server decides the hits.
 -- With Config.FirstPerson.FirstPersonOnly = false, none of this happens.
 
@@ -20,8 +25,10 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Types = require(ReplicatedStorage.Shared.Types)
 local UiKit = require(script.Parent.Parent.UiKit)
 local IntroController = require(script.Parent.IntroController)
+local ToolAnimController = require(script.Parent.ToolAnimController)
 
 local cfg = Config.FirstPerson
 local RENDER_NAME = "FirstPersonArms"
@@ -65,14 +72,20 @@ local punchScale = 1 -- below 1 if the punch has to be quicker to fit the tool's
 
 -- A tool swing (fists use the punches above instead).
 local swingStarted = -math.huge
-local swingScale = 1 -- below 1 when the tool swings faster than a full swing (the Chainsaw)
-local swingSize = 1 -- how big the movement is (Config.ChopFeel SwingSize)
+local swingScale = 1 -- below 1 when the tool swings faster than a full swing
+local chopHit = false -- does the axe swing hit a tree? (then it sticks in the bark)
 
 -- The tool in your hand: the real one (hidden on your screen) and our copy of it.
+-- Chain is 1 for a chainsaw tooth on top of the bar (it runs forward), -1 for one underneath
+-- (it runs back) and 0 for every other part.
+type ToolPart = { Part: BasePart, Offset: CFrame, Chain: number }
 local heldTool: Tool? = nil
-local toolCopy: { { Part: BasePart, Offset: CFrame } } = {} -- each copied part, placed from the handle
+local heldToolId = ""
+local toolCopy: { ToolPart } = {} -- each copied part, placed from the handle
 local handleLength = 0 -- the copied handle's length (handles are long along Z)
 local rumble = 0 -- studs the tool shakes in your hand (the Log Vacuum while it sucks)
+local toothSpacing = 0 -- studs between two chain teeth (0 = no chain)
+local chainShift = 0 -- studs the chain has run on, from 0 up to toothSpacing
 
 -- Every arm part and where it goes this frame, moved all at once with BulkMoveTo (much faster
 -- than setting 90-odd CFrames one by one).
@@ -217,6 +230,42 @@ local function releaseTool()
 	end
 	table.clear(toolCopy)
 	heldTool = nil
+	heldToolId = ""
+	toothSpacing = 0
+end
+
+-- Find the Chainsaw's teeth among the copied parts: the ones above the middle of the bar run
+-- forward, the ones below run back. When a tooth has moved one gap on, it jumps back to where
+-- it started, which looks like the next tooth took its place: a running chain.
+local function findChain()
+	local teeth: { ToolPart } = {}
+	local middle = 0
+	for _, copy in toolCopy do
+		if string.find(copy.Part.Name, "Tooth", 1, true) then
+			table.insert(teeth, copy)
+			middle += copy.Offset.Y
+		end
+	end
+	if #teeth < 4 then
+		return
+	end
+	middle /= #teeth
+	local spots: { number } = {}
+	for _, tooth in teeth do
+		tooth.Chain = if tooth.Offset.Y > middle then 1 else -1
+		if tooth.Chain == 1 then
+			table.insert(spots, tooth.Offset.Z)
+		end
+	end
+	table.sort(spots)
+	local gap = math.huge
+	for index = 2, #spots do
+		local step = spots[index] - spots[index - 1]
+		if step > 0.01 then
+			gap = math.min(gap, step)
+		end
+	end
+	toothSpacing = if gap < math.huge then gap else 0
 end
 
 -- Copy the tool's parts (handle, head, its flame) into the viewmodel.
@@ -228,7 +277,10 @@ local function takeTool(tool: Tool)
 		return
 	end
 	heldTool = tool
+	local toolId = tool:GetAttribute("ToolId")
+	heldToolId = if typeof(toolId) == "string" then toolId else ""
 	handleLength = handle.Size.Z
+	swingStarted = -math.huge
 	for _, part in tool:GetChildren() do
 		if not part:IsA("BasePart") then
 			continue
@@ -246,7 +298,10 @@ local function takeTool(tool: Tool)
 		copy.CastShadow = false
 		copy.Massless = true
 		copy.Parent = viewmodel
-		table.insert(toolCopy, { Part = copy, Offset = handle.CFrame:ToObjectSpace(part.CFrame) })
+		table.insert(toolCopy, { Part = copy, Offset = handle.CFrame:ToObjectSpace(part.CFrame), Chain = 0 })
+	end
+	if Config.SawAnims[heldToolId] then
+		findChain()
 	end
 end
 
@@ -362,6 +417,97 @@ local function placeArm(arm: Arm, fist: CFrame)
 	placeBlock(arm.Forearm, fist * CFrame.new(0, 0, cfg.FistSize.Z / 2 + length / 2 - 0.15))
 end
 
+-- Where the right fist is in a hand pose (see Types.HandPose): moved from where it rests,
+-- then turned around the elbow, `pivot` studs behind the fist.
+local function handFrame(rest: CFrame, move: Vector3, turn: Vector3, pivot: number): CFrame
+	local elbow = CFrame.new(0, 0, pivot)
+	return rest
+		* CFrame.new(move)
+		* elbow
+		* CFrame.Angles(math.rad(turn.X), math.rad(turn.Y), math.rad(turn.Z))
+		* elbow:Inverse()
+end
+
+local function chopPose(anim: Types.ChopAnimConfig, stage: ToolAnimController.ChopStage): Types.HandPose
+	if stage == "WindUp" then
+		return anim.WindUp
+	elseif stage == "Strike" then
+		return anim.Strike
+	elseif stage == "Follow" then
+		return anim.Follow
+	end
+	return anim.Rest
+end
+
+-- A random shake of up to `size` studs each way.
+local function jitter(size: number): Vector3
+	return Vector3.new(random:NextNumber(-1, 1), random:NextNumber(-1, 1), random:NextNumber(-1, 1)) * size
+end
+
+-- Put the tool in your right fist: tipped up `pitch` degrees, held at its `rightHand` point.
+-- Returns where that puts the tool's `leftHand` point (for the left fist).
+local function holdTool(rightFist: CFrame, pitch: number, rightHand: Vector3, leftHand: Vector3): Vector3
+	local grip = rightFist * CFrame.Angles(math.rad(pitch), 0, 0) * CFrame.new(-rightHand)
+	for _, copy in toolCopy do
+		if copy.Chain ~= 0 then
+			copy.Part.CFrame = grip * CFrame.new(0, 0, -chainShift * copy.Chain) * copy.Offset
+		else
+			copy.Part.CFrame = grip * copy.Offset
+		end
+	end
+	return grip * leftHand
+end
+
+-- Place both fists and the tool for this frame.
+local function updateTool(camera: Camera, now: number, dt: number)
+	local rest = restFrame(camera, "Right")
+	local chop = Config.ChopAnims[heldToolId]
+	local saw = Config.SawAnims[heldToolId]
+	local move, turn, pivot, shake = Vector3.zero, Vector3.zero, 0, rumble
+	local pitch, rightHand, leftHand, leftTurn = cfg.ToolPitch, Vector3.zero, Vector3.zero, Vector3.zero
+	if chop then
+		-- An axe: from one pose of the swing to the next (see ToolAnimController.chopStage).
+		local from, to, amount, stuck = ToolAnimController.chopStage(chop, (now - swingStarted) / swingScale, chopHit)
+		local a, b = chopPose(chop, from), chopPose(chop, to)
+		move = a.Move:Lerp(b.Move, amount)
+		turn = a.Turn:Lerp(b.Turn, amount)
+		if stuck then
+			shake += chop.HitShake
+		end
+		pivot, pitch, rightHand, leftHand, leftTurn = chop.Pivot, chop.ToolPitch, chop.RightHand, chop.LeftHand, chop.LeftTurn
+	elseif saw then
+		-- The Chainsaw: between holding it and sawing (ToolAnimController glides between them).
+		local blend = ToolAnimController.sawAmount(player)
+		local stroke = math.sin(now * math.pi * 2 * saw.StrokeSpeed) * saw.Stroke * blend
+		move = saw.Rest.Move:Lerp(saw.Cut.Move, blend) + Vector3.new(0, 0, stroke)
+		turn = saw.Rest.Turn:Lerp(saw.Cut.Turn, blend)
+		shake += saw.IdleShake + (saw.CutShake - saw.IdleShake) * blend
+		if toothSpacing > 0 then
+			chainShift = (chainShift + saw.ChainSpeed * blend * dt) % toothSpacing
+		end
+		pivot, pitch, rightHand, leftHand, leftTurn = saw.Pivot, saw.ToolPitch, saw.RightHand, saw.LeftHand, saw.LeftTurn
+	else
+		-- Any other tool (the Torch...): the right hand chops it down around the elbow.
+		turn = Vector3.new(-cfg.ToolSwingAngle * swingAmount(now), 0, 0)
+		pivot = cfg.ForearmSize.Z
+		rightHand = Vector3.new(0, 0, handleLength * (0.5 - cfg.ToolGrip))
+	end
+	if shake > 0 then
+		move += jitter(shake)
+	end
+	local rightFist = handFrame(rest, move, turn, pivot)
+	placeArm(arms.Right, rightFist)
+	-- The tool sits in the right fist, pointing up and forward, its head at the far end.
+	local leftAt = holdTool(rightFist, pitch, rightHand, leftHand)
+	if chop or saw then
+		-- Both hands on it: the left fist holds it further along.
+		local turned = CFrame.Angles(math.rad(leftTurn.X), math.rad(leftTurn.Y), math.rad(leftTurn.Z))
+		placeArm(arms.Left, CFrame.new(leftAt) * rightFist.Rotation * turned)
+	else
+		placeArm(arms.Left, restFrame(camera, "Left"))
+	end
+end
+
 local function update(dt: number)
 	local camera = workspace.CurrentCamera
 	if not (active and camera) then
@@ -393,25 +539,7 @@ local function update(dt: number)
 	table.clear(movingParts)
 	table.clear(movingFrames)
 	if heldTool then
-		-- Holding a tool: the right hand chops it down (around the elbow), the left fist waits.
-		local amount = swingAmount(now) * swingSize
-		local rest = restFrame(camera, "Right")
-		local elbow = rest * CFrame.new(0, 0, cfg.ForearmSize.Z)
-		local chop = CFrame.Angles(-math.rad(cfg.ToolSwingAngle) * amount, 0, 0)
-		local rightFist = elbow * chop * elbow:ToObjectSpace(rest)
-		if rumble > 0 then
-			local shake = Vector3.new(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5) * 2 * rumble
-			rightFist *= CFrame.new(shake)
-		end
-		placeArm(arms.Right, rightFist)
-		placeArm(arms.Left, restFrame(camera, "Left"))
-		-- The tool sits in the right fist, pointing up and forward, its head at the far end.
-		local grip = rightFist
-			* CFrame.Angles(math.rad(cfg.ToolPitch), 0, 0)
-			* CFrame.new(0, 0, -handleLength * (0.5 - cfg.ToolGrip))
-		for _, copy in toolCopy do
-			copy.Part.CFrame = grip * copy.Offset
-		end
+		updateTool(camera, now, dt)
 	else
 		for _, arm in arms do
 			updatePunch(arm, now, dt)
@@ -455,18 +583,24 @@ function ViewmodelController.setRumble(amount: number)
 	rumble = amount
 end
 
--- Play one swing: a punch with the next fist, or a chop with the tool in your hand.
+-- Play one swing of tool `toolId`: a punch with the next fist, or a chop with the tool in your hand.
 -- `cooldown` is the tool's time between swings: a swing that would take longer is sped up to fit.
--- `size` makes a tool's movement smaller (the Chainsaw's short, fast sawing).
 -- `distance` is how far away the bark you're aiming at is (nil if you aren't aiming at a tree),
 -- so the fist can stop right on it, and `hit` says whether the hit will count.
-function ViewmodelController.swing(cooldown: number, size: number, distance: number?, hit: boolean)
+-- The Chainsaw has no single swings: it saws for as long as you swing (ToolAnimController.sawAmount).
+function ViewmodelController.swing(toolId: string, cooldown: number, distance: number?, hit: boolean)
 	if not active then
 		return
 	end
 	if heldTool then
-		swingScale = math.min(1, cooldown * 0.95 / (cfg.PunchOut + cfg.PunchBack))
-		swingSize = size
+		if Config.SawAnims[toolId] then
+			return
+		elseif Config.ChopAnims[toolId] then
+			swingScale = ToolAnimController.chopTiming(toolId, cooldown)
+			chopHit = hit
+		else
+			swingScale = math.min(1, cooldown * 0.95 / (cfg.PunchOut + cfg.PunchBack))
+		end
 		swingStarted = os.clock()
 		return
 	end

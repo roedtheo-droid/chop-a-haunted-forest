@@ -7,8 +7,11 @@
 --
 -- To make chopping feel instant, your computer doesn't wait for the server before it shows
 -- anything: your character swings right away, and when the swing lands
--- (Config.ChopEffects.ImpactDelay later) ChopEffectsController draws the hit. It checks the
--- same rules as the server (Shared/ChopRules), so its guess is almost always right.
+-- (Config.ChopEffects.ImpactDelay later, or when an axe's chop lands, see Config.ChopAnims)
+-- ChopEffectsController draws the hit. It checks the same rules as the server
+-- (Shared/ChopRules), so its guess is almost always right.
+-- Fists swing your character with a Roblox animation; the axes and the Chainsaw move its arms
+-- with code instead (ToolAnimController), which also tells the other players.
 
 local CollectionService = game:GetService("CollectionService")
 local ContentProvider = game:GetService("ContentProvider")
@@ -25,6 +28,7 @@ local Types = require(ReplicatedStorage.Shared.Types)
 local Zones = require(ReplicatedStorage.Shared.Zones)
 local ChopEffectsController = require(script.Parent.ChopEffectsController)
 local MouseController = require(script.Parent.MouseController)
+local ToolAnimController = require(script.Parent.ToolAnimController)
 local ViewmodelController = require(script.Parent.ViewmodelController)
 
 local MAX_CLICK_DISTANCE = 200
@@ -125,30 +129,35 @@ end
 
 -- Play the tool's swing on your character. Animations you play on your own character
 -- show for everyone automatically, so this needs no remote.
+-- Tools without a Swing (the axes, the Chainsaw) are moved by ToolAnimController instead.
 local function playSwing(feel: Types.ChopFeelConfig)
+	local swing = feel.Swing
+	local speed = feel.SwingSpeed or 1
+	if not swing then
+		return
+	end
 	local character = player.Character
 	local humanoid = if character then character:FindFirstChildOfClass("Humanoid") else nil
 	local animator = if humanoid then humanoid:FindFirstChildOfClass("Animator") else nil
 	if not animator then
 		return
 	end
-	local track = swingTracks[feel.Swing]
+	local track = swingTracks[swing]
 	if not track then
 		local animation = Instance.new("Animation")
-		animation.AnimationId = feel.Swing
+		animation.AnimationId = swing
 		local loaded = animator:LoadAnimation(animation)
 		loaded.Priority = Enum.AnimationPriority.Action -- above walking and holding a tool
 		loaded.Looped = false
-		swingTracks[feel.Swing] = loaded
+		swingTracks[swing] = loaded
 		track = loaded
 	end
 	if track.IsPlaying then
-		-- Fast tools (the Chainsaw) swing again before the last swing ended: start it over.
+		-- You swing again before the last swing ended: start it over.
 		track.TimePosition = 0
-		track:AdjustSpeed(feel.SwingSpeed)
-		track:AdjustWeight(feel.SwingSize)
+		track:AdjustSpeed(speed)
 	else
-		track:Play(0.05, feel.SwingSize, feel.SwingSpeed)
+		track:Play(0.05, 1, speed)
 	end
 end
 
@@ -200,10 +209,14 @@ local function trySwing()
 		local camera = workspace.CurrentCamera
 		local distance = if aimedAt and camera then (aimedAt - camera.CFrame.Position).Magnitude else nil
 		local hit = tree ~= nil and aimedAt ~= nil and willCount(tree, toolId, aimedAt)
-		ViewmodelController.swing(cooldown, feel.SwingSize, distance, hit)
+		ViewmodelController.swing(toolId, cooldown, distance, hit)
+		ToolAnimController.swingMine(toolId) -- so the others see your axe swing too
 	end
 	if not (tree and aimedAt) then
 		return
+	end
+	if not ViewmodelController.isActive() then
+		ToolAnimController.swingMine(toolId)
 	end
 	lastSwing = now
 	playSwing(feel)
@@ -214,7 +227,8 @@ local function trySwing()
 	local onTrunk = if trunk then trunk.CFrame:PointToObjectSpace(aimedAt) else aimedAt
 
 	-- The hit lands partway through the swing.
-	task.delay(Config.ChopEffects.ImpactDelay, function()
+	local _, impactDelay = ToolAnimController.chopTiming(toolId, cooldown)
+	task.delay(impactDelay, function()
 		local point = if trunk then trunk.CFrame:PointToWorldSpace(onTrunk) else aimedAt
 		swingRemote:FireServer(tree, point)
 		if willCount(tree, toolId, point) then
@@ -279,8 +293,9 @@ function ChopController.start()
 	-- PreloadAsync needs Animation objects: a plain id would be loaded as a picture, and fail.
 	local ids: { string } = {}
 	for _, feel in Config.ChopFeel do
-		if not table.find(ids, feel.Swing) then
-			table.insert(ids, feel.Swing)
+		local swing = feel.Swing
+		if swing and not table.find(ids, swing) then
+			table.insert(ids, swing)
 		end
 	end
 	local swings: { Instance } = {}

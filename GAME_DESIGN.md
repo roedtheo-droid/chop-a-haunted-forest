@@ -14,10 +14,11 @@
 
 ## Technical rules
 - Language: Luau with `--!strict` at the top of every file.
-- Project uses Rojo. Layout:
-  - `src/shared/`  -> ReplicatedStorage/Shared (Config, Types, Remotes list, pure utils)
-  - `src/server/`  -> ServerScriptService/Server (one `init.server.luau` + `Systems/` modules)
-  - `src/client/`  -> StarterPlayerScripts/Client (one `init.client.luau` + `Controllers/` modules)
+- The code lives in Roblox Studio (the saved place) and is copied to GitHub
+  after each step (see "Studio and GitHub" in README.md). No Rojo. Layout:
+  - `src/shared/`  <-> ReplicatedStorage/Shared (Config, Types, Remotes list, pure utils)
+  - `src/server/`  <-> ServerScriptService/Server (one `init.server.luau` + `Systems/` modules)
+  - `src/client/`  <-> StarterPlayerScripts/Client (one `init.client.luau` + `Controllers/` modules)
 - Exactly one Script and one LocalScript (the two init files). Everything else
   is a ModuleScript. Each system has `init()` and `start()` functions.
 - Never use `_G`. Always `require` explicitly.
@@ -142,7 +143,7 @@ mimics first and burn them safely with a torch.
 - Shop UI at the Tool Shed. Simple and readable on mobile.
 
 ## BUILD PHASES (one at a time, stop after each)
-1. Project setup: Rojo layout, bootstrap, Config, Remotes, Types.
+1. Project setup: shared/server/client layout, bootstrap, Config, Remotes, Types.
 2. Trees + chopping (fists only) + visible damage + logs on ground + pick up
    + carry limit + simple backpack counter.
 3. Sawmill selling + Coins + HUD.

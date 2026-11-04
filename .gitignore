@@ -1,4 +1,4 @@
-# Roblox place files (Rojo syncs the code, so we don't commit places)
+# Roblox place files (the code is copied into src/, so we don't commit places)
 *.rbxl
 *.rbxlx
 *.rbxl.lock
@@ -12,6 +12,6 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
-# Rojo downloaded straight into the project folder
+# Old Rojo download (no longer used)
 rojo.exe
 rojo.zip

@@ -12,7 +12,10 @@
 
 ## Code rules
 - Luau with `--!strict` in every file.
-- Rojo project layout as described in GAME_DESIGN.md (shared / server / client).
+- No Rojo. Roblox Studio (the saved place) is the source of truth for code. Edit scripts in
+  Studio, keeping the shared / server / client layout from GAME_DESIGN.md.
+- `src/` on GitHub is a copy of Studio's scripts. After each step, copy Studio's scripts into
+  `src/` (see README "Studio and GitHub") and commit. Never let `src/` and Studio drift apart.
 - Exactly one Script and one LocalScript. Everything else is a ModuleScript.
 - Never use `_G`. Always `require` explicitly.
 - The server is authoritative. Never trust numbers sent by the client.
@@ -22,6 +25,10 @@
 
 ## Git
 - After each phase works and I confirm it, commit with a clear message like "Phase 3: sawmill selling and coins".
+- Each step goes on a branch and a pull request. Claude opens and merges the PR itself after my ok;
+  I never do git or PRs by hand.
+- Remind me to save the place in Studio (File > Save, or Publish) after code changes, because
+  the code now lives in the place file.
 - Never delete or rewrite git history.
 
 ## Testing

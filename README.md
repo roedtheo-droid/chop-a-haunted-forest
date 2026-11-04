@@ -5,51 +5,49 @@ The full design is in [GAME_DESIGN.md](GAME_DESIGN.md). Rules for working on it 
 
 ## How the code is laid out
 
-| Folder         | Shows up in Studio as                        | What goes there                         |
+| Folder         | Lives in Studio as                           | What goes there                         |
 | -------------- | -------------------------------------------- | --------------------------------------- |
 | `src/shared/`  | `ReplicatedStorage > Shared`                 | Config, Types, the Remotes list         |
-| `src/server/`  | `ServerScriptService > Server` (a Script)    | Server bootstrap + `Systems/` modules   |
+| `src/server/`  | `ServerScriptService > Server` (a Script)    | Server bootstrap + `Build/` and `Systems/` modules |
 | `src/client/`  | `StarterPlayerScripts > Client` (a LocalScript) | Client bootstrap + `Controllers/` modules |
 
-`default.project.json` is the map Rojo uses to put each folder in the right place.
+`init.server.luau` is the `Server` Script itself and `init.client.luau` is the `Client` LocalScript.
+Every other file is a ModuleScript with the same name, in the same folder.
 
-## One-time setup (Windows)
+## Studio and GitHub (no Rojo)
 
-You only do this once per PC.
+We don't use Rojo any more. The game in **Roblox Studio is the real copy** of the code, and
+GitHub keeps a copy of every script plus the history of every change.
 
-1. **Install Git:** download it from https://git-scm.com/download/win and click through the installer with the default options.
-2. **Get the project:** open PowerShell and run:
-   ```
-   cd Documents
-   git clone https://github.com/roedtheo-droid/chop-a-haunted-forest.git
-   cd chop-a-haunted-forest
-   ```
-3. **Download Rojo into the project folder** (paste one line at a time):
-   ```
-   $u = "https://github.com/rojo-rbx/rojo/releases/download/v7.4.4/rojo-7.4.4-windows-x86_64.zip"
-   Invoke-WebRequest $u -OutFile rojo.zip
-   Expand-Archive rojo.zip . -Force
-   ```
-   This puts `rojo.exe` next to the code. Git ignores it, so it never gets uploaded.
-4. **Install the Rojo plugin in Studio:** close Roblox Studio, then run `.\rojo.exe plugin install`.
+**Every time you work on the game**
 
-## Every time you work on the game
+1. Open your place in Roblox Studio.
+2. Change scripts right in Studio (you, or Claude with its Studio tools).
+3. Save the place: **File > Save** (or **Publish to Roblox**). The code lives in the place file now,
+   so an unsaved change is a lost change.
 
-1. Open PowerShell in the project folder (`cd Documents\chop-a-haunted-forest`) and run: `.\rojo.exe serve`
-   Leave this window open. It says `Rojo server listening` when it's ready.
-2. Open Roblox Studio and open your place (or make a new **Baseplate**).
-3. Go to the **Plugins** tab and click **Rojo**. A small Rojo window opens.
-4. Click **Connect**. Studio now has the code from `src/`, and it updates live when the files change.
-5. To get the newest code from GitHub, run `git pull` in the project folder (Rojo picks up the change by itself).
+**After each step** Claude copies the scripts from Studio into `src/`, puts them on a branch,
+opens a pull request and merges it once you say ok. You don't need to run git yourself.
 
-Tip: Rojo copies code *into* Studio. If you edit a script inside Studio, Rojo will overwrite it. Always change the files in `src/` instead.
+**How Claude checks that Studio and `src/` match**
+
+1. Run `tools/studio_hashes.luau` in Studio (Command Bar or Claude's `execute_luau`) and save
+   what it prints to a file, for example `studio.txt`.
+2. Run `python tools/repo_hashes.py studio.txt`. It lists every script that is different, only in
+   Studio, or only in `src/`.
+3. Copy each listed script's Source from Studio into its file in `src/`. A new ModuleScript in
+   `ServerScriptService > Server > Systems` becomes `src/server/Systems/<Name>.luau`, and so on.
+4. Run the check again until it says `Studio and src/ match.`, then commit.
+
+`default.project.json` is kept as the map of which folder goes where. It also means you could go
+back to Rojo any day without changing anything else.
 
 ## Blender models
 
 The trees, rocks, ground, the forest's edges, the view outside and (later) everything else
 are 3D models made by Python scripts in the `blender/` folder. The finished files are already
-in `blender/export/` (`.fbx`), with a picture of each one in `blender/previews/`. Rojo can't
-copy models into Studio, so you import them yourself, **once**. Until you do, the game
+in `blender/export/` (`.fbx`), with a picture of each one in `blender/previews/`. Models aren't
+scripts, so you import them into Studio yourself, **once**. Until you do, the game
 simply builds the old blocky version.
 
 **Import all the models at once** (the easy way):

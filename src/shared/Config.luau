@@ -973,6 +973,18 @@ local Config = {
 		CrosshairColor = Color3.fromRGB(255, 255, 255),
 	},
 
+	-- Left Alt frees the mouse in first person, and Left Alt again locks it
+	-- (see Client/Controllers/MouseController). A small hint shows in the bottom-left corner.
+	FreeMouse = {
+		Key = Enum.KeyCode.LeftAlt,
+		FreeText = "Left Alt: free mouse", -- the hint while the mouse is locked
+		LockText = "Left Alt: lock mouse", -- the hint while the mouse is free
+		HintHeight = 18, -- pixels tall (the text fills it)
+		HintWidth = 200, -- pixels wide
+		HintMargin = 12, -- pixels from the left and bottom edges of the screen
+		HintTransparency = 0.15, -- 0 = solid, 1 = invisible
+	},
+
 	-- The glowing line to the nearest tree when a zone is almost cleared
 	NearestTree = {
 		ShowAtPercent = 95, -- show it when the zone you're in is at least this % cleared

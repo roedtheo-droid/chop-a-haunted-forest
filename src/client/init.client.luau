@@ -27,6 +27,7 @@ local controllers: { Types.Module } = {
 	require(Controllers.CarveController), -- draws carved trunks; used by ChopEffectsController
 	require(Controllers.ChopEffectsController), -- before ChopController, which uses it
 	require(Controllers.ViewmodelController), -- first-person arms; also used by ChopController
+	require(Controllers.MouseController), -- Left Alt frees the mouse; used by ChopController
 	require(Controllers.ChopController),
 	require(Controllers.TreeHpController), -- the tree HP bar under the crosshair (Config.ShowTreeHpBar)
 	require(Controllers.ShopController),

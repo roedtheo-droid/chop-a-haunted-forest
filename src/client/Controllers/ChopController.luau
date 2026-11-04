@@ -24,6 +24,7 @@ local Tags = require(ReplicatedStorage.Shared.Tags)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Zones = require(ReplicatedStorage.Shared.Zones)
 local ChopEffectsController = require(script.Parent.ChopEffectsController)
+local MouseController = require(script.Parent.MouseController)
 local ViewmodelController = require(script.Parent.ViewmodelController)
 
 local MAX_CLICK_DISTANCE = 200
@@ -229,6 +230,10 @@ end
 local function onInputBegan(input: InputObject, gameProcessed: boolean)
 	-- gameProcessed is true when the click was on a button or the mobile joystick.
 	if gameProcessed or not isPress(input) then
+		return
+	end
+	-- With the mouse freed (Left Alt), clicks are for moving the mouse around, not punching.
+	if MouseController.isFree() then
 		return
 	end
 	holding = true

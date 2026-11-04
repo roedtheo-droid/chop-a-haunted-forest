@@ -434,6 +434,8 @@ local Config = {
 	-- When true, Studio playtests show test shortcuts like the "Skip to boss" button.
 	-- They never work in the real game (see Server/Systems/DebugManager).
 	StudioShortcuts = true,
+	-- How many Coins one click on the Studio-only "+ Coins" button gives you.
+	DebugCoins = 1000,
 
 	-- Extra chop text, like in Chop a Forest. Both are off by default to keep the effects clean.
 	ShowTreeHpBar = false, -- true: the tree's name and HP show under the crosshair (see TreeHpBar)

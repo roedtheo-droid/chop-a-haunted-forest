@@ -176,8 +176,8 @@ end
 
 local function trySwing()
 	local toolId = heldToolId()
-	if toolId == "Lantern" then
-		return -- the Lantern is for looking, not hitting (the server ignores it too)
+	if toolId == "Lantern" or toolId == "GhostVacuum" then
+		return -- the Lantern is for looking and the Ghost Vacuum for ghosts, not hitting (the server ignores them too)
 	end
 	if player:GetAttribute("KnockedDown") == true then
 		return -- you can't swing while you're lying on the ground

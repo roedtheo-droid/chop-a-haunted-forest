@@ -66,6 +66,14 @@ local LOOKS: { [string]: Look } = {
 		HeadMaterial = Enum.Material.Fabric,
 		Flame = true,
 	},
+	-- Like the Log Vacuum's leaf blower, but pale blue and ghostly, with a dark nozzle.
+	GhostVacuum = {
+		HandleSize = Vector3.new(0.9, 1.1, 1.8),
+		HandleColor = Color3.fromRGB(150, 205, 255),
+		HeadSize = Vector3.new(0.6, 0.6, 2.4),
+		HeadColor = Color3.fromRGB(70, 70, 85),
+		HeadOffset = Vector3.new(0, 0.2, -2),
+	},
 }
 
 -- Things that are only ever shown on the Tool Shed's walls, never held (the Log Vacuum is an

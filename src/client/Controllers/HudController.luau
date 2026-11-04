@@ -1,7 +1,8 @@
 --!strict
 -- Shows the player's Coins and Embers on the left side of the screen: a round icon and the
 -- number, with a small "+15" that floats up when one of them goes up. During a tool trial,
--- "TRIAL 2:59" shows under the coins.
+-- "TRIAL 2:59" shows under the coins. The courage bar sits at the bottom, just above the
+-- backpack counter (see Server/Systems/CourageManager).
 -- It only DISPLAYS the attributes the server sets on the player.
 
 local Players = game:GetService("Players")
@@ -15,6 +16,7 @@ local UiKit = require(script.Parent.Parent.UiKit)
 
 local POP_TIME = 0.9
 local ICON_SIZE = 40
+local PULSE_SPEED = 5 -- how fast the courage bar pulses when you're scared
 
 local HudController = {}
 
@@ -27,6 +29,7 @@ type Counter = {
 local player = Players.LocalPlayer
 local counters: { Counter } = {}
 local trialLabel: TextLabel
+local courageBar: UiKit.Bar
 
 local function getNumber(name: string): number
 	local value = player:GetAttribute(name)
@@ -109,6 +112,30 @@ local function updateTrialTimer()
 	trialLabel.Visible = true
 end
 
+-- The courage bar: bottom middle, just above the backpack counter (its box's top is 116
+-- pixels from the bottom of the screen).
+local function addCourageBar(gui: ScreenGui)
+	courageBar = UiKit.bar(gui, "Courage", Config.Style.Courage)
+	courageBar.Frame.AnchorPoint = Vector2.new(0.5, 1)
+	courageBar.Frame.Position = UDim2.new(0.5, 0, 1, -124)
+	courageBar.Frame.Size = UDim2.fromOffset(220, 24)
+end
+
+local function refreshCourage()
+	local value = player:GetAttribute("Courage")
+	local courage = if typeof(value) == "number" then value else Config.Courage.Max
+	local low = courage < Config.Courage.LowAt
+	courageBar.Fill.BackgroundColor3 = if low then Config.Style.Red else Config.Style.Courage
+	UiKit.setBar(courageBar, courage / Config.Courage.Max, string.format(Config.Courage.Text.Bar, math.ceil(courage)))
+end
+
+-- Below LowAt the red fill gently pulses, so you notice without a pop-up.
+local function pulseCourage()
+	local value = player:GetAttribute("Courage")
+	local low = typeof(value) == "number" and value < Config.Courage.LowAt
+	courageBar.Fill.BackgroundTransparency = if low then 0.35 * (0.5 + 0.5 * math.sin(os.clock() * PULSE_SPEED)) else 0
+end
+
 function HudController.init()
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "Hud"
@@ -118,12 +145,18 @@ function HudController.init()
 	addCounter(gui, "Embers", Config.Style.Ember, -46)
 	addCounter(gui, "Coins", Config.Style.Gold, 0)
 	addTrialTimer(gui)
+	addCourageBar(gui)
 
 	gui.Parent = player:WaitForChild("PlayerGui")
 end
 
 function HudController.start()
-	RunService.Heartbeat:Connect(updateTrialTimer)
+	RunService.Heartbeat:Connect(function()
+		updateTrialTimer()
+		pulseCourage()
+	end)
+	refreshCourage()
+	player:GetAttributeChangedSignal("Courage"):Connect(refreshCourage)
 	for _, counter in counters do
 		-- Start from the current amount so we don't "pop" the starting amount.
 		counter.Last = getNumber(counter.Attribute)

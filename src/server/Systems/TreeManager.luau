@@ -257,8 +257,8 @@ local function onSwing(player: Player, target: unknown, aimed: unknown)
 		return
 	end
 	local toolId = ToolManager.getEquippedId(player)
-	if toolId == "Lantern" then
-		return -- the Lantern is for looking, not hitting
+	if toolId == "Lantern" or toolId == "GhostVacuum" then
+		return -- the Lantern is for looking and the Ghost Vacuum for ghosts, not hitting
 	end
 	local trunk = getTrunk(tree)
 	local point: Vector3

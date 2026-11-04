@@ -7,6 +7,7 @@ local Types = require(script.Parent.Types)
 -- Tools. Fists is what you have when you hold nothing.
 -- The Tool Shed sells the rest (see Shared/Shop.luau for the order and names).
 -- The Lantern and Torch don't chop (Damage 0): the Lantern shows mimics, the Torch burns them.
+-- The Ghost Vacuum doesn't chop either: click to suck up a ghost (see Ghosts below).
 local tools: { [string]: Types.ToolConfig } = {
 	Fists = { Damage = 5, Cooldown = 0.5, Reach = 8, Price = 0 },
 	Axe = { Damage = 10, Cooldown = 0.45, Reach = 9, Price = 50 },
@@ -14,6 +15,7 @@ local tools: { [string]: Types.ToolConfig } = {
 	Chainsaw = { Damage = 12, Cooldown = 0.15, Reach = 8, Price = 1000 },
 	Lantern = { Damage = 0, Cooldown = 0.5, Reach = 0, Price = 100 },
 	Torch = { Damage = 0, Cooldown = 1, Reach = 8, Price = 150 },
+	GhostVacuum = { Damage = 0, Cooldown = 0.5, Reach = 0, Price = 200 },
 }
 
 -- Upgrades bought in the Tool Shed. Each price in the list is one level.
@@ -98,6 +100,7 @@ local sounds: { [string]: Types.SoundConfig } = {
 	BossSlam = { Id = "rbxassetid://9114036511", Volume = 1, Range = 200 }, -- deep impact
 	RootSnap = { Id = "rbxassetid://9120801590", Volume = 0.9, Range = 150 }, -- wood breaking
 	BossFall = { Id = "rbxassetid://9120957463", Volume = 1, Speed = 0.6, Range = 300 }, -- the tree crash, slower and deeper
+	GhostCatch = { Id = "rbxasset://sounds/swoosh.wav", Volume = 0.8, Speed = 0.8, Range = 80 }, -- a ghost sucked into a Ghost Vacuum
 
 	-- Your own sounds: only you hear them (played on your computer, see SoundController).
 	LogPickup = { Id = "rbxasset://sounds/clickfast.wav", Volume = 0.5 },
@@ -793,6 +796,7 @@ local Config = {
 		CardWood = Color3.fromRGB(125, 80, 45), -- the rows inside a wooden menu
 		Gold = Color3.fromRGB(255, 215, 70), -- coins and headings
 		Ember = Color3.fromRGB(255, 130, 60),
+		Courage = Color3.fromRGB(120, 190, 255), -- the courage bar (it turns Red when you're scared)
 		Cream = Color3.fromRGB(245, 225, 190), -- small text on wood
 		Green = Color3.fromRGB(90, 200, 70), -- buy buttons and progress bars
 		Red = Color3.fromRGB(220, 50, 50), -- close buttons, "can't afford", full backpack
@@ -1016,6 +1020,57 @@ local Config = {
 	-- Normal trees and awake mimics don't burn.
 	Torch = {
 		BurnTime = 2, -- seconds the mimic burns before it crumbles away
+	},
+
+	-- Courage (see Server/Systems/CourageManager): the haunted forest slowly scares you.
+	-- Every player has 0 to Max courage. It drains in the zones (faster in the darker ones and
+	-- near ghosts) and fills up in the camp, or slowly while you hold a Lantern or Torch.
+	-- At 0 you're too scared and slowly lose health. All rates are per second.
+	Courage = {
+		Max = 100,
+		Tick = 0.5, -- seconds between updates
+		ZoneDrain = { 0.3, 0.6, 1 }, -- lost in zone 1, 2 and 3 (5.5 min, 2.8 min, 1.7 min from full)
+		CampRegen = 25, -- gained in the camp (full again in 4 seconds)
+		LightRegen = 2, -- gained while you hold a Lantern or Torch in the forest
+		ChainsawDrain = 0.5, -- extra loss while you hold the Chainsaw (it's loud, the ghosts come)
+		GhostRadius = 18, -- ghosts closer than this scare you...
+		GhostDrain = 2, -- ...each one takes this much extra (a held light keeps ghosts from scaring you)
+		MaxScaryGhosts = 3, -- at most this many ghosts count at once
+		FearDamage = 2, -- health lost at 0 courage (Roblox heals 1 per second, so you lose about 1 per second)
+		LowAt = 25, -- the bar turns red and pulses below this
+		Text = {
+			Bar = "COURAGE %d", -- on the bar
+			TooScared = "You're too scared! Hold your Lantern or Torch, or run back to camp.",
+		},
+	},
+
+	-- Ghosts (see Server/Systems/GhostManager): they float around the zones and scare you
+	-- (see Courage). Catch them with the Ghost Vacuum for coins and courage.
+	Ghosts = {
+		PerZone = { 1, 3, 5 }, -- how many float in zone 1, 2 and 3 at most
+		SpawnEvery = 10, -- seconds between new ghosts in a zone that has fewer than PerZone
+		Height = 4.5, -- studs above the ground (the middle of the ghost)
+		Bob = 0.8, -- studs it floats up and down
+		Wander = 25, -- studs a ghost drifts each time when nobody is near
+		Speed = 5, -- studs per second when drifting (players walk 16)
+		ChaseRadius = 35, -- it floats towards players closer than this (not ones holding a light)
+		ChaseSpeed = 7,
+		HoverDistance = 7, -- it stops this far from the player it follows, to stare at them
+		EdgeMargin = 14, -- studs it stays away from the zone's walls
+		MaxStep = 2, -- seconds before it picks where to go next
+		-- The Ghost Vacuum
+		VacuumRange = 24, -- studs: how far it reaches
+		VacuumAim = 0.3, -- how much the ghost must be in front of you (0 = anywhere ahead, 1 = dead centre)
+		CatchTime = 0.45, -- seconds a caught ghost takes to fly into the nozzle and fade out
+		Reward = 20, -- coins for each ghost caught
+		CourageReward = 20, -- courage back for each ghost caught
+		-- How a ghost looks (blocks, so it fits the style; a "Ghost" Blender model is used instead
+		-- when it's imported, see Build/Assets)
+		Size = 3.4, -- studs: its head is this wide
+		Color = Color3.fromRGB(235, 242, 255),
+		Transparency = 0.25,
+		LightColor = Color3.fromRGB(170, 210, 255),
+		LightRange = 12,
 	},
 
 	-- Embers: the permanent currency (saved, see Save below)
@@ -1254,9 +1309,10 @@ local Config = {
 		-- towards the door). Big: the big board on dark planks with the turning sunburst.
 		-- Tilt: degrees the tool leans on its board (0 = straight up).
 		Displays = {
-			{ Item = "Axe", Wall = "Back", Along = -14, Tilt = 35 },
-			{ Item = "Chainsaw", Wall = "Back", Along = 0, Tilt = 60, Big = true },
-			{ Item = "LogVacuum", Wall = "Back", Along = 14, Tilt = 55 },
+			{ Item = "Axe", Wall = "Back", Along = -19, Tilt = 35 },
+			{ Item = "Chainsaw", Wall = "Back", Along = -5, Tilt = 60, Big = true },
+			{ Item = "LogVacuum", Wall = "Back", Along = 8, Tilt = 55 },
+			{ Item = "GhostVacuum", Wall = "Back", Along = 18.5, Tilt = 55 },
 			{ Item = "SteelAxe", Wall = "Left", Along = -9, Tilt = 35 },
 			{ Item = "Lantern", Wall = "Left", Along = 1, Tilt = 0 },
 			{ Item = "Torch", Wall = "Left", Along = 11, Tilt = 25 },
@@ -1269,7 +1325,7 @@ local Config = {
 		SunburstRays = 14,
 		SunburstSpeed = 0.25, -- radians per second (one turn every 25 seconds)
 		DisplayPromptDistance = 9, -- how close to a board you must be to see "Buy"
-		MysteryItems = 2, -- the "???" signs on the shelf in the top-left corner (tools still to come)
+		MysteryItems = 1, -- the "???" signs on the shelf in the top-left corner (tools still to come)
 
 		-- Every text in the Tool Shed. %s is filled in.
 		Text = {

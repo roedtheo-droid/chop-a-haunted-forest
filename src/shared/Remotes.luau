@@ -53,6 +53,10 @@ local list: { [string]: Types.RemoteKind } = {
 	-- so it only ever tells you about the ones close to your own lantern.
 	LanternMimics = "Event",
 
+	-- Client -> server: "I clicked with my Ghost Vacuum". No numbers: the server finds the ghost
+	-- in front of you and checks that you hold the vacuum (see Server/Systems/GhostManager).
+	VacuumGhost = "Event",
+
 	-- Server -> all clients: the Elder Hollow fell and the whole forest is clear.
 	-- Carries the party's totals for this run (a RunSummary, see Shared/Types).
 	ForestCleared = "Event",

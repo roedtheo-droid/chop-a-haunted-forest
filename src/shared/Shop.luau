@@ -14,6 +14,7 @@ local items: { Types.ShopItem } = {
 	{ Id = "Chainsaw", Kind = "Tool", Name = "Chainsaw", Description = "Hold to rip through trees" },
 	{ Id = "Lantern", Kind = "Tool", Name = "Lantern", Description = "Hold it: nearby mimics glow faintly" },
 	{ Id = "Torch", Kind = "Tool", Name = "Torch", Description = "Burns sleeping mimics for Embers" },
+	{ Id = "GhostVacuum", Kind = "Tool", Name = "Ghost Vacuum", Description = "Click to suck up ghosts for coins and courage" },
 	{ Id = "ChopDamage", Kind = "Upgrade", Name = "Chop Damage", Description = "+20% damage per level" },
 	{ Id = "CarryLimit", Kind = "Upgrade", Name = "Log Sack", Description = "Carry 3 more logs per level" },
 	{ Id = "WalkSpeed", Kind = "Upgrade", Name = "Walk Speed", Description = "Walk a bit faster per level" },

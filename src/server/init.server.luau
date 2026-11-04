@@ -37,6 +37,8 @@ local systems: { Types.Module } = {
 	require(Systems.LogVacuumManager),
 	require(Systems.LanternManager),
 	require(Systems.KnockdownManager),
+	require(Systems.CourageManager), -- after ToolManager and KnockdownManager (it asks them about players)
+	require(Systems.GhostManager), -- after CourageManager (catching a ghost gives courage back)
 	require(Systems.SawmillManager),
 	require(Systems.ShopManager),
 	require(Systems.TrialManager), -- after ShopManager (its prompt goes on the shed's trial table)

@@ -12,8 +12,12 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Shop = require(ReplicatedStorage.Shared.Shop)
 local Types = require(ReplicatedStorage.Shared.Types)
+local Assets = require(script.Parent.Parent.Build.Assets)
 
--- How each placeholder tool looks: a handle, plus a "head" stuck to it.
+-- How each placeholder tool looks: a handle, plus a "head" stuck to it. When Theo's model of
+-- the tool is imported (Config.ToolModels), the handle and head turn invisible and the model
+-- is held instead, but they stay: the hand holds the handle, and the head is where the
+-- Lantern's light, the Torch's fire and the Ghost Vacuum's nozzle are.
 type Look = {
 	HandleSize: Vector3,
 	HandleColor: Color3,
@@ -90,6 +94,90 @@ local DISPLAY_LOOKS: { [string]: Look } = {
 
 local ToolManager = {}
 
+-- How part `name` of tool `toolId` is coloured: by its name without the tool's name in
+-- front ("Axe_GripRidge2" -> "GripRidge2"), using the longest Paint key it starts with.
+local function paintFor(cfg: Types.ToolModelConfig, toolId: string, name: string): Types.ToolPaint?
+	local plain = if string.sub(name, 1, #toolId + 1) == toolId .. "_" then string.sub(name, #toolId + 2) else name
+	local best: Types.ToolPaint? = nil
+	local bestLength = 0
+	for key, paint in cfg.Paint do
+		if #key > bestLength and string.sub(plain, 1, #key) == key then
+			best = paint
+			bestLength = #key
+		end
+	end
+	return best
+end
+
+-- Is `name` part `role` of tool `toolId` ("Axe_Grip" is the Axe's "Grip")?
+local function isRole(toolId: string, name: string, role: string): boolean
+	return name == `{toolId}_{role}` or name == role
+end
+
+-- Put Theo's model of the tool on the handle: turned so it points forward (-Z), sized,
+-- with its grip part at GripAt, coloured and welded on. The head moves to the model's head
+-- part. Returns false (and changes nothing) if the model isn't imported.
+local function dressWithModel(tool: Tool, toolId: string, handle: Part, head: Part): boolean
+	local cfg = Config.ToolModels.Tools[toolId]
+	local model = if cfg then Assets.tool(toolId) else nil
+	if not (cfg and model) then
+		return false
+	end
+
+	-- `turn` takes a place in the imported model to the same place seen from the handle.
+	local back = -cfg.Forward.Unit
+	local up = cfg.Up.Unit
+	local turn = CFrame.fromMatrix(Vector3.zero, up:Cross(back), up, back):Inverse()
+	local _, extents = model:GetBoundingBox()
+	local scale = cfg.Size / math.max(extents.X, extents.Y, extents.Z)
+
+	local places: { [BasePart]: CFrame } = {}
+	local gripAt: Vector3? = nil
+	local headAt: Vector3? = nil
+	for _, part in model:GetChildren() do
+		if part:IsA("BasePart") then
+			local turned = turn * part.CFrame
+			local place = CFrame.new(turned.Position * scale) * turned.Rotation
+			places[part] = place
+			if isRole(toolId, part.Name, cfg.Grip) then
+				gripAt = place.Position
+			end
+			if isRole(toolId, part.Name, cfg.Head) then
+				headAt = place.Position
+			end
+		end
+	end
+	local shift = cfg.GripAt - (gripAt or Vector3.zero)
+
+	for part, place in places do
+		part.Size *= scale
+		part.CFrame = handle.CFrame * CFrame.new(shift) * place
+		local paint = paintFor(cfg, toolId, part.Name)
+		if paint then
+			part.Color = paint.Color
+			part.Material = paint.Material
+			part.Transparency = paint.Transparency or 0
+		end
+		part.CanCollide = false
+		part.CanQuery = false
+		part.CanTouch = false
+		part.Massless = true
+		part.Anchored = false
+		part.Parent = tool
+		local weld = Instance.new("WeldConstraint")
+		weld.Part0 = handle
+		weld.Part1 = part
+		weld.Parent = part
+	end
+	model:Destroy()
+
+	handle.Transparency = 1
+	head.Transparency = 1
+	head.Size = Vector3.new(0.2, 0.2, 0.2)
+	head.CFrame = handle.CFrame * CFrame.new(shift + (headAt or Vector3.zero))
+	return true
+end
+
 local function buildTool(toolId: string): Tool
 	local item = Shop.getItem(toolId)
 	local look = LOOKS[toolId] or DISPLAY_LOOKS[toolId]
@@ -119,6 +207,8 @@ local function buildTool(toolId: string): Tool
 	head.CFrame = handle.CFrame * CFrame.new(look.HeadOffset)
 	head.Parent = tool
 
+	local dressed = dressWithModel(tool, toolId, handle, head)
+
 	if look.Light then
 		local light = Instance.new("PointLight")
 		light.Color = look.HeadColor
@@ -129,7 +219,8 @@ local function buildTool(toolId: string): Tool
 	end
 	if look.Flame then
 		local fire = Instance.new("Fire")
-		fire.Size = 2.5
+		local model = Config.ToolModels.Tools[toolId]
+		fire.Size = if dressed and model and model.Fire then model.Fire else 2.5
 		fire.Heat = 6
 		fire.Parent = head
 	end

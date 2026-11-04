@@ -90,6 +90,25 @@ export type SkinLook = {
 	Solid: boolean?, -- stops players and the camera (the walls and roofs of a building)
 }
 
+-- How one kind of part of an imported tool model is coloured (see Config.ToolModels).
+export type ToolPaint = {
+	Color: Color3,
+	Material: Enum.Material,
+	Transparency: number?, -- 0 = solid (the default), 1 = invisible
+}
+
+-- How a tool model is held (see Config.ToolModels and Server/Systems/ToolManager).
+export type ToolModelConfig = {
+	Forward: Vector3, -- the direction in the imported model that points away from your hand
+	Up: Vector3, -- the direction in the imported model that points up (the axe's blade side)
+	Size: number, -- the model's longest side, in studs
+	Grip: string, -- the part that sits at GripAt (where your hand holds it)
+	GripAt: Vector3, -- where that part goes, seen from the tool's handle (-Z is forward)
+	Head: string, -- the part the invisible "Head" sits on (lights, fire, the ghost beam)
+	Fire: number?, -- how big the Torch's fire is on this model
+	Paint: { [string]: ToolPaint }, -- by part name without the tool's name ("Head", "Shaft")
+}
+
 -- One kind of little thing scattered over a zone's ground (see Config.Details).
 export type DetailConfig = {
 	Model: string, -- the Blender model (see blender/models/details.py)

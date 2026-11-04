@@ -4,6 +4,181 @@
 
 local Types = require(script.Parent.Types)
 
+-- Tool models (see ToolModels below): how one kind of part is coloured.
+local function paint(color: Color3, material: Enum.Material, transparency: number?): Types.ToolPaint
+	return { Color = color, Material = material, Transparency = transparency }
+end
+
+local METAL = Enum.Material.Metal
+local WOODEN = Enum.Material.Wood
+local CLOTH = Enum.Material.Fabric
+local PLASTIC = Enum.Material.SmoothPlastic
+local NEON = Enum.Material.Neon
+local GLASS = Enum.Material.Glass
+local TOOL_WOOD = Color3.fromRGB(120, 80, 50)
+local TOOL_IRON = Color3.fromRGB(95, 95, 100)
+local TOOL_STEEL = Color3.fromRGB(200, 210, 220)
+local TOOL_BLACK = Color3.fromRGB(38, 38, 42)
+local TOOL_GOLD = Color3.fromRGB(215, 170, 70)
+
+-- The tool models Theo imported (ServerStorage > MapAssets > AllTools). They come in grey,
+-- small and lying down, so the game colours, sizes and turns each one. Paint is by the part's
+-- name without the tool's name in front ("Axe_GripRidge2" -> "GripRidge2"); a name starting
+-- with a key gets that colour, and the longest matching key wins ("GripRidge" beats "Grip").
+-- Directions are in the imported model: +Y is up, -X is where the chainsaw's bar points.
+local toolModels: { [string]: Types.ToolModelConfig } = {
+	Axe = {
+		Forward = Vector3.yAxis, -- the head is at the top
+		Up = -Vector3.xAxis, -- the blade sticks out to -X
+		Size = 3.6,
+		Grip = "Grip",
+		GripAt = Vector3.new(0, 0, 1),
+		Head = "Head",
+		Paint = {
+			Shaft = paint(TOOL_WOOD, WOODEN),
+			Grip = paint(Color3.fromRGB(85, 55, 35), CLOTH),
+			GripRidge = paint(TOOL_IRON, METAL),
+			Pommel = paint(TOOL_IRON, METAL),
+			Head = paint(Color3.fromRGB(115, 115, 120), METAL),
+			Edge = paint(Color3.fromRGB(205, 210, 215), METAL),
+			Wedge = paint(TOOL_IRON, METAL),
+		},
+	},
+	SteelAxe = {
+		Forward = Vector3.yAxis,
+		Up = -Vector3.xAxis,
+		Size = 4.2,
+		Grip = "Grip",
+		GripAt = Vector3.new(0, 0, 1.3),
+		Head = "Head",
+		Paint = {
+			Shaft = paint(Color3.fromRGB(60, 45, 35), WOODEN),
+			Grip = paint(Color3.fromRGB(140, 40, 35), CLOTH),
+			GripRidge = paint(TOOL_GOLD, METAL),
+			Collar = paint(TOOL_GOLD, METAL),
+			Rivet = paint(TOOL_GOLD, METAL),
+			Pommel = paint(TOOL_STEEL, METAL),
+			Head = paint(TOOL_STEEL, METAL),
+			Edge = paint(Color3.fromRGB(240, 245, 250), METAL),
+			Poll = paint(Color3.fromRGB(150, 155, 165), METAL),
+			Wedge = paint(TOOL_STEEL, METAL),
+		},
+	},
+	Chainsaw = {
+		Forward = -Vector3.xAxis, -- the bar points to -X
+		Up = Vector3.yAxis,
+		Size = 4.5,
+		Grip = "Body",
+		GripAt = Vector3.new(0, 0, 0),
+		Head = "Bar",
+		Paint = {
+			Body = paint(Color3.fromRGB(230, 120, 30), PLASTIC),
+			FuelCap = paint(TOOL_BLACK, PLASTIC),
+			Fin = paint(Color3.fromRGB(60, 60, 65), PLASTIC),
+			Skid = paint(Color3.fromRGB(60, 60, 65), PLASTIC),
+			TopHandle = paint(TOOL_BLACK, PLASTIC),
+			Guard = paint(TOOL_BLACK, PLASTIC),
+			Rear = paint(TOOL_BLACK, PLASTIC), -- RearGrip, RearPost, RearBase
+			Trigger = paint(Color3.fromRGB(200, 40, 40), PLASTIC),
+			Starter = paint(Color3.fromRGB(70, 70, 75), PLASTIC),
+			PullGrip = paint(TOOL_BLACK, PLASTIC),
+			SprocketCover = paint(Color3.fromRGB(70, 70, 75), PLASTIC),
+			Bar = paint(TOOL_IRON, METAL),
+			BarNut = paint(TOOL_STEEL, METAL),
+			Chain = paint(Color3.fromRGB(60, 60, 65), METAL),
+			Tooth = paint(Color3.fromRGB(175, 180, 185), METAL),
+		},
+	},
+	Lantern = {
+		Forward = -Vector3.xAxis,
+		Up = Vector3.yAxis,
+		Size = 1.4,
+		Grip = "Base", -- held up by its bottom, so you can see it in first person
+		GripAt = Vector3.new(0, 0.1, -0.6),
+		Head = "Glass",
+		Paint = {
+			Base = paint(TOOL_BLACK, METAL),
+			Tray = paint(TOOL_BLACK, METAL),
+			Post = paint(TOOL_BLACK, METAL),
+			Bar = paint(TOOL_BLACK, METAL),
+			Cap = paint(TOOL_BLACK, METAL),
+			Roof = paint(TOOL_BLACK, METAL),
+			Finial = paint(TOOL_GOLD, METAL),
+			Bail = paint(TOOL_IRON, METAL),
+			Grip = paint(TOOL_IRON, METAL),
+			Glass = paint(Color3.fromRGB(255, 200, 120), NEON, 0.35),
+			Candle = paint(Color3.fromRGB(240, 230, 210), PLASTIC),
+			Flame = paint(Color3.fromRGB(255, 225, 140), NEON),
+		},
+	},
+	Torch = {
+		Forward = Vector3.yAxis, -- the flame is at the top
+		Up = Vector3.zAxis,
+		Size = 3.4,
+		Grip = "Shaft",
+		GripAt = Vector3.new(0, 0, 0.5),
+		Head = "FlameCore",
+		Fire = 1.2,
+		Paint = {
+			Shaft = paint(TOOL_WOOD, WOODEN),
+			EndCap = paint(TOOL_IRON, METAL),
+			Band = paint(TOOL_IRON, METAL),
+			Wrap = paint(Color3.fromRGB(200, 180, 140), CLOTH),
+			WrapBand = paint(Color3.fromRGB(110, 80, 50), CLOTH),
+			FlameOuter = paint(Color3.fromRGB(255, 120, 30), NEON, 0.3),
+			FlameTongue = paint(Color3.fromRGB(255, 120, 30), NEON, 0.2),
+			FlameInner = paint(Color3.fromRGB(255, 185, 60), NEON),
+			FlameCore = paint(Color3.fromRGB(255, 240, 170), NEON),
+		},
+	},
+	GhostVacuum = {
+		Forward = -Vector3.xAxis, -- the nozzle points to -X
+		Up = Vector3.yAxis,
+		Size = 4,
+		Grip = "Body",
+		GripAt = Vector3.new(0, -0.2, -0.7), -- a bit forward, so the tank isn't in your face
+		Head = "Tip", -- caught ghosts fly into the nozzle
+		Paint = {
+			Body = paint(Color3.fromRGB(150, 205, 255), PLASTIC),
+			FanHousing = paint(Color3.fromRGB(110, 170, 230), PLASTIC),
+			Grille = paint(TOOL_BLACK, METAL), -- and GrilleRing
+			Handle = paint(TOOL_BLACK, PLASTIC),
+			Trigger = paint(Color3.fromRGB(120, 255, 210), NEON),
+			Skid = paint(Color3.fromRGB(70, 70, 85), PLASTIC),
+			Vent = paint(Color3.fromRGB(70, 70, 85), PLASTIC),
+			Collar = paint(Color3.fromRGB(190, 195, 205), METAL),
+			HoseRing = paint(Color3.fromRGB(190, 195, 205), METAL),
+			Tube = paint(Color3.fromRGB(70, 70, 85), PLASTIC), -- and TubeRib
+			Tip = paint(Color3.fromRGB(50, 50, 60), PLASTIC), -- and TipLip
+			Tank = paint(Color3.fromRGB(190, 195, 205), METAL), -- TankBase, TankCap, TankBand, TankKnob
+			TankGlass = paint(Color3.fromRGB(170, 255, 230), GLASS, 0.45),
+			Wisp = paint(Color3.fromRGB(190, 255, 235), NEON, 0.2),
+		},
+	},
+	-- Only hangs on the Tool Shed's wall (it's an upgrade, never held).
+	LogVacuum = {
+		Forward = -Vector3.xAxis,
+		Up = Vector3.yAxis,
+		Size = 4,
+		Grip = "Body",
+		GripAt = Vector3.new(0, 0, 0),
+		Head = "Tip",
+		Paint = {
+			Body = paint(Color3.fromRGB(80, 170, 70), PLASTIC),
+			FanHousing = paint(Color3.fromRGB(55, 125, 50), PLASTIC),
+			Grille = paint(TOOL_BLACK, METAL),
+			Handle = paint(TOOL_BLACK, PLASTIC),
+			Trigger = paint(Color3.fromRGB(230, 200, 40), PLASTIC),
+			Skid = paint(Color3.fromRGB(60, 60, 65), PLASTIC),
+			Vent = paint(Color3.fromRGB(60, 60, 65), PLASTIC),
+			Collar = paint(Color3.fromRGB(120, 125, 130), METAL),
+			Tube = paint(Color3.fromRGB(120, 125, 130), PLASTIC),
+			TubeRib = paint(Color3.fromRGB(90, 95, 100), PLASTIC),
+			Tip = paint(Color3.fromRGB(70, 70, 75), PLASTIC),
+		},
+	},
+}
+
 -- Tools. Fists is what you have when you hold nothing.
 -- The Tool Shed sells the rest (see Shared/Shop.luau for the order and names).
 -- The Lantern and Torch don't chop (Damage 0): the Lantern shows mimics, the Torch burns them.
@@ -548,6 +723,14 @@ local Config = {
 			LogPile = "LogPile",
 		},
 		FitTolerance = 0.05, -- how far (5%) a model's size may be off before the parts are used
+	},
+
+	-- Tools made from Theo's imported models (see toolModels at the top). The models go in a
+	-- model called Folder inside ServerStorage > MapAssets, each one named after its tool
+	-- ("Axe", "Chainsaw"). A tool without a model there keeps the old blocky look.
+	ToolModels = {
+		Folder = "AllTools",
+		Tools = toolModels,
 	},
 
 	-- Little things scattered over each zone's ground (see Server/Build/Details): grass and

@@ -155,14 +155,13 @@ local toolModels: { [string]: Types.ToolModelConfig } = {
 			Wisp = paint(Color3.fromRGB(190, 255, 235), NEON, 0.2),
 		},
 	},
-	-- Only hangs on the Tool Shed's wall (it's an upgrade, never held).
 	LogVacuum = {
 		Forward = -Vector3.xAxis,
 		Up = Vector3.yAxis,
 		Size = 4,
 		Grip = "Body",
-		GripAt = Vector3.new(0, 0, 0),
-		Head = "Tip",
+		GripAt = Vector3.new(0, -0.2, -0.7),
+		Head = "Tip", -- logs fly into the nozzle
 		Paint = {
 			Body = paint(Color3.fromRGB(80, 170, 70), PLASTIC),
 			FanHousing = paint(Color3.fromRGB(55, 125, 50), PLASTIC),
@@ -191,6 +190,7 @@ local tools: { [string]: Types.ToolConfig } = {
 	Lantern = { Damage = 0, Cooldown = 0.5, Reach = 0, Price = 100 },
 	Torch = { Damage = 0, Cooldown = 1, Reach = 8, Price = 150 },
 	GhostVacuum = { Damage = 0, Cooldown = 0.5, Reach = 0, Price = 200 },
+	LogVacuum = { Damage = 0, Cooldown = 0.2, Reach = 0, Price = 300 }, -- hold click to suck up logs
 }
 
 -- Upgrades bought in the Tool Shed. Each price in the list is one level.
@@ -198,7 +198,6 @@ local upgrades: { [string]: Types.UpgradeConfig } = {
 	ChopDamage = { PerLevel = 0.2, Prices = { 40, 80, 160, 320, 640 } }, -- +20% damage per level
 	CarryLimit = { PerLevel = 3, Prices = { 30, 60, 120, 240, 480 } }, -- +3 logs per level (Log Sack)
 	WalkSpeed = { PerLevel = 2, Prices = { 25, 50, 100, 200, 400 } }, -- +2 walk speed per level
-	LogVacuum = { PerLevel = 1, Prices = { 300 } }, -- one level: you have it or you don't
 	LanternRadius = { PerLevel = 5, Prices = { 60, 120, 240 } }, -- the Lantern sees 5 studs further per level
 }
 
@@ -279,6 +278,8 @@ local sounds: { [string]: Types.SoundConfig } = {
 
 	-- Your own sounds: only you hear them (played on your computer, see SoundController).
 	LogPickup = { Id = "rbxasset://sounds/clickfast.wav", Volume = 0.5 },
+	LogSuck = { Id = "rbxassetid://9119669065", Volume = 0.6 }, -- suction pop: a log goes into the Log Vacuum
+	VacuumHum = { Id = "rbxassetid://9116247258", Volume = 0.25, Speed = 1.2, Range = 60 }, -- electric leaf blower, looped while sucking
 	Sell = { Id = "rbxassetid://1319346243", Volume = 0.6 }, -- coins into a cash register
 	Buy = { Id = "rbxassetid://9121189379", Volume = 0.6 }, -- bag of coins
 	QuestDone = { Id = "rbxasset://sounds/electronicpingshort.wav", Volume = 0.5 },
@@ -1400,11 +1401,28 @@ local Config = {
 	Upgrades = upgrades,
 	Quests = quests,
 
-	-- Log Vacuum (bought in the Tool Shed as an upgrade)
+	-- Log Vacuum (a tool from the Tool Shed): hold the mouse button (or your finger) to suck up
+	-- the logs in front of you. The server picks the logs (Server/Systems/LogVacuumManager);
+	-- every player's computer draws them flying in (Client/Controllers/LogVacuumController).
 	LogVacuum = {
-		Radius = 15, -- logs closer than this fly to you
-		Interval = 0.25, -- seconds between checks for nearby logs
-		PullTime = 0.35, -- seconds a log takes to fly to you
+		Range = 22, -- studs: logs closer than this can be sucked up
+		Cone = 0.45, -- how wide it sucks: 1 = only dead ahead, 0 = everything in front of you
+		Interval = 0.15, -- seconds between grabs while you hold the button
+		PerGrab = 1, -- logs grabbed each time
+		MinBurst = 0.35, -- seconds: a quick click still sucks this long
+		PullTime = 0.6, -- seconds a log takes from the ground into the nozzle
+		LiftShare = 0.3, -- the first part of that, the log lifts off the ground and wobbles
+		LiftHeight = 1.5, -- studs it lifts
+		Arc = 3, -- studs the flight curves up on the way to the nozzle
+		Spin = 2, -- turns it spins on the way in
+		EndSize = 0.2, -- it shrinks to this share of its size as it goes in
+		PitchStep = 0.05, -- each log in a row pops a bit higher...
+		PitchMax = 1.5, -- ...up to this
+		ComboReset = 1, -- seconds without a log before the pops start low again
+		WindDistance = 0.3, -- studs in front of the nozzle where the sucked-in air streams to
+		WindSize = 5, -- studs across the ball of air around it that streams in
+		Rumble = 0.03, -- studs the vacuum shakes in your hand (first person) while it sucks
+		HumStart = 3, -- seconds into the hum sound where the motor is already running
 	},
 
 	-- Player

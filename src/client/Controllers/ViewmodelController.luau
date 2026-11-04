@@ -72,6 +72,7 @@ local swingSize = 1 -- how big the movement is (Config.ChopFeel SwingSize)
 local heldTool: Tool? = nil
 local toolCopy: { { Part: BasePart, Offset: CFrame } } = {} -- each copied part, placed from the handle
 local handleLength = 0 -- the copied handle's length (handles are long along Z)
+local rumble = 0 -- studs the tool shakes in your hand (the Log Vacuum while it sucks)
 
 -- Every arm part and where it goes this frame, moved all at once with BulkMoveTo (much faster
 -- than setting 90-odd CFrames one by one).
@@ -398,6 +399,10 @@ local function update(dt: number)
 		local elbow = rest * CFrame.new(0, 0, cfg.ForearmSize.Z)
 		local chop = CFrame.Angles(-math.rad(cfg.ToolSwingAngle) * amount, 0, 0)
 		local rightFist = elbow * chop * elbow:ToObjectSpace(rest)
+		if rumble > 0 then
+			local shake = Vector3.new(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5) * 2 * rumble
+			rightFist *= CFrame.new(shake)
+		end
 		placeArm(arms.Right, rightFist)
 		placeArm(arms.Left, restFrame(camera, "Left"))
 		-- The tool sits in the right fist, pointing up and forward, its head at the far end.
@@ -429,6 +434,25 @@ end
 -- Is first person on (switched on in Config, and the intro is over)?
 function ViewmodelController.isActive(): boolean
 	return active
+end
+
+-- Our first-person copy of the held tool's part called `name` (like "Head", the vacuum's
+-- nozzle), or nil if first person is off or no tool is held.
+function ViewmodelController.getToolPart(name: string): BasePart?
+	if not (active and viewmodel.Parent) then
+		return nil
+	end
+	for _, copy in toolCopy do
+		if copy.Part.Name == name then
+			return copy.Part
+		end
+	end
+	return nil
+end
+
+-- Shake the tool in your hand by `amount` studs (0 = still). Used by the Log Vacuum.
+function ViewmodelController.setRumble(amount: number)
+	rumble = amount
 end
 
 -- Play one swing: a punch with the next fist, or a chop with the tool in your hand.

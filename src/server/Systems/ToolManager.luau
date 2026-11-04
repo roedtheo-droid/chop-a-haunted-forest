@@ -78,11 +78,7 @@ local LOOKS: { [string]: Look } = {
 		HeadColor = Color3.fromRGB(70, 70, 85),
 		HeadOffset = Vector3.new(0, 0.2, -2),
 	},
-}
-
--- Things that are only ever shown on the Tool Shed's walls, never held (the Log Vacuum is an
--- upgrade): a green body like a leaf blower, with a grey nozzle.
-local DISPLAY_LOOKS: { [string]: Look } = {
+	-- A green leaf blower with a grey nozzle: hold click to suck up logs (see LogVacuumManager).
 	LogVacuum = {
 		HandleSize = Vector3.new(0.9, 1.1, 1.8),
 		HandleColor = Color3.fromRGB(80, 170, 70),
@@ -180,7 +176,7 @@ end
 
 local function buildTool(toolId: string): Tool
 	local item = Shop.getItem(toolId)
-	local look = LOOKS[toolId] or DISPLAY_LOOKS[toolId]
+	local look = LOOKS[toolId]
 
 	local tool = Instance.new("Tool")
 	tool.Name = if item then item.Name else toolId

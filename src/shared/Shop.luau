@@ -51,6 +51,21 @@ end
 Shop.TRIAL_TOOL = "TrialTool"
 Shop.TRIAL_ENDS = "TrialEnds"
 
+-- Robux game passes the player owns (Config.Perks), like "Perk_DoubleCoins" = true. Only the
+-- server sets them (see Server/Systems/PerkManager).
+function Shop.perkAttribute(perkId: string): string
+	return `Perk_{perkId}`
+end
+
+function Shop.hasPerk(player: Player, perkId: string): boolean
+	return player:GetAttribute(Shop.perkAttribute(perkId)) == true
+end
+
+-- What a player's logs sell for, compared to normal (2 with the 2X COINS pass).
+function Shop.coinMultiplier(player: Player): number
+	return if Shop.hasPerk(player, "DoubleCoins") then Config.Perks.DoubleCoins.Multiplier else 1
+end
+
 function Shop.maxLevel(upgradeId: string): number
 	local upgrade = Config.Upgrades[upgradeId]
 	return if upgrade then #upgrade.Prices else 0

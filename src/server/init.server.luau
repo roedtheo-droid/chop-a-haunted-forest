@@ -40,6 +40,7 @@ local systems: { Types.Module } = {
 	require(Systems.SawmillManager),
 	require(Systems.ShopManager),
 	require(Systems.TrialManager), -- after ShopManager (its prompt goes on the shed's trial table)
+	require(Systems.PerkManager), -- after SawmillManager and ShopManager (the extras by the sell pads)
 	require(Systems.GarageManager), -- the Garage and truck purchases
 	require(Systems.TruckManager), -- driving, loading and selling with your trucks
 	require(Systems.TreeManager),

@@ -6,6 +6,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Shop = require(ReplicatedStorage.Shared.Shop)
 local UiKit = require(script.Parent.Parent.UiKit)
 
 local NORMAL_COLOR = Color3.new(1, 1, 1)
@@ -22,6 +23,11 @@ end
 
 local function refresh()
 	local carry = getNumberAttribute("Carry")
+	if Shop.hasPerk(player, "InfiniteBag") then
+		label.Text = string.format(Config.Perks.Text.InfiniteCount, carry)
+		label.TextColor3 = NORMAL_COLOR
+		return
+	end
 	local limit = getNumberAttribute("CarryLimit")
 	label.Text = `Logs {carry}/{limit}`
 	label.TextColor3 = if limit > 0 and carry >= limit then Config.Style.Red else NORMAL_COLOR
@@ -50,6 +56,7 @@ function BackpackController.start()
 	refresh()
 	player:GetAttributeChangedSignal("Carry"):Connect(refresh)
 	player:GetAttributeChangedSignal("CarryLimit"):Connect(refresh)
+	player:GetAttributeChangedSignal(Shop.perkAttribute("InfiniteBag")):Connect(refresh)
 end
 
 return BackpackController

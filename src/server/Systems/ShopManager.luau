@@ -2,7 +2,8 @@
 -- Builds the Tool Shed (see Build/ToolShed) and handles every purchase.
 --
 -- There are two ways to buy: the "Buy" prompt on a tool's board on the wall, or the shop menu
--- (the "Open shop" prompt on the counter, whose Buy buttons fire the BuyItem remote).
+-- (the "Open shop" prompt on the counter, whose Buy buttons fire the BuyItem remote). The Log
+-- Sack can also be bought on its stump by each sell pad (PerkManager calls buyAt).
 -- Either way the server checks that:
 --   the item exists, the player is in (or right outside) the shed, they're not buying too fast,
 --   they don't already own it (or it isn't max level), they own anything it needs first
@@ -78,7 +79,15 @@ local function isAtShed(player: Player): boolean
 		and offset.Y <= size.Y + margin
 end
 
-local function tryBuy(player: Player, itemId: unknown)
+-- Is the player within `reach` studs of `spot` (like the Log Sack's stump by a sell pad)?
+local function isNear(player: Player, spot: BasePart, reach: number): boolean
+	local character = player.Character
+	local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
+	return root ~= nil and root:IsA("BasePart") and (root.Position - spot.Position).Magnitude <= reach + Config.Shop.BuyMargin
+end
+
+-- `at` and `reach`: bought at a prompt outside the shed (only the server passes these).
+local function tryBuy(player: Player, itemId: unknown, at: BasePart?, reach: number?)
 	-- 1. Is it a real item? (The client could send anything.)
 	if typeof(itemId) ~= "string" then
 		return
@@ -95,7 +104,8 @@ local function tryBuy(player: Player, itemId: unknown)
 		return
 	end
 	lastBuy[player] = now
-	if not isAtShed(player) then
+	local inPlace = if at and reach then isNear(player, at, reach) else isAtShed(player)
+	if not inPlace then
 		notifyRemote:FireClient(player, Config.Shop.Text.NotAtShed)
 		return
 	end
@@ -167,6 +177,12 @@ local function addBuyPrompts()
 	end
 end
 
+-- Buy item `itemId` at a prompt outside the shed, on `spot` (PerkManager's Log Sack stumps).
+-- The same checks as in the shed, but the player must be within `reach` studs of the spot.
+function ShopManager.buyAt(player: Player, itemId: string, spot: BasePart, reach: number)
+	tryBuy(player, itemId, spot, reach)
+end
+
 -- The top of the trial table in the shed (TrialManager puts its "Try" prompt on it).
 function ShopManager.getTrialTable(): BasePart
 	return trialTable
@@ -178,7 +194,10 @@ end
 
 function ShopManager.start()
 	notifyRemote = Remotes.getEvent("Notify")
-	Remotes.getEvent("BuyItem").OnServerEvent:Connect(tryBuy)
+	-- Only the item comes from the client: anything else it sends is ignored.
+	Remotes.getEvent("BuyItem").OnServerEvent:Connect(function(player: Player, itemId: unknown)
+		tryBuy(player, itemId)
+	end)
 	addBuyPrompts()
 
 	Players.PlayerRemoving:Connect(function(player: Player)

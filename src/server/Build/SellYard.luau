@@ -321,6 +321,12 @@ local function buildChoppingBlock()
 	end
 end
 
+-- How far out (Z) the pad's middle is, and where its right edge is (X, with the striped edge),
+-- from the middle of the sawmill's floor plan (Build/YardShop stands beside it).
+function SellYard.padSpot(): (number, number)
+	return padZ(), Config.Sawmill.PadSize.X / 2 + STRIPE_WIDTH
+end
+
 -- Builds the yard in front of the sawmill whose floor plan's middle is at `ground`, into
 -- `parent`. `wear` (0 to 1) makes it darker and more worn; `perLog` is what one log from this
 -- zone's trees is worth (the billboard shows it). Returns the DROP LOGS pad.

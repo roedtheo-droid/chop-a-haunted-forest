@@ -78,6 +78,10 @@ local list: { [string]: Types.RemoteKind } = {
 	-- Client -> server: the Studio-only "Skip to boss" button was clicked.
 	-- The server ignores it outside Studio (see Server/Systems/DebugManager).
 	DebugSkipToBoss = "Event",
+
+	-- Client -> server: the Studio-only "+ Coins" button was clicked. No amount is sent;
+	-- the server uses Config.DebugCoins and ignores it outside Studio (see DebugManager).
+	DebugGiveCoins = "Event",
 }
 Remotes.List = table.freeze(list)
 

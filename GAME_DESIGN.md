@@ -110,7 +110,7 @@ mimics first and burn them safely with a torch.
 - Fists (start), Axe, Steel Axe, Chainsaw, Lantern, Torch, Log Sack (carry upgrades).
 - Tool ladder: each chopping tool must look and feel clearly stronger than the
   last (bigger damage, faster swings, its own placeholder shape and chip burst).
-- Log Vacuum: a Log Sack upgrade that pulls nearby logs on the ground to you.
+- Log Vacuum: a tool from the Tool Shed. Hold click and the logs in front of you whoosh into your sack.
 - Upgrades: Chop Damage, Carry Limit, Walk Speed, Lantern Radius.
 - Number keys equip tools. Mobile gets on-screen buttons.
 

@@ -57,6 +57,11 @@ local list: { [string]: Types.RemoteKind } = {
 	-- in front of you and checks that you hold the vacuum (see Server/Systems/GhostManager).
 	VacuumGhost = "Event",
 
+	-- Client -> server: "I started (true) / stopped (false) sucking with my Log Vacuum". No numbers:
+	-- the server picks the logs in front of you and checks that you hold the vacuum
+	-- (see Server/Systems/LogVacuumManager).
+	VacuumLogs = "Event",
+
 	-- Server -> all clients: the Elder Hollow fell and the whole forest is clear.
 	-- Carries the party's totals for this run (a RunSummary, see Shared/Types).
 	ForestCleared = "Event",

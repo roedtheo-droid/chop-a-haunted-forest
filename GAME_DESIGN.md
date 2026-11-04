@@ -175,6 +175,14 @@ game builds the old parts version.
 6b. Logs, stumps and the Elder Hollow as models. (done, tested)
 6c. The Tool Shed and the sawmills as models. (done, tested)
 
+## Courage and ghosts (from Theo's Claude Design export)
+- Courage (0-100, shown as a bar above the backpack counter): drains in the zones (faster in
+  darker zones, near ghosts and while holding the Chainsaw), fills up fast in the camp and
+  slowly while holding a Lantern or Torch. At 0 you slowly lose health. Full again on respawn.
+- Ghosts float in every zone (1, 3 and 5), drift around, follow players who come close (not
+  ones holding a light) and stare at them. The Ghost Vacuum (Tool Shed) sucks up the ghost in
+  front of you for coins and courage. Numbers in Config.Courage and Config.Ghosts.
+
 ## After the MVP (ideas, not scheduled)
 - Lobby with party pads: step on a pad, pick the map and party size (1–4),
   then everyone teleports in together.

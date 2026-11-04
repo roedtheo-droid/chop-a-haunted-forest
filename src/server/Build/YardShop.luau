@@ -286,7 +286,8 @@ function YardShop.build(ground: Vector3, wear: number, padZ: number, padRight: n
 	local sack = buildSackStump(x, padZ - 2.5)
 	local bag = buildBagStump(x, padZ + 2.5)
 	local coins = buildCoinsBoard(x + 5.5, padZ)
-	buildBeaver(x + 3.5, padZ + Config.Sawmill.PadSize.Y / 2 + 2.5)
+	-- Level with the pad's front edge: any further out, it stands in Fog Hollow's border rocks.
+	buildBeaver(x + 3.5, padZ + Config.Sawmill.PadSize.Y / 2 - 0.2)
 	return { Sack = sack, Bag = bag, Coins = coins }
 end
 

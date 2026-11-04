@@ -132,8 +132,17 @@ function AtmosphereController.init()
 	-- soft rays when you look towards the sun, and a colour filter that each zone's Look fades.
 	local cfg = Config.ZoneLook
 	Lighting.ShadowSoftness = cfg.ShadowSoftness
+	Lighting.ExposureCompensation = cfg.Exposure
+	-- The place came with Roblox's default Bloom and SunRays. Turn them off so only ours
+	-- below are used; otherwise bright things glow twice.
+	for _, child in Lighting:GetChildren() do
+		if child:IsA("BloomEffect") or child:IsA("SunRaysEffect") then
+			child.Enabled = false
+		end
+	end
 	colorCorrection = Instance.new("ColorCorrectionEffect")
 	colorCorrection.Name = "ZoneColor"
+	colorCorrection.Contrast = cfg.Contrast
 	colorCorrection.Parent = Lighting
 	local bloom = Instance.new("BloomEffect")
 	bloom.Name = "ZoneBloom"

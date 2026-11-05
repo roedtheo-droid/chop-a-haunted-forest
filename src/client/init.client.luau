@@ -20,6 +20,7 @@ local controllers: { Types.Module } = {
 	require(Controllers.NotifyController),
 	require(Controllers.HudController),
 	require(Controllers.ZoneController),
+	require(Controllers.DayController), -- the day/night bar at the top middle
 	require(Controllers.AtmosphereController),
 	require(Controllers.SoundController),
 	require(Controllers.QuestController),

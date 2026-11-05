@@ -1204,6 +1204,29 @@ local Config = {
 		},
 	},
 
+	-- The day and night clock (Shared/DayClock, started by Server/Systems/DayManager) and its bar
+	-- at the top of the screen (Client/Controllers/DayController). Every player sees the same time.
+	-- Night doesn't change the lighting or the mimics yet.
+	Day = {
+		DaySeconds = 450, -- 7.5 minutes of day...
+		NightSeconds = 150, -- ...then 2.5 minutes of night
+		-- NOT USED YET: how much stronger mimics get at night. Nothing reads it until Theo decides
+		-- how mimics should change at night.
+		NightMimicBoost = 1.5,
+		-- The bar (pixels on a 1080p screen, like Config.Hud)
+		BarWidth = 420,
+		BarHeight = 38,
+		Icon = 64, -- the sun or moon riding the end of the fill
+		TimeText = 28,
+		Navy = Color3.fromRGB(25, 35, 75), -- the empty part of the bar
+		DayFill = Color3.fromRGB(255, 205, 50),
+		NightFill = Color3.fromRGB(120, 130, 230),
+		Text = {
+			TimeLeft = "%dm %ds", -- minutes and seconds until night (or morning)
+			SecondsLeft = "%ds", -- under a minute
+		},
+	},
+
 	-- Scenery around the forest, only for looks: you can't chop it (see Server/Systems/SceneryManager).
 	Scenery = {
 		FenceColor = Color3.fromRGB(120, 78, 45), -- wooden fences (see Build/Props)
@@ -1995,6 +2018,8 @@ local Config = {
 	-- UI
 	UI = {
 		NotifyDuration = 2, -- seconds a message stays on screen
+		NotifyWidth = 600, -- the message box under the day bar (pixels on a 1080p screen)
+		NotifyHeight = 48,
 		QuestsDoneHideDelay = 6, -- seconds the "All quests done" box stays before hiding
 	},
 }

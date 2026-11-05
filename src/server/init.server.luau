@@ -32,6 +32,7 @@ local systems: { Types.Module } = {
 	require(Systems.CoinManager),
 	require(Systems.EmberManager),
 	require(Systems.RunManager),
+	require(Systems.DayManager), -- the day and night clock
 	require(Systems.ToolManager),
 	require(Systems.MovementManager),
 	require(Systems.UpgradeManager),

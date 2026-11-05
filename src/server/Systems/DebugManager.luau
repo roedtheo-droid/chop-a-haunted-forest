@@ -8,6 +8,8 @@
 --   3. gives you the Chainsaw, so the roots don't take ages with fists.
 -- The cleared trees don't count toward run totals or saved stats.
 --
+-- "+ Coins" gives you Config.DebugCoins coins. They don't count as "Coins earned".
+--
 -- Why check IsStudio here on the SERVER? The button only exists in Studio, but anyone
 -- can fire a remote. On a live server this module ignores the request, so nobody can
 -- use it to cheat.
@@ -19,6 +21,7 @@ local RunService = game:GetService("RunService")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Tags = require(ReplicatedStorage.Shared.Tags)
+local CoinManager = require(script.Parent.CoinManager)
 local MimicManager = require(script.Parent.MimicManager)
 local ToolManager = require(script.Parent.ToolManager)
 local ZoneManager = require(script.Parent.ZoneManager)
@@ -77,12 +80,21 @@ local function onSkipToBoss(player: Player)
 	clearForest()
 end
 
+-- The amount comes from Config, never from the client.
+local function onGiveCoins(player: Player)
+	if not isAllowed() then
+		return
+	end
+	CoinManager.add(player, Config.DebugCoins)
+end
+
 function DebugManager.init() end
 
 function DebugManager.start()
 	Remotes.getEvent("DebugSkipToBoss").OnServerEvent:Connect(onSkipToBoss)
+	Remotes.getEvent("DebugGiveCoins").OnServerEvent:Connect(onGiveCoins)
 	if isAllowed() and Config.DebugPrints then
-		print("[Debug] Studio shortcuts are ON (the Skip to boss button)")
+		print("[Debug] Studio shortcuts are ON (Skip to boss, + Coins)")
 	end
 end
 

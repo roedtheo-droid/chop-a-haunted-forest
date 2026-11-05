@@ -20,6 +20,11 @@ local SaveManager = require(script.Parent.SaveManager)
 
 local RunManager = {}
 
+-- Attributes on ReplicatedStorage for the HUD's run timer (Client/ZoneController): the server
+-- time (workspace:GetServerTimeNow()) the run started, and when the forest was cleared.
+RunManager.STARTED_AT = "RunStartedAt"
+RunManager.ENDED_AT = "RunEndedAt"
+
 local totals: { [string]: number } = {} -- the whole party's totals, like totals.TreesFelled
 local startedAt = 0 -- os.clock() when the run started
 local cleared = false
@@ -37,6 +42,8 @@ function RunManager.forestCleared()
 		return
 	end
 	cleared = true
+	-- The HUD's run timer stops here.
+	ReplicatedStorage:SetAttribute(RunManager.ENDED_AT, workspace:GetServerTimeNow())
 
 	local embers = Config.Embers.PerForestCleared
 	for _, player in Players:GetPlayers() do
@@ -57,6 +64,7 @@ end
 
 function RunManager.init()
 	startedAt = os.clock()
+	ReplicatedStorage:SetAttribute(RunManager.STARTED_AT, workspace:GetServerTimeNow())
 end
 
 function RunManager.start()

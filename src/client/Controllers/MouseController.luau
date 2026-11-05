@@ -72,6 +72,7 @@ function MouseController.init()
 	hintGui = Instance.new("ScreenGui")
 	hintGui.Name = "FreeMouseHint"
 	hintGui.ResetOnSpawn = false
+	UiKit.hudScale(hintGui) -- the same size as the rest of the HUD
 	hint = UiKit.smallText(hintGui, "Hint", cfg.FreeText)
 	hint.AnchorPoint = Vector2.new(0, 1)
 	hint.Position = UDim2.new(0, cfg.HintMargin, 1, -cfg.HintMargin)

@@ -53,6 +53,15 @@ local list: { [string]: Types.RemoteKind } = {
 	-- to draw and where they drop from (a Vector3).
 	LogsSold = "Event",
 
+	-- Client -> server: the round SELL button (phones and tablets) was tapped. No numbers: the
+	-- server checks that you stand by a DROP LOGS pad and sells your logs there, like stepping
+	-- on it (see Server/Systems/SawmillManager).
+	SellLogs = "Event",
+
+	-- Client -> server: "I pressed T to try the trial tool" (the HUD's trial row). No numbers:
+	-- the server does exactly what the trial table's prompt does (see Server/Systems/TrialManager).
+	TryTrial = "Event",
+
 	-- Client -> server: "I'm holding sprint" (true) or "I let go" (false).
 	-- The server decides the actual speed.
 	SetSprint = "Event",
@@ -78,6 +87,10 @@ local list: { [string]: Types.RemoteKind } = {
 	-- Client -> server: the Studio-only "Skip to boss" button was clicked.
 	-- The server ignores it outside Studio (see Server/Systems/DebugManager).
 	DebugSkipToBoss = "Event",
+
+	-- Client -> server: the Studio-only "+ Coins" button was clicked. No amount is sent;
+	-- the server uses Config.DebugCoins and ignores it outside Studio (see DebugManager).
+	DebugGiveCoins = "Event",
 }
 Remotes.List = table.freeze(list)
 

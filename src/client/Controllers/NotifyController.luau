@@ -30,6 +30,11 @@ local function show(message: string)
 	end)
 end
 
+-- Show a message from this computer (the server's messages come through the Notify remote).
+function NotifyController.show(message: string)
+	show(message)
+end
+
 function NotifyController.init()
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "Notify"

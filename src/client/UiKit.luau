@@ -6,6 +6,7 @@
 --   * button: a rounded, coloured button that squishes a little when pressed
 --   * bar: a rounded progress bar with text on top
 --   * coin / ember: small round icons made from frames (no images needed)
+--   * hudScale / keyBadge: the HUD (Config.Hud); its icons are drawn in Client/Icons
 -- Colours and sizes are in Config.Style. It's not a controller, so it has no init()/start().
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -212,6 +213,42 @@ function UiKit.ember(parent: Instance, name: string): Frame
 	diamond.Parent = holder
 	holder.Parent = parent
 	return holder
+end
+
+-- The HUD (sizes in Config.Hud are pixels on a 1080p screen).
+local Hud = Config.Hud
+
+-- Make a HUD screen grow and shrink with the screen. A UIScale on a ScreenGui scales everything
+-- in it, and things stuck to an edge (or the middle) stay there, so the HUD fits on phones too.
+function UiKit.hudScale(gui: ScreenGui)
+	local scale = Instance.new("UIScale")
+	scale.Parent = gui
+	local function update()
+		local camera = workspace.CurrentCamera
+		local height = if camera then camera.ViewportSize.Y else Hud.DesignHeight
+		scale.Scale = math.clamp(height / Hud.DesignHeight, Hud.MinScale, Hud.MaxScale)
+	end
+	update()
+	local camera = workspace.CurrentCamera
+	if camera then
+		camera:GetPropertyChangedSignal("ViewportSize"):Connect(update)
+	end
+end
+
+-- A small dark key badge, like "T" or "TAB", that says which key does something.
+function UiKit.keyBadge(parent: Instance, name: string, key: string): Frame
+	local badge = Instance.new("Frame")
+	badge.Name = name
+	badge.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+	badge.Size = UDim2.fromOffset(math.max(Hud.KeyBadge, 14 * #key + 14), Hud.KeyBadge)
+	UiKit.corner(badge, 8)
+	UiKit.border(badge, BLACK, 2)
+	local label = UiKit.smallText(badge, "Key", key)
+	label.AnchorPoint = Vector2.new(0.5, 0.5)
+	label.Position = UDim2.fromScale(0.5, 0.5)
+	label.Size = UDim2.fromScale(0.8, 0.7)
+	badge.Parent = parent
+	return badge
 end
 
 -- A quick "boing" to draw the eye to something that just changed (like a counter going up).

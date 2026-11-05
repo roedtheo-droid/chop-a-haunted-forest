@@ -3,12 +3,16 @@
 -- yard in front (Build/SellYard): the striped "DROP LOGS" pad, signs, and a conveyor into a
 -- wood chipper, with shop extras beside it (Build/YardShop, sold by PerkManager).
 -- When a player steps on a pad, the SERVER takes all their logs and pays them coins.
+-- On phones and tablets the round SELL button (Client/HudController) does the same while you
+-- stand near a pad: the server keeps a "NearSellPad" attribute up to date to light it up, and
+-- checks the distance again when you tap it.
 -- The client never says how many logs it has or what they're worth, so it can't fake the amount.
 -- Every player's computer then shows the logs dropping onto the pad and riding the conveyor
 -- into the chipper (the LogsSold remote, see Client/Controllers/SellYardController).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Format = require(ReplicatedStorage.Shared.Format)
@@ -33,6 +37,9 @@ local shopSpots: { YardShop.Spots } = {}
 -- When each player last sold, so standing on the pad doesn't sell over and over.
 local lastSell: { [Player]: number } = {}
 
+local NEAR_PAD = "NearSellPad" -- player attribute: true while the SELL button would work
+local NEAR_CHECK_EVERY = 0.25 -- seconds between NearSellPad updates
+
 local function groundHeightAt(x: number, z: number): number
 	local result = workspace:Raycast(Vector3.new(x, 200, z), Vector3.new(0, -400, 0))
 	return if result then result.Position.Y else 0
@@ -44,16 +51,8 @@ function SawmillManager.showSell(pad: BasePart, count: number, from: Vector3)
 	soldRemote:FireAllClients(pad, math.min(count, Config.Sawmill.MaxShownLogs), from)
 end
 
-local function onPadTouched(pad: BasePart, hit: BasePart)
-	-- Which player touched the pad? (hit could be a leg, an arm or a hat.)
-	local character = hit:FindFirstAncestorOfClass("Model")
-	if not character then
-		return
-	end
-	local player = Players:GetPlayerFromCharacter(character)
-	if not player then
-		return
-	end
+-- Take all of the player's logs and pay for them at `pad`.
+local function sell(player: Player, character: Model, pad: BasePart)
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
 	if not humanoid or humanoid.Health <= 0 then
 		return
@@ -83,6 +82,43 @@ local function onPadTouched(pad: BasePart, hit: BasePart)
 	end
 	notifyRemote:FireClient(player, string.format(Config.Sawmill.Text.Sold, logs, Format.number(coins)))
 	QuestManager.report(player, "SellLogs")
+end
+
+local function onPadTouched(pad: BasePart, hit: BasePart)
+	-- Which player touched the pad? (hit could be a leg, an arm or a hat.)
+	local character = hit:FindFirstAncestorOfClass("Model")
+	if not character then
+		return
+	end
+	local player = Players:GetPlayerFromCharacter(character)
+	if player then
+		sell(player, character, pad)
+	end
+end
+
+-- The pad within SellButtonReach of the player (flat distance, ignoring height), if any.
+local function padNear(player: Player): BasePart?
+	local character = player.Character
+	local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
+	if not (root and root:IsA("BasePart")) then
+		return nil
+	end
+	for _, pad in pads do
+		local offset = root.Position - pad.Position
+		if Vector2.new(offset.X, offset.Z).Magnitude <= Config.Sawmill.SellButtonReach then
+			return pad
+		end
+	end
+	return nil
+end
+
+-- The SELL button. The client only says "sell"; the server checks where you are.
+local function onSellButton(player: Player)
+	local pad = padNear(player)
+	local character = player.Character
+	if pad and character then
+		sell(player, character, pad)
+	end
 end
 
 local function build(center: Vector3, index: number): BasePart
@@ -135,6 +171,23 @@ function SawmillManager.start()
 			onPadTouched(pad, hit)
 		end)
 	end
+	Remotes.getEvent("SellLogs").OnServerEvent:Connect(onSellButton)
+
+	-- Keep NearSellPad up to date, so the SELL button lights up by a pad.
+	local sinceCheck = 0
+	RunService.Heartbeat:Connect(function(deltaTime: number)
+		sinceCheck += deltaTime
+		if sinceCheck < NEAR_CHECK_EVERY then
+			return
+		end
+		sinceCheck = 0
+		for _, player in Players:GetPlayers() do
+			local near = padNear(player) ~= nil
+			if player:GetAttribute(NEAR_PAD) ~= near then
+				player:SetAttribute(NEAR_PAD, near)
+			end
+		end
+	end)
 
 	Players.PlayerRemoving:Connect(function(player: Player)
 		lastSell[player] = nil

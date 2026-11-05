@@ -658,7 +658,7 @@ local trucks: { Types.TruckConfig } = {
 -- Tutorial quests, in order. They teach new players the core loop.
 local quests: { Types.QuestConfig } = {
 	{ Event = "FellTree", Goal = 1, Text = "Chop down a tree" },
-	{ Event = "PickUpLog", Goal = 3, Text = "Pick up logs (press E)" },
+	{ Event = "PickUpLog", Goal = 3, Text = "Walk over your logs" },
 	{ Event = "SellLogs", Goal = 1, Text = "Sell logs on the sawmill pad" },
 	{ Event = "BuyAxe", Goal = 1, Text = "Buy an Axe at the Tool Shed" },
 	{ Event = "BuyUpgrade", Goal = 1, Text = "Buy any upgrade" },
@@ -673,12 +673,17 @@ local Config = {
 
 	-- Debug
 	-- When true, the server and client print startup info to the Output window.
-	DebugPrints = true,
+	DebugPrints = game:GetService("RunService"):IsStudio(), -- on in Studio, off in the real game
 	-- When true, Studio playtests show test shortcuts like the "Skip to boss" button.
 	-- They never work in the real game (see Server/Systems/DebugManager).
 	StudioShortcuts = true,
 	-- How many Coins one click on the Studio-only "+ Coins" button gives you.
 	DebugCoins = 1000,
+
+	-- What players do, for the Creator Dashboard (see Server/Systems/AnalyticsManager).
+	Analytics = {
+		Enabled = true, -- false sends nothing
+	},
 
 	-- Extra chop text, like in Chop a Forest. Both are off by default to keep the effects clean.
 	ShowTreeHpBar = false, -- true: the tree's name and HP show under the crosshair (see TreeHpBar)
@@ -979,6 +984,7 @@ local Config = {
 	-- PLAY swoops the camera down behind your character. Positions are (X, Y, Z) on the map.
 	Intro = {
 		Enabled = true, -- false skips it (handy when you're testing other things in Studio)
+		SkipIfSeen = true, -- people who pressed PLAY on an earlier visit skip the flyover and start at the title
 		Title = "CHOP A HAUNTED FOREST",
 		Subtitle = "Chop every tree... but watch out for the mimics!",
 		FadeTime = 1, -- seconds the screen takes to fade in from black at the start
@@ -1141,6 +1147,9 @@ local Config = {
 				"Clear it all to open the next gate",
 				"Clear it all to wake the Elder Hollow",
 			},
+			GateOpenHint = "The gate is open!", -- the small line once a zone is cleared...
+			BossAwakeHint = "Chop its glowing roots!", -- ...while the Elder Hollow is awake...
+			BossDefeatedHint = "The Elder Hollow has fallen!", -- ...and once it has fallen
 			Camp = "Lumber Camp", -- the zone name while you're in the camp
 			Trial = "TRIAL %ds", -- the trial's length, before you start it
 			Free = "FREE", -- the trial's price while it has no product id (free once per run)
@@ -1335,10 +1344,10 @@ local Config = {
 	FirstPerson = {
 		FirstPersonOnly = true, -- false = the old camera behind your character, aiming with the mouse
 		SkinColor = Color3.fromRGB(245, 205, 160), -- only used if your character's arm colour can't be found
-		ForearmSize = Vector3.new(0.8, 0.8, 4), -- studs: width, height, length (long, so its end never shows mid-punch)
-		FistSize = Vector3.new(1.05, 1.05, 1.05),
+		ForearmSize = Vector3.new(0.7, 0.7, 4), -- studs: width, height, length (long, so its end never shows mid-punch)
+		FistSize = Vector3.new(0.9, 0.9, 0.9),
 		Roundness = 0.22, -- how round the corners of the fists and forearms are (0 = sharp, 0.5 = very round)
-		RestOffset = Vector3.new(1.15, -1.05, -2.3), -- where the right fist rests, seen from the camera (the left one is mirrored)
+		RestOffset = Vector3.new(1.2, -1.15, -2.4), -- where the right fist rests, seen from the camera (the left one is mirrored)
 		RestPitch = 14, -- degrees the forearms tilt up from the bottom of the screen
 		RestYaw = 10, -- degrees they point in towards the middle
 		-- A punch (see ViewmodelController): a short wind-up, a jab that speeds up until it
@@ -1370,7 +1379,7 @@ local Config = {
 		Key = Enum.KeyCode.LeftAlt,
 		-- The key hint in the bottom-left corner, under the backpack (it shows in first person,
 		-- with a keyboard). Sizes are on a 1080p screen, like Config.Hud.
-		FreeText = "1-9 tools · click chop · E pick up · Left Alt free mouse", -- while the mouse is locked
+		FreeText = "1-9 tools · click chop · Shift sprint · Left Alt free mouse", -- while the mouse is locked
 		LockText = "Left Alt: lock mouse", -- while the mouse is free
 		HintHeight = 26, -- pixels tall (the text fills it)
 		HintWidth = 560, -- pixels wide
@@ -1439,12 +1448,13 @@ local Config = {
 		LightRegen = 2, -- gained while you hold a Lantern or Torch in the forest
 		ChainsawDrain = 0.5, -- extra loss while you hold the Chainsaw (it's loud, the ghosts come)
 		GhostRadius = 18, -- ghosts closer than this scare you...
-		GhostDrain = 2, -- ...each one takes this much extra (a held light keeps ghosts from scaring you)
+		GhostDrain = { 0.5, 1.5, 2 }, -- ...each one takes this much extra in zone 1, 2 and 3 (low in zone 1, where new players can't afford a light yet; a held light keeps ghosts from scaring you)
 		MaxScaryGhosts = 3, -- at most this many ghosts count at once
 		FearDamage = 2, -- health lost at 0 courage (Roblox heals 1 per second, so you lose about 1 per second)
 		LowAt = 25, -- the bar turns red and pulses below this
 		Text = {
 			Bar = "Courage %d%%", -- on the bar (%% shows a %)
+			GettingScared = "You're getting scared! Run back to camp to calm down.", -- when it drops below LowAt
 			TooScared = "You're too scared! Hold your Lantern or Torch, or run back to camp.",
 		},
 	},
@@ -1460,7 +1470,7 @@ local Config = {
 		Speed = 5, -- studs per second when drifting (players walk 16)
 		ChaseRadius = 35, -- it floats towards players closer than this (not ones holding a light)
 		ChaseSpeed = 7,
-		HoverDistance = 7, -- it stops this far from the player it follows, to stare at them
+		HoverDistance = 11, -- it stops this far from the player it follows, to stare at them
 		EdgeMargin = 14, -- studs it stays away from the zone's walls
 		MaxStep = 2, -- seconds before it picks where to go next
 		-- The Ghost Vacuum
@@ -1471,7 +1481,7 @@ local Config = {
 		CourageReward = 20, -- courage back for each ghost caught
 		-- How a ghost looks (blocks, so it fits the style; a "Ghost" Blender model is used instead
 		-- when it's imported, see Build/Assets)
-		Size = 3.4, -- studs: its head is this wide
+		Size = 2.6, -- studs: its head is this wide
 		Color = Color3.fromRGB(235, 242, 255),
 		Transparency = 0.25,
 		LightColor = Color3.fromRGB(170, 210, 255),
@@ -1652,7 +1662,18 @@ local Config = {
 	-- Logs
 	Logs = {
 		CarryLimit = 5, -- starting backpack size
-		PickupDistance = 8, -- how close you must be to see "Pick up"
+		-- Walking over logs picks them up (see Server/Systems/LogVacuumManager).
+		WalkOverRadius = 6, -- studs from your middle: logs closer than this fly to you
+		WalkOverCheck = 0.15, -- seconds between checks
+		WalkOverFlyTime = 0.3, -- seconds a log takes to fly to you
+		FullMessageEvery = 5, -- seconds between "Your backpack is full!" messages for one player
+		-- Dying drops your logs where you fell (see Server/Systems/LogManager).
+		MaxDropped = 20, -- never more log parts than this: a bigger load is shared out over them, so no coins are lost
+		DropSpread = 5, -- studs: how far from where you fell they land
+		Text = {
+			Full = "Your backpack is full! Sell your logs at a sawmill.",
+			Dropped = "You dropped %d log(s) where you fell. Go and get them!",
+		},
 		Length = 2.4, -- short, square-ish blocks, like in Chop a Forest
 		Thickness = 1.3,
 		Gap = 0.15, -- studs between the logs lying in a row where the trunk landed

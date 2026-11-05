@@ -4,9 +4,10 @@
 --      from the sunny camp to the dark graveyard. A Skip button jumps past it.
 --   2. The title and a big PLAY button pop up while the camera circles slowly over the camp.
 --   3. PLAY swoops the camera down behind your character and gives you back the controls and the HUD.
--- It only plays once, when you join (not when you respawn).
+-- It only plays once, when you join (not when you respawn). If you pressed PLAY on an earlier
+-- visit, it skips the flyover and starts at the title (Config.Intro.SkipIfSeen).
 --
--- It's only for looks on YOUR screen, so the server doesn't take part.
+-- It's only for looks on YOUR screen. The server only hears that you pressed PLAY, and saves that.
 -- The texts, timings and camera shots are in Config.Intro.
 
 local Players = game:GetService("Players")
@@ -16,6 +17,7 @@ local StarterGui = game:GetService("StarterGui")
 local TweenService = game:GetService("TweenService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Types = require(ReplicatedStorage.Shared.Types)
 local UiKit = require(script.Parent.Parent.UiKit)
 local AtmosphereController = require(script.Parent.AtmosphereController)
@@ -24,6 +26,7 @@ local Style = Config.Style
 local cfg = Config.Intro
 local shots: { Types.IntroShot } = cfg.Shots
 local RENDER_NAME = "IntroCamera"
+local SEEN_ATTRIBUTE = "Unlock_IntroSeen" -- the server sets this once you've pressed PLAY, and saves it
 -- Roblox's own menus, hidden during the intro so only the forest and the title show.
 local CORE_GUIS = {
 	Enum.CoreGuiType.PlayerList,
@@ -399,12 +402,22 @@ function IntroController.start()
 	buildGui()
 	hideEverythingElse()
 	task.spawn(preloadShots)
+	-- Been here before? Then skip the flyover. Your save arrives a moment after you join, so this
+	-- can also happen while the first shot is showing.
+	local function skipIfSeen()
+		if cfg.SkipIfSeen and player:GetAttribute(SEEN_ATTRIBUTE) == true then
+			skipped = true
+		end
+	end
+	player:GetAttributeChangedSignal(SEEN_ATTRIBUTE):Connect(skipIfSeen)
+	skipIfSeen()
 	-- Just after Roblox's own camera, so ours wins every frame.
 	RunService:BindToRenderStep(RENDER_NAME, Enum.RenderPriority.Camera.Value + 1, updateCamera)
 
 	playFlyover()
 	showTitle()
 	playButton.Activated:Wait()
+	Remotes.getEvent("PressedPlay"):FireServer()
 	swoopToCharacter()
 	finish()
 end

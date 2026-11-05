@@ -43,7 +43,8 @@ mimics first and burn them safely with a torch.
 
 ## Core loop
 1. Chop trees -> they fall and drop logs.
-2. Pick up logs (carry limit) -> bring them to the Sawmill in that zone -> get Coins.
+2. Walk over logs to pick them up (carry limit) -> bring them to the Sawmill in that zone -> get
+   Coins. Dying drops your logs where you fell.
 3. Spend Coins on tools and upgrades (bigger carry, faster chopping).
 4. Spot mimics using their tells and the Lantern -> burn them with the Torch
    -> they drop Embers (permanent currency).
@@ -116,7 +117,8 @@ mimics first and burn them safely with a torch.
 
 ## Tutorial quests
 - A short quest list in the top-left teaches new players, one step at a time,
-  e.g. "Quest 2/8: Pick up the logs (press E)".
+  e.g. "Quest 2/6: Walk over logs to pick them up". Finishing them is saved, so they only show
+  for new players.
 - Example steps: chop a tree, pick up logs, sell at the Sawmill, buy an Axe,
   clear 10% of the zone.
 
@@ -182,6 +184,28 @@ game builds the old parts version.
 - Ghosts float in every zone (1, 3 and 5), drift around, follow players who come close (not
   ones holding a light) and stare at them. The Ghost Vacuum (Tool Shed) sucks up the ghost in
   front of you for coins and courage. Numbers in Config.Courage and Config.Ghosts.
+
+## Next big steps (Phases 12-20, planned 2026-11-05)
+The goal: the game kids describe as "the one where a tree ate my friend and I had to chop them out".
+It becomes its own game: this list moves away from matching Chop a Forest's look and layouts.
+Chopping, selling logs and upgrading tools are the genre, so they stay.
+12. Clean start: analytics, the tutorial and flyover are remembered, walk over logs to collect
+    them, fairer ghosts, dying drops your logs. (done, tested)
+13. Make it yours: a new name, Theo's own purple HUD, a "spooky storybook" style, a camp with its
+    own ideas (a chained mimic that eats logs and burps coins).
+14. The trees bite: a real wake-up moment, sprint stamina, being swallowed, mimic species with one
+    rule each, a first scare within 3 minutes, the Forest Journal. Then test with real friends.
+15. Friends save friends: mark trees for the party, the Torch stuns, a quick-chat wheel, shared
+    trucks, giant trees, shared sales.
+16. Every zone is its own level: it gets darker as you chop, the stumps rise at the end of a zone,
+    each zone's own dangers, landmarks with a purpose, new tools, music.
+17. A real ending: a 3-stage Elder Hollow, the forest heals, awards, Mr. Graves's secret.
+18. Lobby and real runs: the camp is a lobby, party pads, a private server for each run, forests
+    that fit the party's size.
+19. Reasons to come back: the Ember Tree, contracts on the Quest Board, difficulties, a Hall of
+    Fame, badges, pets that help.
+20. Launch: phones first, a settings menu, sales switched on, the store page, a beta, then a
+    winter event.
 
 ## After the MVP (ideas, not scheduled)
 - Lobby with party pads: step on a pad, pick the map and party size (1–4),

@@ -68,6 +68,10 @@ local list: { [string]: Types.RemoteKind } = {
 	-- the server does exactly what the trial table's prompt does (see Server/Systems/TrialManager).
 	TryTrial = "Event",
 
+	-- Client -> server: "I pressed PLAY on the title screen". No numbers: the server remembers it,
+	-- so you skip the flyover next time, and counts it for analytics (see Server/Systems/QuestManager).
+	PressedPlay = "Event",
+
 	-- Client -> server: "I'm holding sprint" (true) or "I let go" (false).
 	-- The server decides the actual speed.
 	SetSprint = "Event",
@@ -97,6 +101,10 @@ local list: { [string]: Types.RemoteKind } = {
 	-- Client -> server: the Studio-only "+ Coins" button was clicked. No amount is sent;
 	-- the server uses Config.DebugCoins and ignores it outside Studio (see DebugManager).
 	DebugGiveCoins = "Event",
+
+	-- Client -> server: the Studio-only "Forget tutorial" button was clicked: treat me as a new
+	-- player again. The server ignores it outside Studio (see DebugManager).
+	DebugForgetTutorial = "Event",
 }
 Remotes.List = table.freeze(list)
 

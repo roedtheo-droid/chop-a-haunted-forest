@@ -393,6 +393,19 @@ function SaveManager.addUnlock(player: Player, name: string)
 	player:SetAttribute(`Unlock_{name}`, true)
 end
 
+-- Take away a permanent unlock (only Studio's "Forget tutorial" button does this).
+function SaveManager.removeUnlock(player: Player, name: string)
+	local data = SaveManager.getData(player)
+	if not data then
+		return
+	end
+	local index = table.find(data.Unlocks, name)
+	if index then
+		table.remove(data.Unlocks, index)
+	end
+	player:SetAttribute(`Unlock_{name}`, nil)
+end
+
 -- Save the player right away (for Robux purchases: Roblox wants them saved before we say
 -- "done"). Returns true if it worked; false if saving is off, their save hasn't loaded yet,
 -- or the DataStore failed.

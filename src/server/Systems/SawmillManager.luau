@@ -19,6 +19,7 @@ local Format = require(ReplicatedStorage.Shared.Format)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Shop = require(ReplicatedStorage.Shared.Shop)
 local Zones = require(ReplicatedStorage.Shared.Zones)
+local AnalyticsManager = require(script.Parent.AnalyticsManager)
 local CoinManager = require(script.Parent.CoinManager)
 local EffectsManager = require(script.Parent.EffectsManager)
 local LogManager = require(script.Parent.LogManager)
@@ -73,6 +74,7 @@ local function sell(player: Player, character: Model, pad: BasePart)
 
 	CoinManager.add(player, coins)
 	RunManager.record(player, "CoinsEarned", coins)
+	AnalyticsManager.earned(player, "Coins", coins, "SoldLogs")
 	-- Coins burst out around the player standing on the pad (the cha-ching is played on
 	-- their own computer by SoundController, since only they need to hear it).
 	local root = character:FindFirstChild("HumanoidRootPart")

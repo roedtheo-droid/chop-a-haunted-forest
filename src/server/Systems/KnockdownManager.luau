@@ -16,6 +16,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Tags = require(ReplicatedStorage.Shared.Tags)
 local Types = require(ReplicatedStorage.Shared.Types)
+local AnalyticsManager = require(script.Parent.AnalyticsManager)
 local MovementManager = require(script.Parent.MovementManager)
 
 local KnockdownManager = {}
@@ -78,6 +79,7 @@ local function onRevive(downPlayer: Player, helper: Player)
 	end
 
 	KnockdownManager.standUp(downPlayer)
+	AnalyticsManager.event(helper, "RevivedFriend")
 	notifyRemote:FireClient(downPlayer, `{helper.DisplayName} revived you!`)
 	notifyRemote:FireClient(helper, `You revived {downPlayer.DisplayName}!`)
 end
@@ -101,6 +103,8 @@ function KnockdownManager.knockDown(player: Player, cause: Types.KnockdownCause?
 	player:SetAttribute("DownUntil", workspace:GetServerTimeNow() + duration)
 	player:SetAttribute("DownCause", why)
 	MovementManager.refresh(player)
+
+	AnalyticsManager.event(player, if why == "Slam" then "SlammedByBoss" else "CaughtByMimic")
 
 	-- Friends hold E on you to revive you. (Your own screen hides this prompt.)
 	local prompt = Instance.new("ProximityPrompt")

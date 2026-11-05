@@ -2,6 +2,7 @@
 -- Studio-only test buttons. In the real game this does nothing.
 -- "Skip to boss" asks the server to clear the forest and move you to the Elder Hollow.
 -- "+ Coins" asks the server for Config.DebugCoins coins (click as often as you like).
+-- "Forget tutorial" asks the server to treat you as a new player again.
 -- The server checks again that it's running in Studio (see Server/Systems/DebugManager).
 
 local Players = game:GetService("Players")
@@ -21,6 +22,7 @@ local DebugController = {}
 local player = Players.LocalPlayer
 local button: TextButton? = nil
 local coinsButton: TextButton? = nil
+local forgetButton: TextButton? = nil
 
 function DebugController.init()
 	if not (RunService:IsStudio() and Config.StudioShortcuts) then
@@ -43,9 +45,16 @@ function DebugController.init()
 	newCoinsButton.Position = UDim2.new(1, -16, 0.8, 48)
 	newCoinsButton.Size = UDim2.fromOffset(190, 40)
 
+	-- And under that one.
+	local newForgetButton = UiKit.button(gui, "ForgetTutorial", "STUDIO: Forget tutorial", BUTTON_COLOR)
+	newForgetButton.AnchorPoint = Vector2.new(1, 0.5)
+	newForgetButton.Position = UDim2.new(1, -16, 0.8, 96)
+	newForgetButton.Size = UDim2.fromOffset(190, 40)
+
 	gui.Parent = player:WaitForChild("PlayerGui")
 	button = newButton
 	coinsButton = newCoinsButton
+	forgetButton = newForgetButton
 end
 
 function DebugController.start()
@@ -63,6 +72,20 @@ function DebugController.start()
 		lastClick = now
 		remote:FireServer()
 	end)
+
+	local forget = forgetButton
+	if forget then
+		local forgetRemote = Remotes.getEvent("DebugForgetTutorial")
+		local lastForgetClick = 0
+		forget.Activated:Connect(function()
+			local now = os.clock()
+			if now - lastForgetClick < CLICK_COOLDOWN then
+				return
+			end
+			lastForgetClick = now
+			forgetRemote:FireServer()
+		end)
+	end
 
 	local giveButton = coinsButton
 	if giveButton then

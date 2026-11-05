@@ -22,6 +22,7 @@ local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Tags = require(ReplicatedStorage.Shared.Tags)
 local Trucks = require(ReplicatedStorage.Shared.Trucks)
 local Types = require(ReplicatedStorage.Shared.Types)
+local AnalyticsManager = require(script.Parent.AnalyticsManager)
 local CoinManager = require(script.Parent.CoinManager)
 local EmberManager = require(script.Parent.EmberManager)
 local ProductManager = require(script.Parent.ProductManager)
@@ -61,6 +62,10 @@ end
 -- Give a truck the player just paid for.
 local function give(player: Player, truck: Types.TruckConfig)
 	local text = Config.Garage.Text
+	-- Robux sales show up on the dashboard by themselves.
+	if truck.Currency ~= "Robux" then
+		AnalyticsManager.spent(player, truck.Currency, truck.Price, truck.Id)
+	end
 	if Trucks.isPermanent(truck) then
 		SaveManager.addUnlock(player, Trucks.unlockName(truck.Id))
 		notify(player, text.Bought, truck.Name)

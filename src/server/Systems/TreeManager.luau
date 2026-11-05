@@ -20,6 +20,7 @@ local ChopRules = require(ReplicatedStorage.Shared.ChopRules)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Tags = require(ReplicatedStorage.Shared.Tags)
+local AnalyticsManager = require(script.Parent.AnalyticsManager)
 local BossManager = require(script.Parent.BossManager)
 local EffectsManager = require(script.Parent.EffectsManager)
 local EmberManager = require(script.Parent.EmberManager)
@@ -183,6 +184,8 @@ local function burnMimic(player: Player, tree: Model, trunk: BasePart)
 	local embers = Config.Embers.PerMimic
 	EmberManager.add(player, embers)
 	RunManager.record(player, "MimicsBurned", 1)
+	AnalyticsManager.earned(player, "Embers", embers, "BurnedMimic")
+	AnalyticsManager.event(player, "MimicBurned")
 	notifyRemote:FireAllClients(`{player.DisplayName} burned a mimic and got {embers} Embers!`)
 
 	local fire = Instance.new("Fire")
@@ -317,6 +320,7 @@ local function onSwing(player: Player, target: unknown, aimed: unknown)
 	end
 
 	-- 6. All good: chop it.
+	AnalyticsManager.onboarding(player, "FirstHit")
 	-- Visible damage: a rough hole bitten out of the trunk where the player aimed (see Build/Carve;
 	-- every computer cuts it). Bigger hits bite bigger holes; it only looks like damage, the HP is what counts.
 	local maxHp = math.max(getNumberAttribute(tree, "MaxHP"), 1)
@@ -333,6 +337,7 @@ local function onSwing(player: Player, target: unknown, aimed: unknown)
 		RunManager.record(player, "TreesFelled", 1) -- counts for whoever landed the last hit
 		if wasMimic then
 			RunManager.record(player, "MimicsChopped", 1)
+			AnalyticsManager.event(player, "MimicChopped")
 			notifyRemote:FireAllClients(`{player.DisplayName} chopped down a mimic!`)
 		end
 	end

@@ -14,6 +14,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local RunService = game:GetService("RunService")
 
+local Boss = require(ReplicatedStorage.Shared.Boss)
 local Config = require(ReplicatedStorage.Shared.Config)
 local Tags = require(ReplicatedStorage.Shared.Tags)
 local Zones = require(ReplicatedStorage.Shared.Zones)
@@ -105,6 +106,20 @@ local function hideAll()
 	hideHelper()
 end
 
+-- The small line under the bar.
+local function zoneHint(index: number, left: number): string
+	local bossState = if index == Boss.ZoneId then ReplicatedStorage:FindFirstChild(Boss.StateFolderName) else nil
+	local state = if bossState then bossState:GetAttribute("State") else nil
+	if state == "Awake" then
+		return Text.BossAwakeHint
+	elseif state == "Defeated" then
+		return Text.BossDefeatedHint
+	elseif left == 0 then
+		return Text.GateOpenHint
+	end
+	return Text.ZoneHints[index] or ""
+end
+
 local function update()
 	local root = getRoot()
 	if not root then
@@ -128,7 +143,7 @@ local function update()
 	local percent = math.floor(cleared * 100 / total)
 	showZone(Config.Zones[index].Name, true)
 	countLabel.Text = string.format(Text.ZoneCount, index, Zones.count())
-	hintLabel.Text = Text.ZoneHints[index] or ""
+	hintLabel.Text = zoneHint(index, left)
 	UiKit.setBar(bar, cleared / total, if left == 0 then Text.AllCleared else string.format(Text.Cleared, cleared * 100 / total))
 	bar.Fill.BackgroundColor3 = if left == 0 then GOLD else Config.Style.Green
 

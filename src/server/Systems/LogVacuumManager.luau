@@ -1,11 +1,14 @@
 --!strict
--- The Log Vacuum: a tool. While a player holds it and holds the mouse button down (the
--- VacuumLogs remote says "started" / "stopped"), the server grabs the logs in front of them,
--- a few at a time, and puts each one in their backpack once it has flown into the nozzle.
+-- Logs flying into your backpack, in two ways:
+--   Walking over them  Logs close to your feet fly to you by themselves.
+--   The Log Vacuum     A tool. While a player holds it and holds the mouse button down (the
+--                      VacuumLogs remote says "started" / "stopped"), the server grabs the logs
+--                      in front of them from much further away, a few at a time.
+-- Each log goes in the backpack once it has flown in.
 --
--- The server only decides WHICH logs and WHEN: it marks a grabbed log (Pulling, SuckedBy,
--- SuckedAt) and leaves it where it is. Every player's computer draws it lifting off the
--- ground and whooshing into the vacuum (Client/Controllers/LogVacuumController).
+-- The server only decides WHICH logs and WHEN: it marks a grabbed log (Pulling, SuckedBy, SuckedAt,
+-- SuckedTime, ToSack) and leaves it where it is. Every player's computer draws it lifting off
+-- the ground and whooshing in (Client/Controllers/LogVacuumController).
 -- The client sends no positions or numbers, so there's nothing to cheat with.
 
 local Players = game:GetService("Players")
@@ -28,13 +31,6 @@ local inFlight: { [Player]: number } = {} -- logs flying to each player right no
 local toldFull: { [Player]: number } = {} -- when we last said "backpack full" (so we don't spam it)
 local lastGrab: { [Player]: number } = {} -- so clicking fast can't grab faster than Interval
 
-local function setPromptEnabled(log: BasePart, enabled: boolean)
-	local prompt = log:FindFirstChildOfClass("ProximityPrompt")
-	if prompt then
-		prompt.Enabled = enabled
-	end
-end
-
 local function stop(player: Player)
 	sucking[player] = nil
 	player:SetAttribute("VacuumingLogs", nil) -- every computer stops the wind and the hum
@@ -49,26 +45,40 @@ local function freeRoom(player: Player): number
 	return (if typeof(limit) == "number" then limit else 0) - LogManager.getCarry(player) - (inFlight[player] or 0)
 end
 
-local function pull(player: Player, log: BasePart)
-	log:SetAttribute("Pulling", true)
+-- Send a log flying to the player. `flyTime` is how long it takes, and `toSack` means it flies
+-- to their body (they walked over it) instead of the vacuum's nozzle.
+local function pull(player: Player, log: BasePart, flyTime: number, toSack: boolean)
+	log:SetAttribute("Pulling", true) -- nobody else can grab it mid-air
 	log:SetAttribute("SuckedBy", player.UserId)
+	log:SetAttribute("SuckedTime", flyTime)
+	log:SetAttribute("ToSack", if toSack then true else nil)
 	log:SetAttribute("SuckedAt", workspace:GetServerTimeNow())
-	setPromptEnabled(log, false) -- nobody else can grab it mid-air
 	inFlight[player] = (inFlight[player] or 0) + 1
 
-	task.delay(cfg.PullTime, function()
-		inFlight[player] = math.max((inFlight[player] or 1) - 1, 0)
+	task.delay(flyTime, function()
+		local flying = (inFlight[player] or 1) - 1
+		inFlight[player] = if player.Parent and flying > 0 then flying else nil
 		if log.Parent == nil then
 			return
 		end
-		if not LogManager.tryPickUp(player, log) then
+		if not (player.Parent and LogManager.tryPickUp(player, log)) then
 			-- No room after all (or the player left): the log drops back where it was.
 			log:SetAttribute("Pulling", nil)
 			log:SetAttribute("SuckedBy", nil)
+			log:SetAttribute("SuckedTime", nil)
+			log:SetAttribute("ToSack", nil)
 			log:SetAttribute("SuckedAt", nil)
-			setPromptEnabled(log, true)
 		end
 	end)
+end
+
+-- Only say so once it really is full (not while the last logs are still flying in).
+local function tellIfFull(player: Player)
+	local now = os.clock()
+	if not LogManager.hasRoom(player) and now - (toldFull[player] or 0) > Config.Logs.FullMessageEvery then
+		toldFull[player] = now
+		notifyRemote:FireClient(player, Config.Logs.Text.Full)
+	end
 end
 
 -- Grab the closest logs in front of the player (up to PerGrab, and only what fits).
@@ -87,11 +97,7 @@ local function grab(player: Player)
 
 	local free = freeRoom(player)
 	if free <= 0 then
-		-- Only say so once it really is full (not while the last logs are still flying in).
-		if not LogManager.hasRoom(player) and now - (toldFull[player] or 0) > 2 then
-			toldFull[player] = now
-			notifyRemote:FireClient(player, "Your backpack is full!")
-		end
+		tellIfFull(player)
 		return
 	end
 
@@ -115,7 +121,38 @@ local function grab(player: Player)
 		return a.Distance < b.Distance
 	end)
 	for index = 1, math.min(#candidates, cfg.PerGrab, free) do
-		pull(player, candidates[index].Log)
+		pull(player, candidates[index].Log, cfg.PullTime, false)
+	end
+end
+
+-- Walking over logs: the ones close to your feet fly to you. (Not while you're driving or lying
+-- on the ground, and not logs still popping out of their tree.)
+local function walkOver(player: Player, logs: { Instance })
+	local character = player.Character
+	local humanoid = if character then character:FindFirstChildOfClass("Humanoid") else nil
+	local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
+	if not (humanoid and root and root:IsA("BasePart")) or humanoid.Health <= 0 then
+		return
+	end
+	if humanoid.SeatPart or player:GetAttribute("KnockedDown") == true then
+		return
+	end
+
+	local free = freeRoom(player)
+	for _, log in logs do
+		if
+			log:IsA("BasePart")
+			and not log:GetAttribute("Pulling")
+			and not LogManager.isPopping(log)
+			and (log.Position - root.Position).Magnitude <= Config.Logs.WalkOverRadius
+		then
+			if free <= 0 then
+				tellIfFull(player)
+				return
+			end
+			pull(player, log, Config.Logs.WalkOverFlyTime, true)
+			free -= 1
+		end
 	end
 end
 
@@ -149,6 +186,18 @@ function LogVacuumManager.start()
 		inFlight[player] = nil
 		toldFull[player] = nil
 		lastGrab[player] = nil
+	end)
+
+	task.spawn(function()
+		while true do
+			task.wait(Config.Logs.WalkOverCheck)
+			local logs = LogManager.getLogs()
+			if #logs > 0 then
+				for _, player in Players:GetPlayers() do
+					walkOver(player, logs)
+				end
+			end
+		end
 	end)
 
 	task.spawn(function()

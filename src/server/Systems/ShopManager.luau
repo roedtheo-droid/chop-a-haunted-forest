@@ -21,6 +21,7 @@ local Format = require(ReplicatedStorage.Shared.Format)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Shop = require(ReplicatedStorage.Shared.Shop)
 local Tags = require(ReplicatedStorage.Shared.Tags)
+local AnalyticsManager = require(script.Parent.AnalyticsManager)
 local CoinManager = require(script.Parent.CoinManager)
 local QuestManager = require(script.Parent.QuestManager)
 local ToolManager = require(script.Parent.ToolManager)
@@ -143,9 +144,12 @@ local function tryBuy(player: Player, itemId: unknown, at: BasePart?, reach: num
 		return
 	end
 
+	AnalyticsManager.spent(player, "Coins", price, item.Id)
+
 	-- 5. Give it.
 	if item.Kind == "Tool" then
 		ToolManager.give(player, item.Id)
+		AnalyticsManager.onboarding(player, "FirstTool")
 		notifyRemote:FireClient(player, `You bought the {item.Name}! Press its number key to hold it.`)
 		if item.Id == "Axe" then
 			QuestManager.report(player, "BuyAxe")

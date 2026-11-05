@@ -6,8 +6,9 @@
 --   CarryValue  how many coins those logs are worth at a sawmill
 --   CarryLimit  how many logs fit in their backpack (set by UpgradeManager)
 -- Each log on the ground has a Value attribute: coins it's worth (depends on its tree).
--- Logs get a ProximityPrompt ("Pick up"). Prompts are triggered on the server,
--- so the server always decides whether a pickup is allowed.
+-- You pick logs up by walking over them or with the Log Vacuum (both in LogVacuumManager, which
+-- calls tryPickUp), so the server always decides, and the client sends nothing.
+-- Dying drops your logs where you fell, so dying isn't a free trip back to a sawmill.
 
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
@@ -17,6 +18,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Shop = require(ReplicatedStorage.Shared.Shop)
 local Tags = require(ReplicatedStorage.Shared.Tags)
+local AnalyticsManager = require(script.Parent.AnalyticsManager)
 local QuestManager = require(script.Parent.QuestManager)
 local Blocky = require(script.Parent.Parent.Build.Blocky)
 
@@ -27,6 +29,7 @@ local LogManager = {}
 
 local logsFolder: Folder
 local notifyRemote: RemoteEvent
+local droppedLogs: { [Player]: number } = {} -- how many logs a player dropped when they last died (told when they respawn)
 
 local function getNumberAttribute(instance: Instance, name: string): number
 	local value = instance:GetAttribute(name)
@@ -77,7 +80,7 @@ function LogManager.getLogs(): { Instance }
 end
 
 -- Put a log in the player's backpack. Returns false if the backpack is full
--- or the log is already gone. Used by the "Pick up" prompt and the Log Vacuum.
+-- or the log is already gone. Used by LogVacuumManager.
 function LogManager.tryPickUp(player: Player, log: BasePart): boolean
 	-- Two players could grab the same log at the same moment; only the first one gets it.
 	if log.Parent == nil or not LogManager.hasRoom(player) then
@@ -90,12 +93,6 @@ function LogManager.tryPickUp(player: Player, log: BasePart): boolean
 	player:SetAttribute("CarryValue", getNumberAttribute(player, "CarryValue") + value)
 	QuestManager.report(player, "PickUpLog")
 	return true
-end
-
-local function onPickUp(log: BasePart, player: Player)
-	if log.Parent ~= nil and not LogManager.tryPickUp(player, log) then
-		notifyRemote:FireClient(player, "Your backpack is full!")
-	end
 end
 
 local function createLog(position: Vector3, yaw: number, value: number, cursed: boolean): BasePart
@@ -116,27 +113,21 @@ local function createLog(position: Vector3, yaw: number, value: number, cursed: 
 	log.CanCollide = false -- so players don't trip over logs
 	Blocky.rings(log, Enum.NormalId.Left)
 	Blocky.rings(log, Enum.NormalId.Right)
-
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.ActionText = "Pick up"
-	prompt.ObjectText = if cursed then "Cursed Log" else "Log"
-	prompt.KeyboardKeyCode = Enum.KeyCode.E
-	prompt.HoldDuration = 0
-	prompt.MaxActivationDistance = cfg.PickupDistance
-	prompt.RequiresLineOfSight = false
-	prompt.Parent = log
-
-	prompt.Triggered:Connect(function(player: Player)
-		onPickUp(log, player)
-	end)
-
 	return log
+end
+
+-- Make one log on the ground. Every player's computer makes it pop out from just above where it
+-- ends up (Client/Controllers/ChopEffectsController), using the PopFrom and SpawnedAt attributes.
+local function addLog(position: Vector3, yaw: number, value: number, cursed: boolean, now: number)
+	local log = createLog(position, yaw, value, cursed)
+	log:SetAttribute("PopFrom", position + Vector3.new(0, Config.Logs.PopStart, 0))
+	log:SetAttribute("SpawnedAt", now)
+	log.Parent = logsFolder
+	CollectionService:AddTag(log, Tags.Log)
 end
 
 -- Drop logs on the ground along a fallen tree, starting at `origin` and going along `direction`.
 -- Each log is worth `value` coins. Called by TreeManager when a tree lands.
--- Every player's computer makes the logs pop out of the fallen trunk on the way
--- (Client/Controllers/ChopEffectsController), using the PopFrom and SpawnedAt attributes.
 function LogManager.spawnLogs(origin: Vector3, direction: Vector3, length: number, count: number, value: number, cursed: boolean)
 	local cfg = Config.Logs
 	local random = Random.new()
@@ -149,11 +140,44 @@ function LogManager.spawnLogs(origin: Vector3, direction: Vector3, length: numbe
 	for i = 1, count do
 		local along = origin + direction * (spacing * (i - 0.5))
 		local position = along + Vector3.new(0, cfg.Thickness / 2, 0)
-		local log = createLog(position, yaw + random:NextNumber(-0.08, 0.08), value, cursed)
-		log:SetAttribute("PopFrom", position + Vector3.new(0, cfg.PopStart, 0)) -- inside the fallen trunk
-		log:SetAttribute("SpawnedAt", now)
-		log.Parent = logsFolder
-		CollectionService:AddTag(log, Tags.Log)
+		addLog(position, yaw + random:NextNumber(-0.08, 0.08), value, cursed, now)
+	end
+end
+
+-- Someone died: their logs drop around where they fell, and are worth the same as before.
+local function dropLogs(player: Player, character: Model)
+	local root = character:FindFirstChild("HumanoidRootPart")
+	if not (root and root:IsA("BasePart")) then
+		return
+	end
+	local count, value = LogManager.takeAll(player)
+	if count <= 0 then
+		return
+	end
+	droppedLogs[player] = count
+
+	local cfg = Config.Logs
+	local shown = math.min(count, cfg.MaxDropped)
+	local each = value // shown
+	local extra = value % shown -- the coins that don't share out evenly go on the first few logs
+
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { character, logsFolder }
+	local ground = workspace:Raycast(root.Position + Vector3.new(0, 2, 0), Vector3.new(0, -50, 0), params)
+	local y = if ground then ground.Position.Y else root.Position.Y - 3
+
+	local random = Random.new()
+	local now = workspace:GetServerTimeNow()
+	for i = 1, shown do
+		local angle = random:NextNumber(0, math.pi * 2)
+		local distance = random:NextNumber(1, cfg.DropSpread)
+		local position = Vector3.new(
+			root.Position.X + math.cos(angle) * distance,
+			y + cfg.Thickness / 2,
+			root.Position.Z + math.sin(angle) * distance
+		)
+		addLog(position, random:NextNumber(0, math.pi * 2), each + (if i <= extra then 1 else 0), false, now)
 	end
 end
 
@@ -163,9 +187,31 @@ function LogManager.isPopping(log: Instance): boolean
 	return typeof(spawnedAt) == "number" and workspace:GetServerTimeNow() - spawnedAt < Config.Logs.PopTime
 end
 
+local function onCharacterAdded(player: Player, character: Model)
+	local dropped = droppedLogs[player]
+	if dropped then
+		droppedLogs[player] = nil
+		notifyRemote:FireClient(player, string.format(Config.Logs.Text.Dropped, dropped))
+	end
+	local humanoid = character:WaitForChild("Humanoid", 10)
+	if humanoid and humanoid:IsA("Humanoid") then
+		humanoid.Died:Once(function()
+			dropLogs(player, character)
+			AnalyticsManager.event(player, "Died")
+		end)
+	end
+end
+
 local function onPlayerAdded(player: Player)
 	player:SetAttribute("Carry", 0)
 	player:SetAttribute("CarryValue", 0)
+	player.CharacterAdded:Connect(function(character: Model)
+		onCharacterAdded(player, character)
+	end)
+	local character = player.Character
+	if character then
+		task.spawn(onCharacterAdded, player, character)
+	end
 end
 
 function LogManager.init()
@@ -182,6 +228,9 @@ function LogManager.start()
 	for _, player in Players:GetPlayers() do
 		onPlayerAdded(player)
 	end
+	Players.PlayerRemoving:Connect(function(player: Player)
+		droppedLogs[player] = nil
+	end)
 end
 
 return LogManager

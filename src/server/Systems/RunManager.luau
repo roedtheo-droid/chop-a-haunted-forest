@@ -15,6 +15,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Types = require(ReplicatedStorage.Shared.Types)
+local AnalyticsManager = require(script.Parent.AnalyticsManager)
 local EmberManager = require(script.Parent.EmberManager)
 local SaveManager = require(script.Parent.SaveManager)
 
@@ -48,6 +49,7 @@ function RunManager.forestCleared()
 	local embers = Config.Embers.PerForestCleared
 	for _, player in Players:GetPlayers() do
 		EmberManager.add(player, embers)
+		AnalyticsManager.earned(player, "Embers", embers, "ForestCleared")
 		-- Straight to the save: this is a personal stat, not part of the party's totals.
 		SaveManager.addStat(player, "ForestsCleared", 1)
 	end

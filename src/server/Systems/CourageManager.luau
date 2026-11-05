@@ -18,6 +18,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Tags = require(ReplicatedStorage.Shared.Tags)
 local Zones = require(ReplicatedStorage.Shared.Zones)
+local AnalyticsManager = require(script.Parent.AnalyticsManager)
 local KnockdownManager = require(script.Parent.KnockdownManager)
 local ToolManager = require(script.Parent.ToolManager)
 
@@ -27,8 +28,8 @@ local ATTRIBUTE = "Courage"
 local CourageManager = {}
 
 local notifyRemote: RemoteEvent
--- Players we already told "You're too scared!" (told again only after they calm down).
-local warned: { [Player]: boolean } = {}
+-- What we already warned each player about: "Low" or "TooScared" (told again only after they calm down).
+local warned: { [Player]: string } = {}
 
 function CourageManager.get(player: Player): number
 	local value = player:GetAttribute(ATTRIBUTE)
@@ -72,7 +73,7 @@ local function changePerSecond(player: Player, position: Vector3): number
 		return cfg.LightRegen
 	end
 	local change = -(cfg.ZoneDrain[zone] or cfg.ZoneDrain[#cfg.ZoneDrain])
-	change -= scaryGhostsNear(position) * cfg.GhostDrain
+	change -= scaryGhostsNear(position) * (cfg.GhostDrain[zone] or cfg.GhostDrain[#cfg.GhostDrain])
 	if ToolManager.getEquippedId(player) == "Chainsaw" then
 		change -= cfg.ChainsawDrain
 	end
@@ -95,11 +96,18 @@ local function update(player: Player)
 	local courage = CourageManager.get(player)
 	if courage <= 0 then
 		humanoid:TakeDamage(cfg.FearDamage * cfg.Tick)
-		if not warned[player] then
-			warned[player] = true
+		if warned[player] ~= "TooScared" then
+			warned[player] = "TooScared"
 			notifyRemote:FireClient(player, cfg.Text.TooScared)
+			AnalyticsManager.event(player, "TooScared")
 		end
-	elseif courage >= cfg.LowAt then
+	elseif courage < cfg.LowAt then
+		-- The first warning, while there's still time to do something about it.
+		if not warned[player] then
+			warned[player] = "Low"
+			notifyRemote:FireClient(player, cfg.Text.GettingScared)
+		end
+	else
 		warned[player] = nil
 	end
 end

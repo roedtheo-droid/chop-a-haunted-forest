@@ -17,6 +17,7 @@ local systems: { Types.Module } = {
 	require(Systems.RemoteService), -- first, so every other system can use remotes
 	require(Systems.EffectsManager), -- world sounds and particles (used by many systems)
 	require(Systems.SaveManager), -- early, so players' saves start loading as soon as possible
+	require(Systems.AnalyticsManager), -- early too: it counts players as they join, and other systems report to it
 	require(Systems.ProductManager), -- Robux purchases (the Garage and the trial table register their products)
 	require(Systems.QuestManager),
 	require(Systems.ZoneManager), -- before anything that looks for the ground (it builds the zone floors)

@@ -10,6 +10,9 @@
 --
 -- "+ Coins" gives you Config.DebugCoins coins. They don't count as "Coins earned".
 --
+-- "Forget tutorial" makes the game treat you as a new player again: the quests and the intro's
+-- flyover come back. (Saving is on in Studio tests, so finishing the quests is remembered.)
+--
 -- Why check IsStudio here on the SERVER? The button only exists in Studio, but anyone
 -- can fire a remote. On a live server this module ignores the request, so nobody can
 -- use it to cheat.
@@ -23,6 +26,7 @@ local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Tags = require(ReplicatedStorage.Shared.Tags)
 local CoinManager = require(script.Parent.CoinManager)
 local MimicManager = require(script.Parent.MimicManager)
+local QuestManager = require(script.Parent.QuestManager)
 local ToolManager = require(script.Parent.ToolManager)
 local ZoneManager = require(script.Parent.ZoneManager)
 
@@ -88,13 +92,20 @@ local function onGiveCoins(player: Player)
 	CoinManager.add(player, Config.DebugCoins)
 end
 
+local function onForgetTutorial(player: Player)
+	if isAllowed() then
+		QuestManager.forget(player)
+	end
+end
+
 function DebugManager.init() end
 
 function DebugManager.start()
 	Remotes.getEvent("DebugSkipToBoss").OnServerEvent:Connect(onSkipToBoss)
 	Remotes.getEvent("DebugGiveCoins").OnServerEvent:Connect(onGiveCoins)
+	Remotes.getEvent("DebugForgetTutorial").OnServerEvent:Connect(onForgetTutorial)
 	if isAllowed() and Config.DebugPrints then
-		print("[Debug] Studio shortcuts are ON (Skip to boss, + Coins)")
+		print("[Debug] Studio shortcuts are ON (Skip to boss, + Coins, Forget tutorial)")
 	end
 end
 

@@ -14,6 +14,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Shop = require(ReplicatedStorage.Shared.Shop)
+local AnalyticsManager = require(script.Parent.AnalyticsManager)
 local ProductManager = require(script.Parent.ProductManager)
 local ShopManager = require(script.Parent.ShopManager)
 local ToolManager = require(script.Parent.ToolManager)
@@ -33,6 +34,7 @@ end
 local function startTrial(player: Player)
 	local cfg = Config.Trial
 	local ends = ToolManager.giveTrial(player, cfg.ToolId, cfg.Seconds)
+	AnalyticsManager.event(player, "TrialStarted")
 	notifyRemote:FireClient(player, string.format(cfg.Text.Started, toolName(), math.floor(cfg.Seconds / 60)))
 	task.delay(cfg.Seconds, function()
 		if player.Parent and player:GetAttribute(Shop.TRIAL_ENDS) == ends then

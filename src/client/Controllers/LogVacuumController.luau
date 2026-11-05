@@ -11,7 +11,8 @@
 --     and the motor hums;
 --   * a log the server grabbed has SuckedBy / SuckedAt: it lifts off the ground, wobbles,
 --     then whooshes along a curve into the nozzle, spinning and shrinking, and goes in with
---     a pop. Logs in a row pop higher and higher.
+--     a pop. Logs in a row pop higher and higher. (Logs you walk over fly the same way, but
+--     quicker and to your body: see Server/Systems/LogVacuumManager.)
 -- The log is moved only on this computer; the server takes it away when it's in the sack.
 
 local Debris = game:GetService("Debris")
@@ -45,6 +46,8 @@ type Flight = {
 	Start: CFrame, -- where it lay (put back if the server drops it again)
 	Size: Vector3,
 	Started: number, -- os.clock() when it left the ground
+	Time: number, -- seconds the whole flight takes
+	ToSack: boolean, -- true: it flies to the player's body (they walked over it), not the nozzle
 	Spin: Vector3, -- the axis it spins around
 	Wobble: number, -- a random start for its wobble
 	Done: boolean, -- it's in the nozzle (hidden until the server removes it)
@@ -87,6 +90,17 @@ local function nozzle(who: Player?): CFrame?
 		return root.CFrame
 	end
 	return nil
+end
+
+-- Where a flying log is heading.
+local function flightTarget(flight: Flight): CFrame?
+	if not flight.ToSack then
+		return nozzle(flight.Sucker)
+	end
+	local sucker = flight.Sucker
+	local character = if sucker then sucker.Character else nil
+	local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
+	return if root and root:IsA("BasePart") then root.CFrame else nil
 end
 
 ---------------------------------------------------------------------------
@@ -264,7 +278,7 @@ local function finish(flight: Flight)
 		return
 	end
 	flight.Done = true
-	local mouth = nozzle(flight.Sucker)
+	local mouth = flightTarget(flight)
 	popIn(flight, if mouth then mouth.Position else flight.Log.Position)
 	setShown(flight.Log, false)
 end
@@ -278,8 +292,10 @@ local function startFlight(log: BasePart)
 	if typeof(suckedBy) ~= "number" or typeof(suckedAt) ~= "number" then
 		return
 	end
+	local suckedTime = log:GetAttribute("SuckedTime")
+	local flyTime = if typeof(suckedTime) == "number" then suckedTime else cfg.PullTime
 	-- Start part of the way in if the message took a while, so it ends when the server's does.
-	local late = math.clamp(workspace:GetServerTimeNow() - suckedAt, 0, cfg.PullTime * 0.5)
+	local late = math.clamp(workspace:GetServerTimeNow() - suckedAt, 0, flyTime * 0.5)
 	local random = Random.new()
 	flights[log] = {
 		Log = log,
@@ -287,6 +303,8 @@ local function startFlight(log: BasePart)
 		Start = log.CFrame,
 		Size = log.Size,
 		Started = os.clock() - late,
+		Time = flyTime,
+		ToSack = log:GetAttribute("ToSack") == true,
 		Spin = Vector3.new(random:NextNumber(-1, 1), random:NextNumber(0.3, 1), random:NextNumber(-1, 1)).Unit,
 		Wobble = random:NextNumber(0, math.pi * 2),
 		Done = false,
@@ -316,7 +334,7 @@ local function updateFlights()
 		if flight.Done then
 			continue
 		end
-		local t = (os.clock() - flight.Started) / cfg.PullTime
+		local t = (os.clock() - flight.Started) / flight.Time
 		if t >= 1 then
 			finish(flight)
 			continue
@@ -333,7 +351,7 @@ local function updateFlights()
 			-- Whoosh: faster and faster along a curve into the nozzle, spinning, shrinking.
 			local v = (t - cfg.LiftShare) / (1 - cfg.LiftShare)
 			local eased = v * v
-			local mouth = nozzle(flight.Sucker)
+			local mouth = flightTarget(flight)
 			local target = if mouth then mouth.Position else lifted
 			local bend = (lifted + target) / 2 + Vector3.yAxis * cfg.Arc
 			local a = lifted:Lerp(bend, eased)

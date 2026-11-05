@@ -25,6 +25,7 @@ local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Tags = require(ReplicatedStorage.Shared.Tags)
 local Zones = require(ReplicatedStorage.Shared.Zones)
 local Assets = require(script.Parent.Parent.Build.Assets)
+local AnalyticsManager = require(script.Parent.AnalyticsManager)
 local CoinManager = require(script.Parent.CoinManager)
 local CourageManager = require(script.Parent.CourageManager)
 local EffectsManager = require(script.Parent.EffectsManager)
@@ -360,6 +361,8 @@ local function onVacuum(player: Player)
 	suckIn(ghost, player, root)
 	CoinManager.add(player, cfg.Reward)
 	CourageManager.add(player, cfg.CourageReward)
+	AnalyticsManager.earned(player, "Coins", cfg.Reward, "CaughtGhost")
+	AnalyticsManager.event(player, "GhostCaught")
 end
 
 ---------------------------------------------------------------------------

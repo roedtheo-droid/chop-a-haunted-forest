@@ -178,6 +178,18 @@ local toolModels: { [string]: Types.ToolModelConfig } = {
 	},
 }
 
+-- How each tool looks in the HUD's tool bar (see Hud below): a coloured square with a letter,
+-- and a short name under it.
+local toolLooks: { [string]: Types.HudToolLook } = {
+	Axe = { Letter = "A", Short = "Axe", Color = Color3.fromRGB(201, 138, 75) },
+	SteelAxe = { Letter = "S", Short = "Steel", Color = Color3.fromRGB(184, 196, 217) },
+	Chainsaw = { Letter = "C", Short = "Saw", Color = Color3.fromRGB(255, 107, 92) },
+	Lantern = { Letter = "L", Short = "Lamp", Color = Color3.fromRGB(255, 207, 92) },
+	Torch = { Letter = "T", Short = "Torch", Color = Color3.fromRGB(255, 154, 61) },
+	GhostVacuum = { Letter = "G", Short = "Ghost", Color = Color3.fromRGB(155, 215, 255) },
+	LogVacuum = { Letter = "V", Short = "Log Vac", Color = Color3.fromRGB(170, 230, 140) },
+}
+
 -- Tools. Fists is what you have when you hold nothing.
 -- The Tool Shed sells the rest (see Shared/Shop.luau for the order and names).
 -- The Lantern and Torch don't chop (Damage 0): the Lantern shows mimics, the Torch burns them.
@@ -1050,12 +1062,73 @@ local Config = {
 		CardWood = Color3.fromRGB(125, 80, 45), -- the rows inside a wooden menu
 		Gold = Color3.fromRGB(255, 215, 70), -- coins and headings
 		Ember = Color3.fromRGB(255, 130, 60),
-		Courage = Color3.fromRGB(120, 190, 255), -- the courage bar (it turns Red when you're scared)
 		Cream = Color3.fromRGB(245, 225, 190), -- small text on wood
 		Green = Color3.fromRGB(90, 200, 70), -- buy buttons and progress bars
 		Red = Color3.fromRGB(220, 50, 50), -- close buttons, "can't afford", full backpack
 		Grey = Color3.fromRGB(125, 118, 110), -- buttons you can't press (Owned, MAX)
 		BarBack = Color3.fromRGB(55, 45, 40), -- the empty part of a progress bar
+	},
+
+	-- The purple HUD from Theo's Claude Design picture (see Client/HudController, QuestController,
+	-- BackpackController and UiKit's "hud" functions). Only the HUD is purple: menus stay wood.
+	Hud = {
+		Panel = Color3.fromRGB(26, 20, 42), -- the dark purple of every panel
+		PanelTransparency = 0.08, -- 0 = solid, 1 = invisible
+		Track = Color3.fromRGB(42, 33, 64), -- pills, the empty part of bars, tool slots
+		Edge = Color3.fromRGB(59, 47, 89), -- the border around panels and pills
+		Ink = Color3.fromRGB(246, 241, 255), -- normal text
+		Muted = Color3.fromRGB(185, 174, 214), -- small, less important text
+		Heart = Color3.fromRGB(255, 107, 138), -- the health bar
+		Courage = Color3.fromRGB(255, 207, 92), -- the courage bar
+		Scared = Color3.fromRGB(235, 70, 80), -- the courage bar when you're scared (it pulses)
+		Gold = Color3.fromRGB(255, 207, 92), -- the coin
+		Ember = Color3.fromRGB(255, 130, 60),
+		Wood = Color3.fromRGB(201, 138, 75), -- the log
+		Green = Color3.fromRGB(155, 240, 122), -- quest bars, the SELL button
+		Orange = Color3.fromRGB(255, 154, 61), -- the held tool's slot, the CHOP button
+		Full = Color3.fromRGB(255, 107, 107), -- the log number when your sack is full
+		Font = Enum.Font.FredokaOne,
+		HintFont = Enum.Font.RobotoMono, -- the key hint in the bottom-left corner
+		EdgeThickness = 2, -- pixels
+		Margin = 16, -- pixels from the edges of the screen
+		Corner = 14, -- how round panels are, in pixels
+		-- On short screens (phones, a small Studio window) the whole HUD shrinks, so its corners
+		-- don't run into each other: it's full size on screens at least this many pixels tall...
+		FullSizeHeight = 620,
+		MinScale = 0.6, -- ...and never smaller than this
+
+		-- Top-left: health and courage
+		BarWidth = 260,
+		BarHeight = 22,
+		IconSize = 32, -- the round heart and courage icons
+		HeartIcon = "♥",
+		CourageIcon = "✦",
+		HealthText = "%d / %d",
+
+		-- Top-right: logs, embers and coins pills
+		PillHeight = 44,
+		LogsPillWidth = 140,
+		CoinPillWidth = 130,
+		PillGap = 8,
+		InfiniteText = "/ ∞", -- after the log number with the Infinite Bag
+
+		-- The quest panel under the pills
+		QuestWidth = 286,
+		QuestRows = 3, -- the current quest and the next ones
+		QuestTitle = "QUEST",
+
+		-- The tool bar at the bottom middle (it replaces Roblox's)
+		SlotSize = 66,
+		SlotGap = 8,
+		MaxSlots = 9, -- number keys 1-9
+		ToolLooks = toolLooks, -- see toolLooks near the top
+		OtherToolColor = Color3.fromRGB(160, 150, 190), -- a tool missing from ToolLooks
+
+		-- The big round buttons, on phones and tablets only (bottom-right, above Roblox's jump button)
+		ChopButtonSize = 110,
+		SellButtonSize = 88,
+		TouchButtonsUp = 170, -- pixels from the bottom of the screen to the buttons' bottom
+		SellDimTransparency = 0.55, -- how faded SELL is when you're not by a sawmill pad
 	},
 
 	-- Scenery around the forest, only for looks: you can't chop it (see Server/Systems/SceneryManager).
@@ -1231,12 +1304,14 @@ local Config = {
 	-- (see Client/Controllers/MouseController). A small hint shows in the bottom-left corner.
 	FreeMouse = {
 		Key = Enum.KeyCode.LeftAlt,
-		FreeText = "Left Alt: free mouse", -- the hint while the mouse is locked
-		LockText = "Left Alt: lock mouse", -- the hint while the mouse is free
-		HintHeight = 18, -- pixels tall (the text fills it)
-		HintWidth = 200, -- pixels wide
-		HintMargin = 12, -- pixels from the left and bottom edges of the screen
-		HintTransparency = 0.15, -- 0 = solid, 1 = invisible
+		-- The key hint in the bottom-left corner (it shows in first person, with a keyboard).
+		FreeText = "1-7 tools · click chop · E pick up · Left Alt free mouse", -- while the mouse is locked
+		LockText = "Left Alt: lock mouse", -- while the mouse is free
+		HintTextSize = 13, -- pixels
+		HintHeight = 24, -- pixels tall (the dark pill behind the text)
+		HintMargin = 16, -- pixels from the left and bottom edges of the screen
+		HintTransparency = 0.1, -- the text: 0 = solid, 1 = invisible
+		HintPillTransparency = 0.25, -- the dark pill behind it
 	},
 
 	-- The glowing line to the nearest tree when a zone is almost cleared
@@ -1305,7 +1380,7 @@ local Config = {
 		FearDamage = 2, -- health lost at 0 courage (Roblox heals 1 per second, so you lose about 1 per second)
 		LowAt = 25, -- the bar turns red and pulses below this
 		Text = {
-			Bar = "COURAGE %d", -- on the bar
+			Bar = "Courage %d%%", -- on the bar (%% shows a %)
 			TooScared = "You're too scared! Hold your Lantern or Torch, or run back to camp.",
 		},
 	},
@@ -1536,6 +1611,9 @@ local Config = {
 		RoofHeight = 6,
 		PadSize = Vector2.new(16, 12), -- the "DROP LOGS" pad: studs across the sawmill's front, and out from it
 		SellCooldown = 1, -- seconds between sells for one player (stops double-selling)
+		-- The SELL button (phones and tablets): it works this many studs from a pad's middle
+		-- (the pad is 16 x 12, so this is about the sell yard around it).
+		SellButtonReach = 22,
 		SawSize = 6, -- how wide the big round saw is
 		WheelRadius = 5, -- the water wheel on the side
 		SawSpin = 6, -- how fast the saw turns (radians per second, only for looks)

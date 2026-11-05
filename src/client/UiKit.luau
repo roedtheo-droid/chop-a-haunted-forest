@@ -6,6 +6,8 @@
 --   * button: a rounded, coloured button that squishes a little when pressed
 --   * bar: a rounded progress bar with text on top
 --   * coin / ember: small round icons made from frames (no images needed)
+--   * hudText / hudPanel / hudDot / hudBar: the purple HUD (Config.Hud), flatter, with no
+--     thick black outlines
 -- Colours and sizes are in Config.Style. It's not a controller, so it has no init()/start().
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -212,6 +214,101 @@ function UiKit.ember(parent: Instance, name: string): Frame
 	diamond.Parent = holder
 	holder.Parent = parent
 	return holder
+end
+
+-- The purple HUD (colours and sizes in Config.Hud). It's flatter than the menus: no thick
+-- black outlines, just dark purple rounded panels with a lighter purple edge.
+local Hud = Config.Hud
+
+-- HUD text at a fixed size in pixels. A thin, soft dark outline keeps it readable when it sits
+-- over bright scenery instead of a panel.
+function UiKit.hudText(parent: Instance, name: string, text: string, size: number, color: Color3?): TextLabel
+	local label = Instance.new("TextLabel")
+	label.Name = name
+	label.BackgroundTransparency = 1
+	label.Text = text
+	label.TextColor3 = color or Hud.Ink
+	label.Font = Hud.Font
+	label.TextSize = size
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Hud.Panel
+	stroke.Thickness = 1
+	stroke.Transparency = 0.5
+	stroke.Parent = label
+	label.Parent = parent
+	return label
+end
+
+-- A dark purple, rounded HUD panel with a lighter purple edge.
+function UiKit.hudPanel(parent: Instance, name: string, radius: number?): Frame
+	local panel = Instance.new("Frame")
+	panel.Name = name
+	panel.BackgroundColor3 = Hud.Panel
+	panel.BackgroundTransparency = Hud.PanelTransparency
+	UiKit.corner(panel, radius or Hud.Corner)
+	UiKit.border(panel, Hud.Edge, Hud.EdgeThickness)
+	panel.Parent = parent
+	return panel
+end
+
+-- A round dot: the coin, the log and the heart in the HUD. `glyph` is a letter or symbol on it.
+function UiKit.hudDot(parent: Instance, name: string, color: Color3, glyph: string?): Frame
+	local dot = Instance.new("Frame")
+	dot.Name = name
+	dot.BackgroundColor3 = color
+	UiKit.corner(dot, 999)
+	UiKit.border(dot, Hud.Track, 3)
+	if glyph then
+		local label = UiKit.hudText(dot, "Glyph", glyph, 16, Hud.Panel)
+		label.Size = UDim2.fromScale(1, 1)
+		local stroke = label:FindFirstChildOfClass("UIStroke")
+		if stroke then
+			stroke.Enabled = false
+		end
+	end
+	dot.Parent = parent
+	return dot
+end
+
+-- Shrink every HUD screen on short screens (see Config.Hud.FullSizeHeight). A UIScale on a
+-- ScreenGui scales everything in it, and things stuck to an edge stay at that edge.
+function UiKit.hudScale(gui: ScreenGui)
+	local scale = Instance.new("UIScale")
+	scale.Parent = gui
+	local function update()
+		local camera = workspace.CurrentCamera
+		local height = if camera then camera.ViewportSize.Y else Hud.FullSizeHeight
+		scale.Scale = math.clamp(height / Hud.FullSizeHeight, Hud.MinScale, 1)
+	end
+	update()
+	local camera = workspace.CurrentCamera
+	if camera then
+		camera:GetPropertyChangedSignal("ViewportSize"):Connect(update)
+	end
+end
+
+-- A rounded HUD bar with its text on top. Set how full it is with UiKit.setBar.
+function UiKit.hudBar(parent: Instance, name: string, color: Color3, textSize: number?): Bar
+	local frame = Instance.new("Frame")
+	frame.Name = name
+	frame.BackgroundColor3 = Hud.Track
+	frame.ClipsDescendants = true
+	UiKit.corner(frame, 999)
+	frame.Parent = parent
+
+	local fill = Instance.new("Frame")
+	fill.Name = "Fill"
+	fill.Size = UDim2.fromScale(0, 1)
+	fill.BackgroundColor3 = color
+	fill.BorderSizePixel = 0
+	UiKit.corner(fill, 999)
+	fill.Parent = frame
+
+	local label = UiKit.hudText(frame, "Label", "", textSize or 13)
+	label.Size = UDim2.fromScale(1, 1)
+	label.ZIndex = 2
+
+	return { Frame = frame, Fill = fill, Label = label }
 end
 
 -- A quick "boing" to draw the eye to something that just changed (like a counter going up).

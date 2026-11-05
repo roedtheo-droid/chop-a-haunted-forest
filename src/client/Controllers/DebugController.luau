@@ -31,16 +31,16 @@ function DebugController.init()
 	gui.Name = "StudioShortcuts"
 	gui.ResetOnSpawn = false
 
-	-- Right side, a bit above the middle (the left side has Coins and quests).
+	-- Left side, a bit above the middle (the right side has the coins and quests).
 	local newButton = UiKit.button(gui, "SkipToBoss", "STUDIO: Skip to boss", BUTTON_COLOR)
-	newButton.AnchorPoint = Vector2.new(1, 0.5)
-	newButton.Position = UDim2.new(1, -16, 0.45, 0)
+	newButton.AnchorPoint = Vector2.new(0, 0.5)
+	newButton.Position = UDim2.new(0, 16, 0.45, 0)
 	newButton.Size = UDim2.fromOffset(190, 40)
 
 	-- Right under Skip to boss.
 	local newCoinsButton = UiKit.button(gui, "GiveCoins", `STUDIO: +{Config.DebugCoins} Coins`, BUTTON_COLOR)
-	newCoinsButton.AnchorPoint = Vector2.new(1, 0.5)
-	newCoinsButton.Position = UDim2.new(1, -16, 0.45, 48)
+	newCoinsButton.AnchorPoint = Vector2.new(0, 0.5)
+	newCoinsButton.Position = UDim2.new(0, 16, 0.45, 48)
 	newCoinsButton.Size = UDim2.fromOffset(190, 40)
 
 	gui.Parent = player:WaitForChild("PlayerGui")

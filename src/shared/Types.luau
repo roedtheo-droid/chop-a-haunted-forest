@@ -20,6 +20,13 @@ export type ToolConfig = {
 	Price: number, -- coins in the Tool Shed (0 = you start with it)
 }
 
+-- How one tool looks in the HUD's tool bar (see Config.Hud.ToolLooks).
+export type HudToolLook = {
+	Letter: string, -- the letter on the coloured square
+	Short: string, -- the short name under it
+	Color: Color3,
+}
+
 -- How one chopping tool FEELS when it hits (see Config.ChopFeel and
 -- Client/Controllers/ChopEffectsController). Only looks and sounds: its damage is in ToolConfig.
 export type ChopFeelConfig = {

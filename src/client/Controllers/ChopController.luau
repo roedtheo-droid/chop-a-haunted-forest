@@ -39,6 +39,7 @@ local player = Players.LocalPlayer
 local swingRemote: RemoteEvent
 local lastSwing = 0
 local holding = false -- is the mouse button / finger held down?
+local buttonHeld = false -- is the round CHOP button (phones and tablets, see HudController) held down?
 local pointer = Vector3.zero -- where on the screen the mouse or finger is
 local swingTracks: { [string]: AnimationTrack } = {} -- swing animations loaded on your character
 
@@ -63,7 +64,8 @@ local function aimRay(): Ray?
 	if not camera then
 		return nil
 	end
-	if ViewmodelController.isActive() then
+	-- The CHOP button aims at the middle of the screen too: your finger is on the button.
+	if ViewmodelController.isActive() or buttonHeld then
 		local size = camera.ViewportSize
 		return camera:ViewportPointToRay(size.X / 2, size.Y / 2)
 	end
@@ -268,6 +270,14 @@ local function onInputEnded(input: InputObject)
 	end
 end
 
+-- The round CHOP button (HudController): hold it to keep chopping, like the mouse button.
+function ChopController.setButtonHeld(held: boolean)
+	buttonHeld = held
+	if held then
+		trySwing()
+	end
+end
+
 function ChopController.init()
 	swingRemote = Remotes.getEvent("SwingAtTree")
 end
@@ -284,7 +294,7 @@ function ChopController.start()
 
 	-- Hold the button to keep chopping, one swing per cooldown.
 	RunService.Heartbeat:Connect(function()
-		if holding then
+		if holding or buttonHeld then
 			trySwing()
 		end
 	end)

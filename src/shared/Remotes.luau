@@ -53,6 +53,11 @@ local list: { [string]: Types.RemoteKind } = {
 	-- to draw and where they drop from (a Vector3).
 	LogsSold = "Event",
 
+	-- Client -> server: the round SELL button (phones and tablets) was tapped. No numbers: the
+	-- server checks that you stand by a DROP LOGS pad and sells your logs there, like stepping
+	-- on it (see Server/Systems/SawmillManager).
+	SellLogs = "Event",
+
 	-- Client -> server: "I'm holding sprint" (true) or "I let go" (false).
 	-- The server decides the actual speed.
 	SetSprint = "Event",

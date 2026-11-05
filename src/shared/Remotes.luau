@@ -38,8 +38,14 @@ local list: { [string]: Types.RemoteKind } = {
 	ToolSwung = "Event",
 
 	-- Client -> server: "I want to buy this item" (an item Id from Shared/Shop).
-	-- The server checks the price, your coins and that you're at the Tool Shed.
+	-- The server checks the price, your coins and that you're at the Tool Shed (tools only:
+	-- upgrades can be bought from anywhere, with the UPGRADES menu).
 	BuyItem = "Event",
+
+	-- Client -> server: "I want to buy this Robux game pass" (a perk Id from Config.Perks, like
+	-- "DoubleCoins", from the SHOP menu). Roblox shows its own purchase window; the server only
+	-- hears that it was bought from Roblox itself (see Server/Systems/PerkManager).
+	BuyPerk = "Event",
 
 	-- Client -> server: "I want to buy this truck" (a truck Id from Config.Trucks).
 	-- The server checks the price, your Coins or Embers and that you're on the Garage pad.

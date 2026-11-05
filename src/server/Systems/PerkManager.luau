@@ -5,6 +5,8 @@
 --   * Infinite Bag     a Robux game pass: carry as many logs as you like (LogManager)
 --   * 2X COINS board   a Robux game pass: logs sell for twice the coins (Shop.coinMultiplier)
 --
+-- The two passes can also be bought from anywhere in the SHOP menu (the BuyPerk remote).
+--
 -- A game pass is bought once and kept forever: Roblox remembers who owns it, so nothing is
 -- saved here. When a player joins we ask Roblox what they own, and we hear right away when
 -- they buy one. What they own is a player attribute ("Perk_DoubleCoins") that only the server
@@ -33,6 +35,8 @@ type Pass = {
 local PerkManager = {}
 
 local notifyRemote: RemoteEvent
+local lastBuy: { [Player]: number } = {} -- so holding the button can't spam purchase windows
+local BUY_COOLDOWN = 1 -- seconds
 local passes: { [string]: Pass } = {
 	InfiniteBag = {
 		GamePassId = Config.Perks.InfiniteBag.GamePassId,
@@ -122,6 +126,24 @@ function PerkManager.start()
 	for _, spots in SawmillManager.getShopSpots() do
 		addPrompts(spots)
 	end
+
+	-- The SHOP menu's buttons (Client/MenusController). Only a perk Id comes from the client,
+	-- and it must be one of ours; the price and the purchase are handled by Roblox.
+	Remotes.getEvent("BuyPerk").OnServerEvent:Connect(function(player: Player, perkId: unknown)
+		if typeof(perkId) ~= "string" or not passes[perkId] then
+			return
+		end
+		local now = os.clock()
+		local last = lastBuy[player]
+		if last and now - last < BUY_COOLDOWN then
+			return
+		end
+		lastBuy[player] = now
+		buyPass(player, perkId)
+	end)
+	Players.PlayerRemoving:Connect(function(player: Player)
+		lastBuy[player] = nil
+	end)
 
 	MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player: Player, passId: number, purchased: boolean)
 		if not purchased then

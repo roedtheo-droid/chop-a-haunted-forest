@@ -25,6 +25,7 @@ local controllers: { Types.Module } = {
 	require(Controllers.QuestController),
 	require(Controllers.BackpackController),
 	require(Controllers.MenuButtonsController), -- PETS, SHOP and UPGRADES on the right
+	require(Controllers.MenusController), -- the SHOP and UPGRADES menus those buttons open
 	require(Controllers.CarveController), -- draws carved trunks; used by ChopEffectsController
 	require(Controllers.ChopEffectsController), -- before ChopController, which uses it
 	require(Controllers.ToolAnimController), -- everyone's arms swinging axes and sawing; used by the two below

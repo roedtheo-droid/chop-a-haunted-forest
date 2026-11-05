@@ -1,10 +1,10 @@
 --!strict
 -- The three round wooden buttons on the right side of the screen, like Chop a Forest's:
--- PETS (greyed out, "Soon"), SHOP (R key) and UPGRADES (TAB key). Each one has a picture,
+-- PETS (greyed out, "Soon"), SHOP (R key) and UPGRADES (U key). Each one has a picture,
 -- a big label and a small key badge. Sizes are in Config.Hud (pixels on a 1080p screen).
 --
--- The SHOP and UPGRADES menus come in the next step. Until then pressing them shows a short
--- message. A menu plugs in with MenuButtonsController.setAction("Shop", openShop).
+-- The menus they open are in MenusController, which plugs them in with
+-- MenuButtonsController.setAction("Shop", toggleShop). A button with no action shows a short message.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -130,7 +130,13 @@ local function makeBadge(parent: Instance, info: ButtonInfo, order: number)
 	local badge = UiKit.keyBadge(button, "KeyBadge", info.Key)
 	badge.AnchorPoint = Vector2.new(0.5, 0.5)
 	badge.Position = UDim2.new(0.5, size * 0.36, 0, size * 0.14)
+	-- On top of the circle. Its letters must be above the badge itself, or the dark badge hides them.
 	badge.ZIndex = 3
+	for _, child in badge:GetDescendants() do
+		if child:IsA("GuiObject") then
+			child.ZIndex = 4
+		end
+	end
 
 	-- Squish a little while pressed, then spring back (like UiKit.button).
 	local scale = Instance.new("UIScale")

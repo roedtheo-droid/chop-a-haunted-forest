@@ -1075,7 +1075,7 @@ local Config = {
 		CurrencyGap = 14,
 		TrialIcon = 46,
 		TrialText = 30,
-		KeyBadge = 34, -- the small dark key badges ("T", "R", "TAB")
+		KeyBadge = 34, -- the small dark key badges ("T", "R", "U")
 		RobuxGreen = Color3.fromRGB(70, 210, 90), -- Robux prices
 
 		-- Bottom left: backpack, courage and the key hint
@@ -1127,7 +1127,7 @@ local Config = {
 		-- Keys
 		TrialKey = Enum.KeyCode.T,
 		ShopKey = Enum.KeyCode.R,
-		UpgradesKey = Enum.KeyCode.Tab,
+		UpgradesKey = Enum.KeyCode.U, -- not TAB: Roblox uses TAB for its player list
 
 		Text = {
 			RunTime = "%d:%02d", -- minutes and seconds
@@ -1152,11 +1152,46 @@ local Config = {
 			Pets = "PETS",
 			Soon = "Soon",
 			ShopKey = "R",
-			UpgradesKey = "TAB",
+			UpgradesKey = "U",
 			TrialKey = "T",
 			Chop = "CHOP",
 			Sell = "SELL",
-			NotReady = "Coming in the next step!", -- SHOP and UPGRADES until their menus are built
+			NotReady = "Coming soon!", -- a round button whose menu isn't built
+		},
+	},
+
+	-- The SHOP (Robux) and UPGRADES menus that the round buttons on the right open (see
+	-- Client/Controllers/MenusController). Sizes are in pixels on a 1080p screen, like Config.Hud.
+	-- Upgrades can be bought from anywhere (Config.Shop.UpgradesAnywhere); tools only in the Tool Shed.
+	Menus = {
+		Width = 820, -- the windows are as tall as what's in them
+		TitleText = 52,
+		TitleIcon = 64,
+		CardGap = 14,
+		ShopCardHeight = 220, -- the SHOP shows 2 x 2 cards
+		UpgradeRowHeight = 104,
+		ItemIcon = 84,
+		NameText = 32,
+		InfoText = 22,
+		ButtonWidth = 200,
+		ButtonHeight = 56,
+		LevelDot = 18, -- the little dots that show an upgrade's level
+		Text = {
+			ShopTitle = "SHOP",
+			UpgradesTitle = "UPGRADES",
+			InfiniteBagInfo = "Carry as many logs as you like",
+			DoubleCoinsInfo = "Logs sell for twice the coins",
+			TrialName = "Chainsaw Trial",
+			TrialInfo = "Try the Chainsaw for %d minutes",
+			BigBeaverInfo = "A big beaver pet, just for looks",
+			BigBeaverSoon = "The Big Beaver is coming soon!",
+			ComingSoon = "Coming soon",
+			Owned = "Owned",
+			Running = "Running",
+			Free = "FREE",
+			Robux = "R$ %d",
+			Max = "MAX",
+			Needs = "Needs %s",
 		},
 	},
 
@@ -1693,6 +1728,7 @@ local Config = {
 		PromptDistance = 10, -- how close to the counter (inside) you must be to see "Open shop"
 		MaxBuyDistance = 20, -- the shop menu closes when you walk this far from the counter
 		BuyMargin = 6, -- the server refuses purchases from further outside the shed's walls than this
+		UpgradesAnywhere = true, -- upgrades can be bought from anywhere (the UPGRADES menu); tools only here
 		BuyCooldown = 0.25, -- seconds between purchases for one player
 
 		-- The framed boards on the walls inside, one per tool (see Server/Build/ShedDisplays).

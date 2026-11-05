@@ -253,4 +253,59 @@ function Icons.quest(parent: Instance, name: string): Frame
 	return h
 end
 
+-- An axe (the Chop Damage upgrade).
+function Icons.axe(parent: Instance, name: string): Frame
+	local h = holder(parent, name)
+	piece(h, "Handle", 0.4, 0.58, 0.13, 0.85, Color3.fromRGB(150, 95, 50), { Round = 0.4, Rotation = 35 })
+	piece(h, "Head", 0.71, 0.28, 0.38, 0.28, Color3.fromRGB(190, 195, 205), { Round = 0.2, Rotation = 35, Z = 2 })
+	piece(h, "Edge", 0.85, 0.38, 0.08, 0.3, Color3.fromRGB(240, 245, 255), { Round = 0.4, Rotation = 35, Outline = false, Z = 3 })
+	return h
+end
+
+-- A blue running shoe with speed lines (the Walk Speed upgrade).
+function Icons.boot(parent: Instance, name: string): Frame
+	local h = holder(parent, name)
+	local blue = Color3.fromRGB(70, 130, 230)
+	for index, y in { 0.42, 0.56, 0.7 } do
+		piece(h, `Speed{index}`, 0.12, y, 0.16, 0.06, WHITE, { Round = 0.5, Outline = false, Transparency = 0.2 })
+	end
+	piece(h, "Leg", 0.46, 0.36, 0.3, 0.46, blue, { Round = 0.15 })
+	piece(h, "Foot", 0.6, 0.66, 0.64, 0.26, blue, { Round = 0.4, Z = 2 })
+	piece(h, "Join", 0.46, 0.58, 0.26, 0.14, blue, { Outline = false, Z = 3 })
+	piece(h, "Sole", 0.6, 0.8, 0.7, 0.1, WHITE, { Round = 0.5, Z = 3 })
+	piece(h, "Lace", 0.5, 0.56, 0.16, 0.05, WHITE, { Outline = false, Z = 4 })
+	return h
+end
+
+-- A glowing lantern (the Lantern Radius upgrade).
+function Icons.lantern(parent: Instance, name: string): Frame
+	local h = holder(parent, name)
+	local metal = Color3.fromRGB(70, 70, 80)
+	piece(h, "Glow", 0.5, 0.55, 0.95, 0.95, Color3.fromRGB(255, 220, 90), { Round = 0.5, Outline = false, Transparency = 0.8 })
+	ring(h, "Handle", 0.5, 0.14, 0.3, 0.2, metal, 4)
+	piece(h, "Cap", 0.5, 0.27, 0.52, 0.1, metal, { Round = 0.3, Z = 2 })
+	piece(h, "Glass", 0.5, 0.55, 0.46, 0.48, Color3.fromRGB(255, 215, 90), { Round = 0.2, Z = 2 })
+	piece(h, "Flame", 0.5, 0.57, 0.14, 0.22, Color3.fromRGB(255, 130, 40), { Round = 0.5, Outline = false, Z = 3 })
+	piece(h, "Base", 0.5, 0.83, 0.58, 0.1, metal, { Round = 0.3, Z = 3 })
+	return h
+end
+
+-- A big brown beaver with buck teeth (the Big Beaver in the SHOP).
+function Icons.beaver(parent: Instance, name: string): Frame
+	local h = holder(parent, name)
+	local fur = Color3.fromRGB(150, 95, 55)
+	local dark = Color3.fromRGB(50, 30, 20)
+	piece(h, "Tail", 0.78, 0.74, 0.34, 0.22, Color3.fromRGB(90, 60, 35), { Round = 0.5, Rotation = -20 })
+	piece(h, "Body", 0.48, 0.68, 0.56, 0.48, fur, { Round = 0.5, Z = 2 })
+	piece(h, "Ear1", 0.26, 0.2, 0.12, 0.12, fur, { Round = 0.5, Z = 2 })
+	piece(h, "Ear2", 0.58, 0.2, 0.12, 0.12, fur, { Round = 0.5, Z = 2 })
+	piece(h, "Head", 0.42, 0.38, 0.46, 0.42, fur, { Round = 0.5, Z = 3 })
+	for _, x in { 0.34, 0.5 } do
+		piece(h, "Eye", x, 0.33, 0.07, 0.09, dark, { Round = 0.5, Outline = false, Z = 4 })
+	end
+	piece(h, "Nose", 0.42, 0.45, 0.12, 0.08, dark, { Round = 0.5, Outline = false, Z = 4 })
+	piece(h, "Teeth", 0.42, 0.54, 0.1, 0.09, WHITE, { Round = 0.15, Z = 4 })
+	return h
+end
+
 return Icons

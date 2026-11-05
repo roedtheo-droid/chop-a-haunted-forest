@@ -178,18 +178,6 @@ local toolModels: { [string]: Types.ToolModelConfig } = {
 	},
 }
 
--- How each tool looks in the HUD's tool bar (see Hud below): a coloured square with a letter,
--- and a short name under it.
-local toolLooks: { [string]: Types.HudToolLook } = {
-	Axe = { Letter = "A", Short = "Axe", Color = Color3.fromRGB(201, 138, 75) },
-	SteelAxe = { Letter = "S", Short = "Steel", Color = Color3.fromRGB(184, 196, 217) },
-	Chainsaw = { Letter = "C", Short = "Saw", Color = Color3.fromRGB(255, 107, 92) },
-	Lantern = { Letter = "L", Short = "Lamp", Color = Color3.fromRGB(255, 207, 92) },
-	Torch = { Letter = "T", Short = "Torch", Color = Color3.fromRGB(255, 154, 61) },
-	GhostVacuum = { Letter = "G", Short = "Ghost", Color = Color3.fromRGB(155, 215, 255) },
-	LogVacuum = { Letter = "V", Short = "Log Vac", Color = Color3.fromRGB(170, 230, 140) },
-}
-
 -- Tools. Fists is what you have when you hold nothing.
 -- The Tool Shed sells the rest (see Shared/Shop.luau for the order and names).
 -- The Lantern and Torch don't chop (Damage 0): the Lantern shows mimics, the Torch burns them.
@@ -1069,66 +1057,107 @@ local Config = {
 		BarBack = Color3.fromRGB(55, 45, 40), -- the empty part of a progress bar
 	},
 
-	-- The purple HUD from Theo's Claude Design picture (see Client/HudController, QuestController,
-	-- BackpackController and UiKit's "hud" functions). Only the HUD is purple: menus stay wood.
+	-- The HUD, laid out like Chop a Forest's (see Client/HudController, ZoneController,
+	-- QuestController, BackpackController, MenuButtonsController and Client/Icons).
+	-- Sizes are in pixels on a 1080p screen: the whole HUD grows and shrinks with the screen
+	-- (UiKit.hudScale), so it fits on phones too.
 	Hud = {
-		Panel = Color3.fromRGB(26, 20, 42), -- the dark purple of every panel
-		PanelTransparency = 0.08, -- 0 = solid, 1 = invisible
-		Track = Color3.fromRGB(42, 33, 64), -- pills, the empty part of bars, tool slots
-		Edge = Color3.fromRGB(59, 47, 89), -- the border around panels and pills
-		Ink = Color3.fromRGB(246, 241, 255), -- normal text
-		Muted = Color3.fromRGB(185, 174, 214), -- small, less important text
-		Heart = Color3.fromRGB(255, 107, 138), -- the health bar
-		Courage = Color3.fromRGB(255, 207, 92), -- the courage bar
-		Scared = Color3.fromRGB(235, 70, 80), -- the courage bar when you're scared (it pulses)
-		Gold = Color3.fromRGB(255, 207, 92), -- the coin
-		Ember = Color3.fromRGB(255, 130, 60),
-		Wood = Color3.fromRGB(201, 138, 75), -- the log
-		Green = Color3.fromRGB(155, 240, 122), -- quest bars, the SELL button
-		Orange = Color3.fromRGB(255, 154, 61), -- the held tool's slot, the CHOP button
-		Full = Color3.fromRGB(255, 107, 107), -- the log number when your sack is full
-		Font = Enum.Font.FredokaOne,
-		HintFont = Enum.Font.RobotoMono, -- the key hint in the bottom-left corner
-		EdgeThickness = 2, -- pixels
-		Margin = 16, -- pixels from the edges of the screen
-		Corner = 14, -- how round panels are, in pixels
-		-- On short screens (phones, a small Studio window) the whole HUD shrinks, so its corners
-		-- don't run into each other: it's full size on screens at least this many pixels tall...
-		FullSizeHeight = 620,
-		MinScale = 0.6, -- ...and never smaller than this
+		DesignHeight = 1080, -- the screen height the sizes below are made for
+		MinScale = 0.5, -- never smaller than this (phones)...
+		MaxScale = 1.25, -- ...or bigger than this (big monitors)
+		Margin = 24, -- pixels from the screen's edges
 
-		-- Top-left: health and courage
-		BarWidth = 260,
-		BarHeight = 22,
-		IconSize = 32, -- the round heart and courage icons
-		HeartIcon = "♥",
-		CourageIcon = "✦",
-		HealthText = "%d / %d",
+		-- Left middle: coins, Embers and the tool trial
+		LeftY = 0.42, -- how far down the screen the coins sit (0 = top, 1 = bottom)
+		CurrencyIcon = 84,
+		CurrencyText = 60, -- how tall the numbers are
+		CurrencyWidth = 360,
+		CurrencyGap = 14,
+		TrialIcon = 46,
+		TrialText = 30,
+		KeyBadge = 34, -- the small dark key badges ("T", "R", "TAB")
+		RobuxGreen = Color3.fromRGB(70, 210, 90), -- Robux prices
 
-		-- Top-right: logs, embers and coins pills
-		PillHeight = 44,
-		LogsPillWidth = 140,
-		CoinPillWidth = 130,
-		PillGap = 8,
-		InfiniteText = "/ ∞", -- after the log number with the Infinite Bag
+		-- Bottom left: backpack, courage and the key hint
+		BackpackIcon = 100,
+		BackpackText = 76,
+		CourageWidth = 270,
+		CourageHeight = 30,
+		CourageIcon = 40,
+		Courage = Color3.fromRGB(120, 190, 255), -- the courage bar
+		Scared = Color3.fromRGB(220, 50, 50), -- the courage bar when you're scared (it pulses)
 
-		-- The quest panel under the pills
-		QuestWidth = 286,
-		QuestRows = 3, -- the current quest and the next ones
-		QuestTitle = "QUEST",
+		-- Top right: run time and the zone
+		TimerIcon = 52,
+		TimerText = 52,
+		PinIcon = 42,
+		ZoneText = 40,
+		ZoneCountText = 22,
+		ZoneBarWidth = 330,
+		ZoneBarHeight = 34,
+		BossIcon = 48, -- the Elder Hollow's face on the bar's end
+		ZoneHintText = 20,
+		StackWidth = 420, -- how wide the top-right stack is
 
-		-- The tool bar at the bottom middle (it replaces Roblox's)
-		SlotSize = 66,
-		SlotGap = 8,
-		MaxSlots = 9, -- number keys 1-9
-		ToolLooks = toolLooks, -- see toolLooks near the top
-		OtherToolColor = Color3.fromRGB(160, 150, 190), -- a tool missing from ToolLooks
+		-- Top left: the quest
+		QuestWidth = 330,
+		QuestText = 26,
 
-		-- The big round buttons, on phones and tablets only (bottom-right, above Roblox's jump button)
-		ChopButtonSize = 110,
-		SellButtonSize = 88,
-		TouchButtonsUp = 170, -- pixels from the bottom of the screen to the buttons' bottom
-		SellDimTransparency = 0.55, -- how faded SELL is when you're not by a sawmill pad
+		-- Bottom middle: the tool bar (no boxes, just pictures)
+		SlotIcon = 76,
+		SelectedSize = 96, -- the held tool's picture is this big
+		SlotGap = 16,
+		SlotNumberText = 26,
+		MaxSlots = 9, -- number keys 1-9 (1 is your fists)
+		ToolCameraAngle = Vector3.new(1, 0.7, 1.2), -- the direction the tool pictures are seen from
+
+		-- Right middle: the round wooden badge buttons
+		BadgeY = 0.55, -- how far down the screen the middle badge sits
+		BadgeSize = 108,
+		BadgeLabelText = 30,
+		BadgeGap = 28,
+		Soon = Color3.fromRGB(150, 140, 130), -- PETS, greyed out
+
+		-- Phones and tablets: the round CHOP and SELL buttons (bottom-right, above Roblox's jump button)
+		ChopButtonSize = 150,
+		SellButtonSize = 118,
+		TouchButtonsUp = 250, -- pixels from the bottom of the screen to the buttons' bottom
+		SellDimTransparency = 0.5, -- how faded SELL is when you're not by a sawmill pad
+
+		-- Keys
+		TrialKey = Enum.KeyCode.T,
+		ShopKey = Enum.KeyCode.R,
+		UpgradesKey = Enum.KeyCode.Tab,
+
+		Text = {
+			RunTime = "%d:%02d", -- minutes and seconds
+			RunTimeLong = "%d:%02d:%02d", -- hours, minutes and seconds
+			ZoneCount = "ZONE %d/%d",
+			Cleared = "%.1f%% cleared",
+			AllCleared = "100% cleared!",
+			-- The small line under the bar, one for each zone.
+			ZoneHints = {
+				"Clear it all to open the next gate",
+				"Clear it all to open the next gate",
+				"Clear it all to wake the Elder Hollow",
+			},
+			Camp = "Lumber Camp", -- the zone name while you're in the camp
+			Trial = "TRIAL %ds", -- the trial's length, before you start it
+			Free = "FREE", -- the trial's price while it has no product id (free once per run)
+			Robux = "R$%d",
+			Backpack = "%d/%d",
+			InfiniteBackpack = "%d/∞",
+			Shop = "SHOP",
+			Upgrades = "UPGRADES",
+			Pets = "PETS",
+			Soon = "Soon",
+			ShopKey = "R",
+			UpgradesKey = "TAB",
+			TrialKey = "T",
+			Chop = "CHOP",
+			Sell = "SELL",
+			NotReady = "Coming in the next step!", -- SHOP and UPGRADES until their menus are built
+		},
 	},
 
 	-- Scenery around the forest, only for looks: you can't chop it (see Server/Systems/SceneryManager).
@@ -1304,14 +1333,14 @@ local Config = {
 	-- (see Client/Controllers/MouseController). A small hint shows in the bottom-left corner.
 	FreeMouse = {
 		Key = Enum.KeyCode.LeftAlt,
-		-- The key hint in the bottom-left corner (it shows in first person, with a keyboard).
-		FreeText = "1-7 tools · click chop · E pick up · Left Alt free mouse", -- while the mouse is locked
+		-- The key hint in the bottom-left corner, under the backpack (it shows in first person,
+		-- with a keyboard). Sizes are on a 1080p screen, like Config.Hud.
+		FreeText = "1-9 tools · click chop · E pick up · Left Alt free mouse", -- while the mouse is locked
 		LockText = "Left Alt: lock mouse", -- while the mouse is free
-		HintTextSize = 13, -- pixels
-		HintHeight = 24, -- pixels tall (the dark pill behind the text)
-		HintMargin = 16, -- pixels from the left and bottom edges of the screen
-		HintTransparency = 0.1, -- the text: 0 = solid, 1 = invisible
-		HintPillTransparency = 0.25, -- the dark pill behind it
+		HintHeight = 26, -- pixels tall (the text fills it)
+		HintWidth = 560, -- pixels wide
+		HintMargin = 24, -- pixels from the left and bottom edges of the screen
+		HintTransparency = 0.15, -- 0 = solid, 1 = invisible
 	},
 
 	-- The glowing line to the nearest tree when a zone is almost cleared
@@ -1712,7 +1741,6 @@ local Config = {
 		RobuxPrice = 25, -- shown on the table (set the same price on the developer product)
 		ProductId = 0, -- the developer product. 0: the trial is free, once per run (for testing)
 		PromptDistance = 8, -- how close to the table you must be to see "Try"
-		HudGap = 30, -- pixels the quest box moves down while "TRIAL 2:59" shows under the coins
 		Text = {
 			Sign = "TRIAL SAW",
 			Tag = "%d MIN", -- the number of minutes

@@ -5,9 +5,10 @@
 --
 -- The server lends the tool (ToolManager.giveTrial) and takes it back when the time is up.
 -- The time left is a player attribute (Shop.TRIAL_ENDS), which Client/HudController shows
--- as "TRIAL 2:59" under the coins.
+-- as "TRIAL 2:59" under the coins. Pressing T (the HUD's trial row) does the same as the table.
 
 local MarketplaceService = game:GetService("MarketplaceService")
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
@@ -64,6 +65,21 @@ local function onTry(player: Player)
 	MarketplaceService:PromptProductPurchase(player, cfg.ProductId)
 end
 
+-- When each player last pressed T, so holding it down can't spam purchase windows.
+local lastTry: { [Player]: number } = {}
+local TRY_COOLDOWN = 1 -- seconds
+
+-- T in the HUD: the same as the trial table's prompt, from anywhere.
+local function onTryKey(player: Player)
+	local now = os.clock()
+	local last = lastTry[player]
+	if last and now - last < TRY_COOLDOWN then
+		return
+	end
+	lastTry[player] = now
+	onTry(player)
+end
+
 function TrialManager.init() end
 
 function TrialManager.start()
@@ -79,6 +95,10 @@ function TrialManager.start()
 	prompt.RequiresLineOfSight = false
 	prompt.Parent = ShopManager.getTrialTable()
 	prompt.Triggered:Connect(onTry)
+	Remotes.getEvent("TryTrial").OnServerEvent:Connect(onTryKey)
+	Players.PlayerRemoving:Connect(function(player: Player)
+		lastTry[player] = nil
+	end)
 
 	-- A paid trial: they paid, so it always starts (it's not saved, so there's nothing to wait for).
 	ProductManager.register(cfg.ProductId, function(player: Player): boolean

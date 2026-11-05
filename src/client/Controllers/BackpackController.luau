@@ -1,8 +1,12 @@
 --!strict
--- The tool bar at the bottom middle of the screen (the purple HUD, see Config.Hud). It replaces
--- Roblox's own tool bar: one numbered slot for every tool in your backpack, in the Tool Shed's
--- order, with the held tool's name above the bar.
--- Press a number key (1-9) or click/tap a slot to hold that tool; do it again to put it away.
+-- The tool bar at the bottom middle of the screen, like Chop a Forest's: no boxes, just a
+-- picture of each tool with a small number above it. "1" is your fists (hold nothing), then
+-- your tools in the Tool Shed's order. The one you hold is a bit bigger. It replaces Roblox's
+-- own tool bar. Sizes are in Config.Hud (pixels on a 1080p screen, see UiKit.hudScale).
+-- Press a number key (1-9) or click/tap a picture to hold that tool; again to put it away.
+--
+-- The tool pictures are little 3D views (ViewportFrames) of the tool itself, so they look just
+-- like the models Theo imported.
 --
 -- Holding a tool works the same way Roblox's own bar does it: your computer moves the Tool from
 -- your Backpack into your character (Humanoid:EquipTool) and Roblox tells the server. The server
@@ -15,6 +19,7 @@ local UserInputService = game:GetService("UserInputService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Shop = require(ReplicatedStorage.Shared.Shop)
+local Icons = require(script.Parent.Parent.Icons)
 local UiKit = require(script.Parent.Parent.UiKit)
 
 local Hud = Config.Hud
@@ -36,18 +41,14 @@ local BackpackController = {}
 type Slot = {
 	Button: TextButton,
 	Number: TextLabel,
-	Icon: Frame,
-	Letter: TextLabel,
-	Name: TextLabel,
-	Border: UIStroke,
+	Picture: Frame, -- holds the fist icon or the tool's 3D view
+	Tool: Tool?, -- the tool shown (nil for the fists)
 }
 
 local player = Players.LocalPlayer
 local bar: Frame
-local nameTag: Frame
-local nameLabel: TextLabel
 local slots: { Slot } = {}
-local tools: { Tool } = {} -- the tool in each slot, in slot order
+local tools: { Tool } = {} -- your tools, in slot order (slot 2 is tools[1])
 local watched: { RBXScriptConnection } = {} -- the Backpack's and character's events
 local refreshQueued = false
 local toggle: (index: number) -> () -- written further down
@@ -95,86 +96,113 @@ local function collectTools(): { Tool }
 	return list
 end
 
+-- A little 3D view of a tool: copies of its visible parts, with a camera looking at them.
+local function toolPicture(tool: Tool): ViewportFrame
+	local view = Instance.new("ViewportFrame")
+	view.Name = "Picture"
+	view.BackgroundTransparency = 1
+	view.Size = UDim2.fromScale(1, 1)
+	view.LightDirection = Vector3.new(-1, -1.5, -1)
+	view.Ambient = Color3.fromRGB(170, 170, 170)
+
+	local model = Instance.new("Model")
+	for _, part in tool:GetDescendants() do
+		if part:IsA("BasePart") and part.Transparency < 1 then
+			local copy = part:Clone()
+			copy:ClearAllChildren()
+			-- Keep what gives the part its look (meshes, textures, decals).
+			for _, child in part:GetChildren() do
+				if child:IsA("DataModelMesh") or child:IsA("Decal") or child:IsA("SurfaceAppearance") then
+					child:Clone().Parent = copy
+				end
+			end
+			copy.Anchored = true
+			copy.Parent = model
+		end
+	end
+	model.Parent = view
+
+	local camera = Instance.new("Camera")
+	camera.FieldOfView = 30
+	camera.Parent = view
+	view.CurrentCamera = camera
+	if #model:GetChildren() > 0 then
+		local boxCFrame, boxSize = model:GetBoundingBox()
+		local radius = boxSize.Magnitude / 2
+		local distance = radius / math.tan(math.rad(camera.FieldOfView / 2)) * 1.05
+		local center = boxCFrame.Position
+		camera.CFrame = CFrame.lookAt(center + Hud.ToolCameraAngle.Unit * distance, center)
+	end
+	return view
+end
+
 local function makeSlot(index: number): Slot
 	local button = Instance.new("TextButton")
 	button.Name = `Slot{index}`
 	button.Text = ""
 	button.AutoButtonColor = false
+	button.BackgroundTransparency = 1
 	button.LayoutOrder = index
-	button.BackgroundColor3 = Hud.Track
-	button.Size = UDim2.fromOffset(Hud.SlotSize, Hud.SlotSize)
-	UiKit.corner(button, 10)
-	local border = Instance.new("UIStroke")
-	border.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	border.Color = Hud.Edge
-	border.Thickness = Hud.EdgeThickness
-	border.Parent = button
+	button.Size = UDim2.fromOffset(Hud.SlotIcon, Hud.SlotIcon + Hud.SlotNumberText)
 
-	local number = UiKit.hudText(button, "Number", tostring(index), 11, Hud.Muted)
-	number.Position = UDim2.fromOffset(6, 3)
-	number.Size = UDim2.fromOffset(12, 12)
-	number.TextXAlignment = Enum.TextXAlignment.Left
+	local number = UiKit.smallText(button, "Number", tostring(index))
+	number.AnchorPoint = Vector2.new(0.5, 0)
+	number.Position = UDim2.fromScale(0.5, 0)
+	number.Size = UDim2.new(1, 0, 0, Hud.SlotNumberText)
 
-	local iconSize = math.floor(Hud.SlotSize * 0.4)
-	local icon = Instance.new("Frame")
-	icon.Name = "Icon"
-	icon.AnchorPoint = Vector2.new(0.5, 0)
-	icon.Position = UDim2.new(0.5, 0, 0, 9)
-	icon.Size = UDim2.fromOffset(iconSize, iconSize)
-	UiKit.corner(icon, 6)
-	icon.Parent = button
-
-	local letter = UiKit.hudText(icon, "Letter", "", 15, Hud.Panel)
-	letter.Size = UDim2.fromScale(1, 1)
-	local stroke = letter:FindFirstChildOfClass("UIStroke")
-	if stroke then
-		stroke.Enabled = false
-	end
-
-	local name = UiKit.hudText(button, "Name", "", 12)
-	name.AnchorPoint = Vector2.new(0.5, 1)
-	name.Position = UDim2.new(0.5, 0, 1, -6)
-	name.Size = UDim2.new(1, -4, 0, 14)
-	name.TextTruncate = Enum.TextTruncate.AtEnd
+	local picture = Instance.new("Frame")
+	picture.Name = "PictureHolder"
+	picture.BackgroundTransparency = 1
+	picture.AnchorPoint = Vector2.new(0.5, 1)
+	picture.Position = UDim2.fromScale(0.5, 1)
+	picture.Size = UDim2.new(1, 0, 1, -Hud.SlotNumberText)
+	picture.Parent = button
 
 	button.Activated:Connect(function()
 		toggle(index)
 	end)
 
 	button.Parent = bar
-	return { Button = button, Number = number, Icon = icon, Letter = letter, Name = name, Border = border }
+	return { Button = button, Number = number, Picture = picture, Tool = nil }
+end
+
+-- Put the right picture in a slot (only when the tool in it changed).
+local function setPicture(slot: Slot, tool: Tool?)
+	if slot.Tool == tool and #slot.Picture:GetChildren() > 0 then
+		return
+	end
+	slot.Tool = tool
+	slot.Picture:ClearAllChildren()
+	if tool then
+		toolPicture(tool).Parent = slot.Picture
+	else
+		local fist = Icons.fist(slot.Picture, "Fist")
+		fist.AnchorPoint = Vector2.new(0.5, 0.5)
+		fist.Position = UDim2.fromScale(0.5, 0.5)
+		fist.Size = UDim2.fromScale(0.8, 0.8)
+	end
 end
 
 local function refresh()
 	refreshQueued = false
 	tools = collectTools()
 	local held = heldTool()
-	local count = math.min(#tools, Hud.MaxSlots)
+	local count = math.min(#tools + 1, Hud.MaxSlots) -- +1: the fists
 
 	for index = 1, count do
 		local slot = slots[index]
-		local tool = tools[index]
-		local look = Hud.ToolLooks[toolId(tool)]
+		local tool = if index == 1 then nil else tools[index - 1]
+		setPicture(slot, tool)
 		slot.Button.Visible = true
-		slot.Icon.BackgroundColor3 = if look then look.Color else Hud.OtherToolColor
-		slot.Letter.Text = if look then look.Letter else string.upper(string.sub(tool.Name, 1, 1))
-		slot.Name.Text = if look then look.Short else tool.Name
-		local isHeld = tool == held
-		slot.Border.Color = if isHeld then Hud.Orange else Hud.Edge
-		slot.Border.Thickness = if isHeld then 3 else Hud.EdgeThickness
-		slot.Button.BackgroundColor3 = if isHeld then Hud.Edge else Hud.Track
+		-- The one you hold is bigger (the fists when you hold nothing).
+		local isHeld = if index == 1 then held == nil else tool == held
+		local size = if isHeld then Hud.SelectedSize else Hud.SlotIcon
+		slot.Button.Size = UDim2.fromOffset(size, size + Hud.SlotNumberText)
+		slot.Number.TextColor3 = if isHeld then Config.Style.Gold else Color3.new(1, 1, 1)
 	end
 	for index = count + 1, #slots do
 		slots[index].Button.Visible = false
-	end
-
-	local width = count * Hud.SlotSize + math.max(count - 1, 0) * Hud.SlotGap + 2 * 10
-	bar.Size = UDim2.fromOffset(width, Hud.SlotSize + 2 * 10)
-	bar.Visible = count > 0
-
-	nameTag.Visible = held ~= nil
-	if held then
-		nameLabel.Text = held.Name
+		setPicture(slots[index], nil)
 	end
 end
 
@@ -201,12 +229,19 @@ local function watch()
 	queueRefresh()
 end
 
--- Hold the tool in slot `index`, or put it away if you're already holding it.
+-- Slot 1 puts your tool away. Any other slot holds that tool, or puts it away if you hold it.
 function toggle(index: number)
 	local character = player.Character
 	local humanoid = if character then character:FindFirstChildOfClass("Humanoid") else nil
-	local tool = tools[index]
-	if not (humanoid and tool and humanoid.Health > 0) then
+	if not (humanoid and humanoid.Health > 0) then
+		return
+	end
+	if index == 1 then
+		humanoid:UnequipTools()
+		return
+	end
+	local tool = tools[index - 1]
+	if not tool then
 		return
 	end
 	if tool.Parent == character then
@@ -226,21 +261,18 @@ function BackpackController.init()
 	gui.ResetOnSpawn = false
 	UiKit.hudScale(gui)
 
-	bar = UiKit.hudPanel(gui, "Bar")
+	bar = Instance.new("Frame")
+	bar.Name = "Bar"
+	bar.BackgroundTransparency = 1
 	bar.AnchorPoint = Vector2.new(0.5, 1)
 	bar.Position = UDim2.new(0.5, 0, 1, -Hud.Margin)
-	bar.Visible = false
-
-	local padding = Instance.new("UIPadding")
-	padding.PaddingLeft = UDim.new(0, 10)
-	padding.PaddingRight = UDim.new(0, 10)
-	padding.PaddingTop = UDim.new(0, 10)
-	padding.PaddingBottom = UDim.new(0, 10)
-	padding.Parent = bar
+	bar.Size = UDim2.fromOffset(Hud.MaxSlots * (Hud.SelectedSize + Hud.SlotGap), Hud.SelectedSize + Hud.SlotNumberText)
+	bar.Parent = gui
 
 	local layout = Instance.new("UIListLayout")
 	layout.FillDirection = Enum.FillDirection.Horizontal
 	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Padding = UDim.new(0, Hud.SlotGap)
 	layout.Parent = bar
@@ -248,21 +280,6 @@ function BackpackController.init()
 	for index = 1, Hud.MaxSlots do
 		table.insert(slots, makeSlot(index))
 	end
-
-	-- The held tool's name, in a small dark pill just above the bar.
-	nameTag = UiKit.hudPanel(gui, "HeldName", 999)
-	nameTag.AnchorPoint = Vector2.new(0.5, 1)
-	nameTag.Position = UDim2.new(0.5, 0, 1, -(Hud.Margin + Hud.SlotSize + 2 * 10 + 8))
-	nameTag.Size = UDim2.fromOffset(0, 26)
-	nameTag.AutomaticSize = Enum.AutomaticSize.X -- as wide as the name
-	nameTag.Visible = false
-	local namePadding = Instance.new("UIPadding")
-	namePadding.PaddingLeft = UDim.new(0, 14)
-	namePadding.PaddingRight = UDim.new(0, 14)
-	namePadding.Parent = nameTag
-	nameLabel = UiKit.hudText(nameTag, "Text", "", 16)
-	nameLabel.Size = UDim2.fromOffset(0, 26)
-	nameLabel.AutomaticSize = Enum.AutomaticSize.X
 
 	gui.Parent = player:WaitForChild("PlayerGui")
 end

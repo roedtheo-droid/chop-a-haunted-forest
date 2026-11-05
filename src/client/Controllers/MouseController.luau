@@ -1,8 +1,7 @@
 --!strict
 -- Left Alt frees the mouse in first person, so you can move it out of the game window
 -- (or click something else) without opening a menu. Press Left Alt again to lock it.
--- A small key hint in the bottom-left corner (the purple HUD) lists the keys and says what
--- Left Alt does right now.
+-- A small hint in the bottom-left corner says what the key does right now.
 --
 -- It frees the mouse the same way the menus do (UiKit.freeMouse): a screen with an invisible
 -- "Modal" button. While that screen is on, ViewmodelController hides the crosshair and shows
@@ -25,7 +24,6 @@ local player = Players.LocalPlayer
 local playerGui: PlayerGui
 local freeGui: ScreenGui -- switched on while the mouse is free
 local hintGui: ScreenGui
-local hintPill: Frame -- the dark pill behind the hint
 local hint: TextLabel
 local free = false
 
@@ -74,23 +72,14 @@ function MouseController.init()
 	hintGui = Instance.new("ScreenGui")
 	hintGui.Name = "FreeMouseHint"
 	hintGui.ResetOnSpawn = false
-	UiKit.hudScale(hintGui)
-	hintPill = UiKit.hudPanel(hintGui, "Hint", 999)
-	hintPill.AnchorPoint = Vector2.new(0, 1)
-	hintPill.Position = UDim2.new(0, cfg.HintMargin, 1, -cfg.HintMargin)
-	hintPill.Size = UDim2.fromOffset(0, cfg.HintHeight)
-	hintPill.AutomaticSize = Enum.AutomaticSize.X -- as wide as the text
-	hintPill.BackgroundTransparency = cfg.HintPillTransparency
-	hintPill.Visible = false
-	local padding = Instance.new("UIPadding")
-	padding.PaddingLeft = UDim.new(0, 12)
-	padding.PaddingRight = UDim.new(0, 12)
-	padding.Parent = hintPill
-	hint = UiKit.hudText(hintPill, "Text", cfg.FreeText, cfg.HintTextSize, Config.Hud.Muted)
-	hint.Font = Config.Hud.HintFont
-	hint.Size = UDim2.fromOffset(0, cfg.HintHeight)
-	hint.AutomaticSize = Enum.AutomaticSize.X
+	UiKit.hudScale(hintGui) -- the same size as the rest of the HUD
+	hint = UiKit.smallText(hintGui, "Hint", cfg.FreeText)
+	hint.AnchorPoint = Vector2.new(0, 1)
+	hint.Position = UDim2.new(0, cfg.HintMargin, 1, -cfg.HintMargin)
+	hint.Size = UDim2.fromOffset(cfg.HintWidth, cfg.HintHeight)
+	hint.TextXAlignment = Enum.TextXAlignment.Left
 	hint.TextTransparency = cfg.HintTransparency
+	hint.Visible = false
 	hintGui.Parent = playerGui
 end
 
@@ -113,8 +102,8 @@ function MouseController.start()
 			setFree(false)
 		end
 		local show = canToggle() or free
-		if hintPill.Visible ~= show then
-			hintPill.Visible = show
+		if hint.Visible ~= show then
+			hint.Visible = show
 		end
 	end)
 end

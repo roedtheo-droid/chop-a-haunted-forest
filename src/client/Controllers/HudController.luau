@@ -1,17 +1,19 @@
 --!strict
--- The purple HUD from Theo's Claude Design picture (colours and sizes in Config.Hud):
---   * top-left: your health and your courage (see Server/Systems/CourageManager)
---   * top-right: pills with your logs (12 / 50), Embers and Coins, with a small "+15" that
---     floats in when one goes up, and "TRIAL 2:59" under them while you try a tool
+-- The HUD's left side, laid out like Chop a Forest (sizes and texts in Config.Hud):
+--   * left middle: a big coin and your Coins, a big Ember and your Embers (with a "+15" that
+--     floats up when one goes up), and under them the tool trial: "TRIAL 180s", the T key and
+--     its price. T starts the trial, like the trial table in the Tool Shed. While it runs it
+--     counts down ("TRIAL 2:59").
+--   * bottom left: a big backpack and "0/5" (red when full), with the courage bar above it
+--     (see Server/Systems/CourageManager)
 --   * phones and tablets only: big round CHOP and SELL buttons in the bottom-right corner
--- The quest panel (QuestController) sits under the pills and the tool bar (BackpackController)
--- at the bottom. Roblox's own health bar is switched off, because ours replaces it.
--- It only DISPLAYS what the server sets: player attributes and your character's health.
+-- The zone and run time are top-right (ZoneController), the quest top-left (QuestController),
+-- the tool bar bottom-middle (BackpackController) and SHOP/UPGRADES right (MenuButtonsController).
+-- It only DISPLAYS what the server sets on the player.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local StarterGui = game:GetService("StarterGui")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
@@ -19,36 +21,38 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Format = require(ReplicatedStorage.Shared.Format)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Shop = require(ReplicatedStorage.Shared.Shop)
+local Icons = require(script.Parent.Parent.Icons)
 local UiKit = require(script.Parent.Parent.UiKit)
 local ChopController = require(script.Parent.ChopController)
 
 local Hud = Config.Hud
+local Text = Hud.Text
 
 local POP_TIME = 0.9
 local PULSE_SPEED = 5 -- how fast the courage bar pulses when you're scared
 local SELL_COOLDOWN = 0.5 -- seconds, so a double tap doesn't send it twice
+local TRIAL_COOLDOWN = 1 -- seconds between two presses of T
 
 local HudController = {}
 
 type Counter = {
 	Attribute: string, -- the player attribute it shows, like "Coins"
 	Label: TextLabel,
-	Pill: Frame,
-	Color: Color3,
+	Icon: Frame,
 	Last: number, -- the amount it showed last time, to know how much it went up
 }
 
 local player = Players.LocalPlayer
 local counters: { Counter } = {}
-local healthBar: UiKit.Bar
-local courageBar: UiKit.Bar
-local logsLabel: TextLabel
-local logsLimitLabel: TextLabel
+local trialRow: Frame
 local trialLabel: TextLabel
+local trialKey: Frame
+local trialPrice: TextLabel
+local backpackLabel: TextLabel
+local courageBar: UiKit.Bar
 local touchButtons: Frame
 local sellButton: TextButton
 local sellValueLabel: TextLabel
-local healthConnection: RBXScriptConnection? = nil
 
 local function getNumber(name: string): number
 	local value = player:GetAttribute(name)
@@ -56,46 +60,174 @@ local function getNumber(name: string): number
 end
 
 ---------------------------------------------------------------------------------------------
--- Top-left: health and courage
+-- Left middle: Coins, Embers and the trial
 
--- One row: a round icon and a bar next to it. `row` is 0 for the top row, 1 for the next.
-local function addBarRow(gui: ScreenGui, name: string, color: Color3, glyph: string, row: number): UiKit.Bar
+-- A "+N" that floats up next to the number and fades out, then removes itself.
+local function popGain(label: TextLabel, amount: number)
+	local pop = UiKit.text(label.Parent :: Instance, "Pop", `+{Format.number(amount)}`, label.TextColor3)
+	pop.AnchorPoint = Vector2.new(0, 0.5)
+	pop.Position = UDim2.new(0, label.Position.X.Offset + label.TextBounds.X + 12, 0.5, 0)
+	pop.Size = UDim2.fromOffset(140, Hud.CurrencyText * 0.6)
+	pop.TextXAlignment = Enum.TextXAlignment.Left
+	local stroke = pop:FindFirstChildOfClass("UIStroke")
+	if stroke then
+		TweenService:Create(stroke, TweenInfo.new(POP_TIME), { Transparency = 1 }):Play()
+	end
+	local tween = TweenService:Create(pop, TweenInfo.new(POP_TIME, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Position = pop.Position - UDim2.fromOffset(0, Hud.CurrencyText * 0.7),
+		TextTransparency = 1,
+	})
+	tween.Completed:Connect(function()
+		pop:Destroy()
+	end)
+	tween:Play()
+end
+
+local function refresh(counter: Counter)
+	local amount = getNumber(counter.Attribute)
+	counter.Label.Text = Format.number(amount)
+	if amount > counter.Last then
+		popGain(counter.Label, amount - counter.Last)
+		UiKit.bounce(counter.Icon)
+	end
+	counter.Last = amount
+end
+
+-- One currency row: a big icon and the number next to it. `row` is 0 for the top row.
+local function addCurrency(gui: ScreenGui, attribute: string, color: Color3, row: number)
 	local holder = Instance.new("Frame")
-	holder.Name = name
+	holder.Name = attribute
 	holder.BackgroundTransparency = 1
-	holder.Position = UDim2.fromOffset(Hud.Margin, Hud.Margin + row * (Hud.IconSize + 10))
-	holder.Size = UDim2.fromOffset(Hud.IconSize + 10 + Hud.BarWidth, Hud.IconSize)
+	holder.AnchorPoint = Vector2.new(0, 0.5)
+	holder.Position = UDim2.new(0, Hud.Margin, Hud.LeftY, row * (Hud.CurrencyIcon + Hud.CurrencyGap))
+	holder.Size = UDim2.fromOffset(Hud.CurrencyWidth, Hud.CurrencyIcon)
 	holder.Parent = gui
 
-	local icon = UiKit.hudDot(holder, "Icon", color, glyph)
-	icon.Size = UDim2.fromOffset(Hud.IconSize, Hud.IconSize)
+	local icon = if attribute == "Embers" then Icons.ember(holder, "Icon") else Icons.coin(holder, "Icon")
+	icon.Size = UDim2.fromOffset(Hud.CurrencyIcon, Hud.CurrencyIcon)
 
-	local bar = UiKit.hudBar(holder, "Bar", color)
-	bar.Frame.AnchorPoint = Vector2.new(0, 0.5)
-	bar.Frame.Position = UDim2.new(0, Hud.IconSize + 10, 0.5, 0)
-	bar.Frame.Size = UDim2.fromOffset(Hud.BarWidth, Hud.BarHeight)
-	return bar
+	local label = UiKit.text(holder, "Amount", "0", color)
+	label.AnchorPoint = Vector2.new(0, 0.5)
+	label.Position = UDim2.new(0, Hud.CurrencyIcon + 14, 0.5, 0)
+	label.Size = UDim2.fromOffset(Hud.CurrencyWidth - Hud.CurrencyIcon - 14, Hud.CurrencyText)
+	label.TextXAlignment = Enum.TextXAlignment.Left
+
+	table.insert(counters, { Attribute = attribute, Label = label, Icon = icon, Last = 0 })
 end
 
-local function refreshHealth(humanoid: Humanoid)
-	local max = math.max(humanoid.MaxHealth, 1)
-	local health = math.clamp(humanoid.Health, 0, max)
-	UiKit.setBar(healthBar, health / max, string.format(Hud.HealthText, math.ceil(health), math.ceil(max)))
+-- The trial row under the Embers: a tool with a flame, "TRIAL 180s", the T key and the price.
+local function addTrialRow(gui: ScreenGui)
+	trialRow = Instance.new("Frame")
+	trialRow.Name = "Trial"
+	trialRow.BackgroundTransparency = 1
+	trialRow.AnchorPoint = Vector2.new(0, 0.5)
+	trialRow.Position = UDim2.new(0, Hud.Margin + 10, Hud.LeftY, 2 * (Hud.CurrencyIcon + Hud.CurrencyGap) - 10)
+	trialRow.Size = UDim2.fromOffset(Hud.CurrencyWidth, Hud.TrialIcon)
+	trialRow.Parent = gui
+
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.VerticalAlignment = Enum.VerticalAlignment.Center
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Padding = UDim.new(0, 10)
+	layout.Parent = trialRow
+
+	local icon = Icons.flameTool(trialRow, "Icon")
+	icon.LayoutOrder = 1
+	icon.Size = UDim2.fromOffset(Hud.TrialIcon, Hud.TrialIcon)
+
+	trialLabel = UiKit.text(trialRow, "Label", "", Config.Style.Gold)
+	trialLabel.LayoutOrder = 2
+	trialLabel.Size = UDim2.fromOffset(0, Hud.TrialText)
+	trialLabel.AutomaticSize = Enum.AutomaticSize.X
+	trialLabel.TextScaled = false
+	trialLabel.TextSize = Hud.TrialText
+
+	trialKey = UiKit.keyBadge(trialRow, "Key", Text.TrialKey)
+	trialKey.LayoutOrder = 3
+
+	trialPrice = UiKit.text(trialRow, "Price", "", Hud.RobuxGreen)
+	trialPrice.LayoutOrder = 4
+	trialPrice.Size = UDim2.fromOffset(0, Hud.TrialText)
+	trialPrice.AutomaticSize = Enum.AutomaticSize.X
+	trialPrice.TextScaled = false
+	trialPrice.TextSize = Hud.TrialText
 end
 
-local function watchHealth(character: Model)
-	if healthConnection then
-		healthConnection:Disconnect()
-		healthConnection = nil
-	end
-	local humanoid = character:WaitForChild("Humanoid", 10)
-	if not (humanoid and humanoid:IsA("Humanoid")) then
+-- Before you try the tool: its length, the key and the price. While it runs: the time left.
+-- Once you own the tool, the row hides.
+local function updateTrial()
+	local cfg = Config.Trial
+	if player:GetAttribute(Shop.ownsAttribute(cfg.ToolId)) == true then
+		trialRow.Visible = false
 		return
 	end
-	refreshHealth(humanoid)
-	healthConnection = humanoid.HealthChanged:Connect(function()
-		refreshHealth(humanoid)
-	end)
+	trialRow.Visible = true
+	local ends = player:GetAttribute(Shop.TRIAL_ENDS)
+	if typeof(ends) == "number" then
+		local left = math.max(0, math.floor(ends - workspace:GetServerTimeNow()))
+		trialLabel.Text = string.format(cfg.Text.Hud, left // 60, left % 60)
+		trialKey.Visible = false
+		trialPrice.Visible = false
+		return
+	end
+	trialLabel.Text = string.format(Text.Trial, cfg.Seconds)
+	trialKey.Visible = true
+	trialPrice.Visible = true
+	trialPrice.Text = if cfg.ProductId == 0 then Text.Free else string.format(Text.Robux, cfg.RobuxPrice)
+end
+
+---------------------------------------------------------------------------------------------
+-- Bottom left: backpack and courage
+
+local function addBackpack(gui: ScreenGui)
+	local bottom = Config.FreeMouse.HintMargin + Config.FreeMouse.HintHeight + 8 -- above the key hint
+
+	local holder = Instance.new("Frame")
+	holder.Name = "Backpack"
+	holder.BackgroundTransparency = 1
+	holder.AnchorPoint = Vector2.new(0, 1)
+	holder.Position = UDim2.new(0, Hud.Margin, 1, -bottom)
+	holder.Size = UDim2.fromOffset(Hud.CurrencyWidth, Hud.BackpackIcon)
+	holder.Parent = gui
+
+	local icon = Icons.backpack(holder, "Icon")
+	icon.Size = UDim2.fromOffset(Hud.BackpackIcon, Hud.BackpackIcon)
+
+	backpackLabel = UiKit.text(holder, "Count", "0/0")
+	backpackLabel.AnchorPoint = Vector2.new(0, 0.5)
+	backpackLabel.Position = UDim2.new(0, Hud.BackpackIcon + 12, 0.55, 0)
+	backpackLabel.Size = UDim2.fromOffset(Hud.CurrencyWidth - Hud.BackpackIcon - 12, Hud.BackpackText)
+	backpackLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+	-- The courage bar, with a little ghost, just above the backpack.
+	local courage = Instance.new("Frame")
+	courage.Name = "Courage"
+	courage.BackgroundTransparency = 1
+	courage.AnchorPoint = Vector2.new(0, 1)
+	courage.Position = UDim2.new(0, Hud.Margin, 1, -(bottom + Hud.BackpackIcon + 10))
+	courage.Size = UDim2.fromOffset(Hud.CourageIcon + 8 + Hud.CourageWidth, Hud.CourageIcon)
+	courage.Parent = gui
+
+	local ghost = Icons.ghost(courage, "Icon")
+	ghost.Size = UDim2.fromOffset(Hud.CourageIcon, Hud.CourageIcon)
+
+	courageBar = UiKit.bar(courage, "Bar", Hud.Courage)
+	courageBar.Frame.AnchorPoint = Vector2.new(0, 0.5)
+	courageBar.Frame.Position = UDim2.new(0, Hud.CourageIcon + 8, 0.5, 0)
+	courageBar.Frame.Size = UDim2.fromOffset(Hud.CourageWidth, Hud.CourageHeight)
+end
+
+local function refreshBackpack()
+	local carry = getNumber("Carry")
+	if Shop.hasPerk(player, "InfiniteBag") then
+		backpackLabel.Text = string.format(Text.InfiniteBackpack, carry)
+		backpackLabel.TextColor3 = Color3.new(1, 1, 1)
+		return
+	end
+	local limit = getNumber("CarryLimit")
+	backpackLabel.Text = string.format(Text.Backpack, carry, limit)
+	backpackLabel.TextColor3 = if limit > 0 and carry >= limit then Config.Style.Red else Color3.new(1, 1, 1)
 end
 
 local function refreshCourage()
@@ -114,135 +246,10 @@ local function pulseCourage()
 end
 
 ---------------------------------------------------------------------------------------------
--- Top-right: logs, Embers and Coins
-
--- A rounded pill with a round dot on the left and a big number next to it.
-local function addPill(row: Frame, name: string, color: Color3, width: number, order: number): (Frame, TextLabel)
-	local pill = Instance.new("Frame")
-	pill.Name = name
-	pill.LayoutOrder = order
-	pill.BackgroundColor3 = Hud.Track
-	pill.BackgroundTransparency = Hud.PanelTransparency
-	pill.Size = UDim2.fromOffset(width, Hud.PillHeight)
-	UiKit.corner(pill, 999)
-	UiKit.border(pill, Hud.Edge, Hud.EdgeThickness)
-	pill.Parent = row
-
-	local dotSize = Hud.PillHeight - 12
-	local dot = UiKit.hudDot(pill, "Dot", color)
-	dot.AnchorPoint = Vector2.new(0, 0.5)
-	dot.Position = UDim2.new(0, 6, 0.5, 0)
-	dot.Size = UDim2.fromOffset(dotSize, dotSize)
-
-	local label = UiKit.hudText(pill, "Amount", "0", 22)
-	label.Position = UDim2.fromOffset(dotSize + 14, 0)
-	label.Size = UDim2.new(1, -(dotSize + 20), 1, 0)
-	label.TextXAlignment = Enum.TextXAlignment.Left
-	return pill, label
-end
-
--- A "+N" that floats up into the pill and fades out, then removes itself.
-local function popGain(counter: Counter, amount: number)
-	local pop = UiKit.hudText(counter.Pill, "Pop", `+{Format.number(amount)}`, 18, counter.Color)
-	pop.AnchorPoint = Vector2.new(0.5, 0)
-	pop.Position = UDim2.new(0.5, 0, 1, 22)
-	pop.Size = UDim2.new(1, 0, 0, 20)
-	local stroke = pop:FindFirstChildOfClass("UIStroke")
-	if stroke then
-		TweenService:Create(stroke, TweenInfo.new(POP_TIME), { Transparency = 1 }):Play()
-	end
-	local tween = TweenService:Create(pop, TweenInfo.new(POP_TIME, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-		Position = UDim2.new(0.5, 0, 1, 2),
-		TextTransparency = 1,
-	})
-	tween.Completed:Connect(function()
-		pop:Destroy()
-	end)
-	tween:Play()
-end
-
-local function refresh(counter: Counter)
-	local amount = getNumber(counter.Attribute)
-	counter.Label.Text = Format.number(amount)
-	if amount > counter.Last then
-		popGain(counter, amount - counter.Last)
-		UiKit.bounce(counter.Pill)
-	end
-	counter.Last = amount
-end
-
-local function refreshLogs()
-	local carry = getNumber("Carry")
-	logsLabel.Text = tostring(carry)
-	if Shop.hasPerk(player, "InfiniteBag") then
-		logsLimitLabel.Text = Hud.InfiniteText
-		logsLabel.TextColor3 = Hud.Ink
-		return
-	end
-	local limit = getNumber("CarryLimit")
-	logsLimitLabel.Text = `/ {limit}`
-	logsLabel.TextColor3 = if limit > 0 and carry >= limit then Hud.Full else Hud.Ink
-end
-
-local function addPills(gui: ScreenGui)
-	local row = Instance.new("Frame")
-	row.Name = "Pills"
-	row.BackgroundTransparency = 1
-	row.AnchorPoint = Vector2.new(1, 0)
-	row.Position = UDim2.new(1, -Hud.Margin, 0, Hud.Margin)
-	row.Size = UDim2.fromOffset(Hud.LogsPillWidth + 2 * (Hud.CoinPillWidth + Hud.PillGap), Hud.PillHeight)
-	row.Parent = gui
-
-	local layout = Instance.new("UIListLayout")
-	layout.FillDirection = Enum.FillDirection.Horizontal
-	layout.HorizontalAlignment = Enum.HorizontalAlignment.Right
-	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.Padding = UDim.new(0, Hud.PillGap)
-	layout.Parent = row
-
-	-- Logs: "12" big, "/ 50" small and faded on the right.
-	local logsPill, label = addPill(row, "Logs", Hud.Wood, Hud.LogsPillWidth, 1)
-	logsLabel = label
-	logsLabel.Size = UDim2.new(0.5, 0, 1, 0)
-	logsLimitLabel = UiKit.hudText(logsPill, "Limit", "", 14, Hud.Muted)
-	logsLimitLabel.AnchorPoint = Vector2.new(1, 0)
-	logsLimitLabel.Position = UDim2.new(1, -14, 0, 0)
-	logsLimitLabel.Size = UDim2.new(0.4, 0, 1, 0)
-	logsLimitLabel.TextXAlignment = Enum.TextXAlignment.Right
-
-	for index, info in { { Attribute = "Embers", Color = Hud.Ember }, { Attribute = "Coins", Color = Hud.Gold } } do
-		local pill, amount = addPill(row, info.Attribute, info.Color, Hud.CoinPillWidth, index + 1)
-		table.insert(counters, { Attribute = info.Attribute, Label = amount, Pill = pill, Color = info.Color, Last = 0 })
-	end
-end
-
--- "TRIAL 2:59" under the pills while you're trying a tool from the trial table. The server
--- sets when the trial ends (Shop.TRIAL_ENDS, in server time) and removes it when it's over.
-local function addTrialTimer(gui: ScreenGui)
-	trialLabel = UiKit.hudText(gui, "Trial", "", 18, Hud.Gold)
-	trialLabel.AnchorPoint = Vector2.new(1, 0)
-	trialLabel.Position = UDim2.new(1, -Hud.Margin - 8, 0, Hud.Margin + Hud.PillHeight + 6)
-	trialLabel.Size = UDim2.fromOffset(200, 22)
-	trialLabel.TextXAlignment = Enum.TextXAlignment.Right
-	trialLabel.Visible = false
-end
-
-local function updateTrialTimer()
-	local ends = player:GetAttribute(Shop.TRIAL_ENDS)
-	if typeof(ends) ~= "number" then
-		trialLabel.Visible = false
-		return
-	end
-	local left = math.max(0, math.floor(ends - workspace:GetServerTimeNow()))
-	trialLabel.Text = string.format(Config.Trial.Text.Hud, left // 60, left % 60)
-	trialLabel.Visible = true
-end
-
----------------------------------------------------------------------------------------------
 -- Phones and tablets: the big round CHOP and SELL buttons
 
--- A big round button with a darker rim at the bottom, a big word and a small line under it.
-local function roundButton(parent: Instance, name: string, color: Color3, size: number, word: string, small: string): (TextButton, TextLabel)
+-- A big round button with a thick black edge, a big word and a small line under it.
+local function roundButton(parent: Instance, name: string, color: Color3, size: number, word: string): (TextButton, TextLabel)
 	local button = Instance.new("TextButton")
 	button.Name = name
 	button.Text = ""
@@ -250,37 +257,34 @@ local function roundButton(parent: Instance, name: string, color: Color3, size: 
 	button.BackgroundColor3 = color
 	button.Size = UDim2.fromOffset(size, size)
 	UiKit.corner(button, 999)
-	UiKit.border(button, color:Lerp(Color3.new(0, 0, 0), 0.35), 5)
+	UiKit.border(button, Color3.new(0, 0, 0), 4)
 
-	local big = UiKit.hudText(button, "Word", word, math.floor(size * 0.22), Hud.Panel)
-	big.Position = UDim2.fromScale(0, 0.22)
-	big.Size = UDim2.fromScale(1, 0.34)
-	local smallLabel = UiKit.hudText(button, "Small", small, math.floor(size * 0.12), Hud.Panel)
-	smallLabel.Position = UDim2.fromScale(0, 0.56)
-	smallLabel.Size = UDim2.fromScale(1, 0.18)
-	for _, label in { big, smallLabel } do
-		local stroke = label:FindFirstChildOfClass("UIStroke")
-		if stroke then
-			stroke.Enabled = false
-		end
-	end
+	local big = UiKit.text(button, "Word", word)
+	big.Position = UDim2.fromScale(0.1, 0.22)
+	big.Size = UDim2.fromScale(0.8, 0.34)
+	local small = UiKit.smallText(button, "Small", "", Config.Style.Gold)
+	small.Position = UDim2.fromScale(0.15, 0.58)
+	small.Size = UDim2.fromScale(0.7, 0.2)
 
 	-- Squish a little while pressed.
 	local scale = Instance.new("UIScale")
 	scale.Parent = button
+	local function isPress(input: InputObject): boolean
+		return input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1
+	end
 	button.InputBegan:Connect(function(input: InputObject)
-		if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+		if isPress(input) then
 			TweenService:Create(scale, TweenInfo.new(0.06), { Scale = 0.9 }):Play()
 		end
 	end)
 	button.InputEnded:Connect(function(input: InputObject)
-		if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+		if isPress(input) then
 			TweenService:Create(scale, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 		end
 	end)
 
 	button.Parent = parent
-	return button, smallLabel
+	return button, small
 end
 
 local function addTouchButtons(gui: ScreenGui)
@@ -290,11 +294,11 @@ local function addTouchButtons(gui: ScreenGui)
 	touchButtons.BackgroundTransparency = 1
 	touchButtons.AnchorPoint = Vector2.new(1, 1)
 	touchButtons.Position = UDim2.new(1, -Hud.Margin, 1, -Hud.TouchButtonsUp)
-	touchButtons.Size = UDim2.fromOffset(Hud.ChopButtonSize + Hud.SellButtonSize + 12, Hud.ChopButtonSize)
+	touchButtons.Size = UDim2.fromOffset(Hud.ChopButtonSize + Hud.SellButtonSize + 16, Hud.ChopButtonSize)
 	touchButtons.Visible = false
 	touchButtons.Parent = gui
 
-	local chop = roundButton(touchButtons, "Chop", Hud.Orange, Hud.ChopButtonSize, "CHOP", "HOLD")
+	local chop = roundButton(touchButtons, "Chop", Config.Style.Ember, Hud.ChopButtonSize, Text.Chop)
 	chop.AnchorPoint = Vector2.new(1, 1)
 	chop.Position = UDim2.fromScale(1, 1)
 	-- Hold the button to keep chopping, like holding the mouse button.
@@ -309,7 +313,7 @@ local function addTouchButtons(gui: ScreenGui)
 		end
 	end)
 
-	local sell, value = roundButton(touchButtons, "Sell", Hud.Green, Hud.SellButtonSize, "SELL", "")
+	local sell, value = roundButton(touchButtons, "Sell", Config.Style.Green, Hud.SellButtonSize, Text.Sell)
 	sell.AnchorPoint = Vector2.new(0, 1)
 	sell.Position = UDim2.fromScale(0, 1)
 	sellButton = sell
@@ -339,18 +343,15 @@ end
 ---------------------------------------------------------------------------------------------
 
 function HudController.init()
-	-- Our health bar replaces Roblox's. (The tool bar replaces Roblox's too, see BackpackController.)
-	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Health, false)
-
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "Hud"
 	gui.ResetOnSpawn = false
 	UiKit.hudScale(gui)
 
-	healthBar = addBarRow(gui, "Health", Hud.Heart, Hud.HeartIcon, 0)
-	courageBar = addBarRow(gui, "Courage", Hud.Courage, Hud.CourageIcon, 1)
-	addPills(gui)
-	addTrialTimer(gui)
+	addCurrency(gui, "Coins", Config.Style.Gold, 0)
+	addCurrency(gui, "Embers", Config.Style.Ember, 1)
+	addTrialRow(gui)
+	addBackpack(gui)
 	addTouchButtons(gui)
 
 	gui.Parent = player:WaitForChild("PlayerGui")
@@ -358,21 +359,16 @@ end
 
 function HudController.start()
 	RunService.Heartbeat:Connect(function()
-		updateTrialTimer()
+		updateTrial()
 		pulseCourage()
 	end)
-
-	if player.Character then
-		task.spawn(watchHealth, player.Character)
-	end
-	player.CharacterAdded:Connect(watchHealth)
 
 	refreshCourage()
 	player:GetAttributeChangedSignal("Courage"):Connect(refreshCourage)
 
-	refreshLogs()
+	refreshBackpack()
 	for _, name in { "Carry", "CarryLimit", Shop.perkAttribute("InfiniteBag") } do
-		player:GetAttributeChangedSignal(name):Connect(refreshLogs)
+		player:GetAttributeChangedSignal(name):Connect(refreshBackpack)
 	end
 
 	for _, counter in counters do
@@ -383,6 +379,21 @@ function HudController.start()
 			refresh(counter)
 		end)
 	end
+
+	-- T starts the tool trial (the server checks everything, like at the trial table).
+	local trialRemote = Remotes.getEvent("TryTrial")
+	local lastTrial = 0
+	UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)
+		if gameProcessed or input.KeyCode ~= Hud.TrialKey or not trialRow.Visible or not trialKey.Visible then
+			return
+		end
+		local now = os.clock()
+		if now - lastTrial < TRIAL_COOLDOWN then
+			return
+		end
+		lastTrial = now
+		trialRemote:FireServer()
+	end)
 
 	-- The round buttons, for phones and tablets.
 	local sellRemote = Remotes.getEvent("SellLogs")

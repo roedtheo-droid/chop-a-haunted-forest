@@ -58,6 +58,10 @@ local list: { [string]: Types.RemoteKind } = {
 	-- on it (see Server/Systems/SawmillManager).
 	SellLogs = "Event",
 
+	-- Client -> server: "I pressed T to try the trial tool" (the HUD's trial row). No numbers:
+	-- the server does exactly what the trial table's prompt does (see Server/Systems/TrialManager).
+	TryTrial = "Event",
+
 	-- Client -> server: "I'm holding sprint" (true) or "I let go" (false).
 	-- The server decides the actual speed.
 	SetSprint = "Event",

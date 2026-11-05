@@ -3,7 +3,7 @@
 --   * SHOP (R): the Robux items. Infinite Bag and 2X COINS are game passes (Server/Systems/
 --     PerkManager), the Chainsaw Trial is the trial table's deal (Server/Systems/TrialManager)
 --     and the Big Beaver is coming later. While an item has no id in Config it says "Coming soon".
---   * UPGRADES (TAB): the coin upgrades (Chop Damage, Log Sack, Walk Speed, Lantern Radius),
+--   * UPGRADES (U): the coin upgrades (Chop Damage, Log Sack, Walk Speed, Lantern Radius),
 --     with dots for their level. They can be bought from anywhere; tools stay in the Tool Shed.
 -- Pressing the same button (or key) again closes the menu. Sizes and texts are in Config.Menus.
 -- It only SHOWS prices and what you own; every button just asks the server, which decides.

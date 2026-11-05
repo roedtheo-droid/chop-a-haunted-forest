@@ -1075,7 +1075,7 @@ local Config = {
 		CurrencyGap = 14,
 		TrialIcon = 46,
 		TrialText = 30,
-		KeyBadge = 34, -- the small dark key badges ("T", "R", "TAB")
+		KeyBadge = 34, -- the small dark key badges ("T", "R", "U")
 		RobuxGreen = Color3.fromRGB(70, 210, 90), -- Robux prices
 
 		-- Bottom left: backpack, courage and the key hint
@@ -1127,7 +1127,7 @@ local Config = {
 		-- Keys
 		TrialKey = Enum.KeyCode.T,
 		ShopKey = Enum.KeyCode.R,
-		UpgradesKey = Enum.KeyCode.Tab,
+		UpgradesKey = Enum.KeyCode.U, -- not TAB: Roblox uses TAB for its player list
 
 		Text = {
 			RunTime = "%d:%02d", -- minutes and seconds
@@ -1152,7 +1152,7 @@ local Config = {
 			Pets = "PETS",
 			Soon = "Soon",
 			ShopKey = "R",
-			UpgradesKey = "TAB",
+			UpgradesKey = "U",
 			TrialKey = "T",
 			Chop = "CHOP",
 			Sell = "SELL",

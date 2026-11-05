@@ -1,6 +1,6 @@
 --!strict
 -- The three round wooden buttons on the right side of the screen, like Chop a Forest's:
--- PETS (greyed out, "Soon"), SHOP (R key) and UPGRADES (TAB key). Each one has a picture,
+-- PETS (greyed out, "Soon"), SHOP (R key) and UPGRADES (U key). Each one has a picture,
 -- a big label and a small key badge. Sizes are in Config.Hud (pixels on a 1080p screen).
 --
 -- The menus they open are in MenusController, which plugs them in with

@@ -40,11 +40,13 @@ function NotifyController.init()
 	gui.Name = "Notify"
 	gui.ResetOnSpawn = false
 	gui.DisplayOrder = 10 -- on top of other windows, like the shop
+	UiKit.hudScale(gui) -- the same size as the rest of the HUD
 
+	-- Top middle, just under the day bar (sizes in pixels on a 1080p screen).
 	box = UiKit.box(gui, "Message")
 	box.AnchorPoint = Vector2.new(0.5, 0)
-	box.Position = UDim2.new(0.5, 0, 0, 70)
-	box.Size = UDim2.fromOffset(380, 40)
+	box.Position = UDim2.new(0.5, 0, 0, Config.Hud.Margin + Config.Day.Icon + 12)
+	box.Size = UDim2.fromOffset(Config.UI.NotifyWidth, Config.UI.NotifyHeight)
 	box.Visible = false
 
 	label = UiKit.text(box, "Text", "")

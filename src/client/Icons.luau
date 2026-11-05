@@ -308,4 +308,30 @@ function Icons.beaver(parent: Instance, name: string): Frame
 	return h
 end
 
+-- A yellow sun with orange rays (the day bar).
+function Icons.sun(parent: Instance, name: string): Frame
+	local h = holder(parent, name)
+	local ray = Color3.fromRGB(255, 150, 30)
+	for index = 0, 7 do
+		local angle = index * 45
+		local radians = math.rad(angle)
+		piece(h, `Ray{index}`, 0.5 + 0.36 * math.sin(radians), 0.5 - 0.36 * math.cos(radians), 0.12, 0.22, ray, { Round = 0.4, Rotation = angle })
+	end
+	piece(h, "Sun", 0.5, 0.5, 0.58, 0.58, Color3.fromRGB(255, 210, 50), { Round = 0.5, Z = 2 })
+	piece(h, "Shine", 0.38, 0.36, 0.14, 0.08, WHITE, { Round = 0.5, Rotation = -40, Outline = false, Transparency = 0.3, Z = 3 })
+	return h
+end
+
+-- A pale full moon with craters (the night bar).
+function Icons.moon(parent: Instance, name: string): Frame
+	local h = holder(parent, name)
+	local crater = Color3.fromRGB(190, 195, 215)
+	piece(h, "Glow", 0.5, 0.5, 0.95, 0.95, Color3.fromRGB(200, 210, 255), { Round = 0.5, Outline = false, Transparency = 0.75 })
+	piece(h, "Moon", 0.5, 0.5, 0.66, 0.66, Color3.fromRGB(235, 238, 250), { Round = 0.5, Z = 2 })
+	piece(h, "Crater1", 0.4, 0.4, 0.16, 0.16, crater, { Round = 0.5, Outline = false, Z = 3 })
+	piece(h, "Crater2", 0.62, 0.58, 0.12, 0.12, crater, { Round = 0.5, Outline = false, Z = 3 })
+	piece(h, "Crater3", 0.44, 0.66, 0.08, 0.08, crater, { Round = 0.5, Outline = false, Z = 3 })
+	return h
+end
+
 return Icons

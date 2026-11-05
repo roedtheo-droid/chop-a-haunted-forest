@@ -4,8 +4,10 @@
 -- There are two ways to buy: the "Buy" prompt on a tool's board on the wall, or the shop menu
 -- (the "Open shop" prompt on the counter, whose Buy buttons fire the BuyItem remote). The Log
 -- Sack can also be bought on its stump by each sell pad (PerkManager calls buyAt).
+-- Upgrades can also be bought from anywhere, in the UPGRADES menu (Client/MenusController,
+-- the same BuyItem remote) while Config.Shop.UpgradesAnywhere is on.
 -- Either way the server checks that:
---   the item exists, the player is in (or right outside) the shed, they're not buying too fast,
+--   the item exists, the player is in (or right outside) the shed (tools only), they're not buying too fast,
 --   they don't already own it (or it isn't max level), they own anything it needs first
 --   (Lantern Radius needs the Lantern), and they have enough coins.
 -- Only then does it take the coins and give the tool or upgrade.
@@ -104,7 +106,9 @@ local function tryBuy(player: Player, itemId: unknown, at: BasePart?, reach: num
 		return
 	end
 	lastBuy[player] = now
-	local inPlace = if at and reach then isNear(player, at, reach) else isAtShed(player)
+	-- Upgrades can be bought from anywhere (the UPGRADES menu), tools only at the shed.
+	local anywhere = item.Kind == "Upgrade" and Config.Shop.UpgradesAnywhere
+	local inPlace = anywhere or (if at and reach then isNear(player, at, reach) else isAtShed(player))
 	if not inPlace then
 		notifyRemote:FireClient(player, Config.Shop.Text.NotAtShed)
 		return

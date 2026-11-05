@@ -3,8 +3,8 @@
 -- PETS (greyed out, "Soon"), SHOP (R key) and UPGRADES (TAB key). Each one has a picture,
 -- a big label and a small key badge. Sizes are in Config.Hud (pixels on a 1080p screen).
 --
--- The SHOP and UPGRADES menus come in the next step. Until then pressing them shows a short
--- message. A menu plugs in with MenuButtonsController.setAction("Shop", openShop).
+-- The menus they open are in MenusController, which plugs them in with
+-- MenuButtonsController.setAction("Shop", toggleShop). A button with no action shows a short message.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

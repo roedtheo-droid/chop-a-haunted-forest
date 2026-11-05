@@ -190,7 +190,7 @@ The goal: the game kids describe as "the one where a tree ate my friend and I ha
 It becomes its own game: this list moves away from matching Chop a Forest's look and layouts.
 Chopping, selling logs and upgrading tools are the genre, so they stay.
 12. Clean start: analytics, the tutorial and flyover are remembered, walk over logs to collect
-    them, fairer ghosts, dying drops your logs.
+    them, fairer ghosts, dying drops your logs. (done, tested)
 13. Make it yours: a new name, Theo's own purple HUD, a "spooky storybook" style, a camp with its
     own ideas (a chained mimic that eats logs and burps coins).
 14. The trees bite: a real wake-up moment, sprint stamina, being swallowed, mimic species with one

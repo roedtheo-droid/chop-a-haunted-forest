@@ -130,7 +130,13 @@ local function makeBadge(parent: Instance, info: ButtonInfo, order: number)
 	local badge = UiKit.keyBadge(button, "KeyBadge", info.Key)
 	badge.AnchorPoint = Vector2.new(0.5, 0.5)
 	badge.Position = UDim2.new(0.5, size * 0.36, 0, size * 0.14)
+	-- On top of the circle. Its letters must be above the badge itself, or the dark badge hides them.
 	badge.ZIndex = 3
+	for _, child in badge:GetDescendants() do
+		if child:IsA("GuiObject") then
+			child.ZIndex = 4
+		end
+	end
 
 	-- Squish a little while pressed, then spring back (like UiKit.button).
 	local scale = Instance.new("UIScale")

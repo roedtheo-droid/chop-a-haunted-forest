@@ -54,13 +54,13 @@ local list: { [string]: Types.RemoteKind } = {
 	-- Client -> server: "Park my truck by the Garage" (a truck Id you own, see TruckManager).
 	SpawnTruck = "Event",
 
-	-- Server -> all clients: someone sold logs on a DROP LOGS pad, so draw them dropping onto it
-	-- and riding the conveyor into the chipper (only for looks). Carries the pad, how many logs
+	-- Server -> all clients: someone sold logs on a pad, so draw them dropping onto it and hopping
+	-- up the chute into Gnawbert's mouth (only for looks). Carries the pad, how many logs
 	-- to draw and where they drop from (a Vector3).
 	LogsSold = "Event",
 
 	-- Client -> server: the round SELL button (phones and tablets) was tapped. No numbers: the
-	-- server checks that you stand by a DROP LOGS pad and sells your logs there, like stepping
+	-- server checks that you stand by a sell pad and sells your logs there, like stepping
 	-- on it (see Server/Systems/SawmillManager).
 	SellLogs = "Event",
 

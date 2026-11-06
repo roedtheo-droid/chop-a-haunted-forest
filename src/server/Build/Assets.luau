@@ -34,7 +34,7 @@ local function report(name: string, found: boolean)
 	end
 	reported[name] = true
 	if found then
-		print(`[Assets] Using the Blender model "{name}"`)
+		print(`[Assets] Using the model "{name}"`)
 	else
 		print(`[Assets] No "{name}" in ServerStorage.{Config.Models.Folder} yet: using parts instead`)
 	end
@@ -192,14 +192,32 @@ local ROLES = {
 	"Paddle",
 	"Spoke",
 	"Shaft",
+	"LidRidge",
+	"LidGum",
+	"RingLines",
+	"Lid",
+	"Ridge",
+	"Gum",
+	"Throat",
+	"Tongue",
+	"Collar",
+	"Tag",
+	"Chain",
+	"Fangs",
+	"Eye",
+	"Pupil",
+	"Glint",
+	"Body",
+	"Mouth",
 }
 
 -- Blender can't give two objects the same name, so they're numbered ("LeafBlock_2"), and
 -- Studio sometimes adds the file's name too ("Oak_LeafBlock_2", "StoneGatehouse_Iron"), or
--- it's from AllModels ("Oak__LeafBlock_2"). The game wants the plain name: "LeafBlock",
--- "Iron". The name it ends with wins, so "StoneGatehouse_Iron" is "Iron", not "Stone".
+-- it's from AllModels ("Oak__LeafBlock_2"), or a .gltf import added "_Node". The game wants the
+-- plain name: "LeafBlock", "Iron". The name it ends with wins, so "StoneGatehouse_Iron" is "Iron",
+-- not "Stone".
 local function plainName(name: string): string
-	local trimmed = string.gsub(name, "[%._%d]+$", "")
+	local trimmed = string.gsub(string.gsub(name, "_Node$", ""), "[%._%d]+$", "")
 	for _, role in ROLES do
 		if string.sub(trimmed, -#role) == role then
 			return role
@@ -324,6 +342,27 @@ function Assets.placed(parent: Instance, name: string, frame: CFrame, scale: num
 	if model then
 		Assets.remove(model, "Pivot")
 	end
+	return model
+end
+
+-- Like Assets.placed, for models made in Claude Design (.gltf files, see design-system/ and
+-- models/), which also have a tiny "Pivot" box. Each of its parts stays in the returned Model for
+-- the caller to paint and sort. nil if it isn't imported.
+function Assets.gltf(parent: Instance, name: string, frame: CFrame, scale: number?): Model?
+	local model = Assets.model(name)
+	if not model then
+		return nil
+	end
+	local pivot = model:FindFirstChild("Pivot")
+	if not (pivot and pivot:IsA("BasePart")) then
+		warn(`[Assets] The "{name}" model needs a part named Pivot, so parts are used instead`)
+		model:Destroy()
+		return nil
+	end
+	local turn = CFrame.Angles(0, math.rad(Config.Models.GltfTurn), 0)
+	Assets.fit(model, pivot, PIVOT_SIZE * (scale or 1), frame.Position, frame.Rotation * turn)
+	Assets.remove(model, "Pivot")
+	model.Parent = parent
 	return model
 end
 

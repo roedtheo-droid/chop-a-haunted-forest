@@ -1,0 +1,36 @@
+{
+  "name": "trees-with-teeth-3d",
+  "version": "0.1.0",
+  "private": true,
+  "description": "3D Roblox tools modeling: build chunky low-poly models out of React components, see them live, and write them out as .gltf for Roblox Studio.",
+  "type": "module",
+  "module": "./dist/index.es.js",
+  "main": "./dist/index.es.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.es.js"
+    }
+  },
+  "files": [
+    "dist",
+    "tokens"
+  ],
+  "scripts": {
+    "build": "node build.mjs",
+    "export-models": "node tools/export-gltf.mjs"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "esbuild": "^0.25.0",
+    "playwright": "^1.65.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "^5.6.3"
+  }
+}

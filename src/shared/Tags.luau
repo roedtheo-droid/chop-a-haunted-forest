@@ -19,7 +19,7 @@ local Tags = {
 	LandownerPrompt = "LandownerPrompt", -- his "Talk" prompt
 	GaragePad = "GaragePad", -- the glowing pad in front of the Garage (see GarageController)
 	Ghost = "Ghost", -- a floating ghost (see GhostManager); being near one drains your courage
-	SellBillboard = "SellBillboard", -- the floating SELL LOGS billboard over a sawmill's pad (see SellYardController)
+	GnawbertLid = "GnawbertLid", -- the lid of Gnawbert at a sawmill, moved on each computer (see SellYardController)
 }
 
 return table.freeze(Tags)

@@ -11,7 +11,7 @@
 --           the truck's Speed.
 --   Load    The "Load logs" prompt behind the bed moves logs from your backpack into the bed,
 --           up to the truck's Carry. They show as logs piled in the bed.
---   Sell    Drive onto a sawmill's DROP LOGS pad: the server sells the whole bed and pays the
+--   Sell    Drive onto a sawmill's sell pad: the server sells the whole bed and pays the
 --           owner, like selling from your backpack.
 -- The server keeps the bed's count and value; nothing the client sends is trusted.
 
@@ -285,7 +285,7 @@ local function drive(truck: Truck)
 	end
 end
 
--- Is the truck standing on a DROP LOGS pad? Then sell the whole bed for the owner.
+-- Is the truck standing on a sell pad? Then sell the whole bed for the owner.
 local function trySell(truck: Truck)
 	if truck.Load <= 0 then
 		return

@@ -350,6 +350,11 @@ local sounds: { [string]: Types.SoundConfig } = {
 	KnockedDown = { Id = "rbxassetid://9113525487", Volume = 0.7 }, -- body slam
 	ForestCleared = { Id = "rbxassetid://9042409054", Volume = 0.6 }, -- fanfare (APM Music)
 	Bite = { Id = "rbxassetid://86164339653462", Volume = 0.8 }, -- the jaws on the title screen snapping shut
+
+	-- Gnawbert at the sawmills: everyone near it hears these (played on each computer, see
+	-- SellYardController).
+	Chomp = { Id = "rbxassetid://86164339653462", Volume = 0.6, Range = 90 }, -- the same jaws
+	Burp = { Id = "rbxassetid://9120003207", Volume = 0.7, Range = 120 }, -- thick, deep belch
 }
 
 -- Particle bursts (see Server/Systems/EffectsManager).
@@ -660,7 +665,7 @@ local trucks: { Types.TruckConfig } = {
 local quests: { Types.QuestConfig } = {
 	{ Event = "FellTree", Goal = 1, Text = "Chop down a tree" },
 	{ Event = "PickUpLog", Goal = 3, Text = "Walk over your logs" },
-	{ Event = "SellLogs", Goal = 1, Text = "Sell logs on the sawmill pad" },
+	{ Event = "SellLogs", Goal = 1, Text = "Sell your logs to Gnawbert at the sawmill" },
 	{ Event = "BuyAxe", Goal = 1, Text = "Buy an Axe at the Tool Shed" },
 	{ Event = "BuyUpgrade", Goal = 1, Text = "Buy any upgrade" },
 	{ Event = "FellTree", Goal = 10, Text = "Chop down trees" },
@@ -796,6 +801,9 @@ local Config = {
 			LogPile = "LogPile",
 		},
 		FitTolerance = 0.05, -- how far (5%) a model's size may be off before the parts are used
+		-- Models made in Claude Design are .gltf files, and Studio imports those turned halfway round
+		-- too. Degrees to turn them back when they're placed (see Assets.gltf).
+		GltfTurn = 180,
 	},
 
 	-- Tools made from Theo's imported models (see toolModels at the top). The models go in a
@@ -1061,7 +1069,7 @@ local Config = {
 		InnerWood = Color3.fromRGB(235, 200, 150), -- the inside of a tree: stump tops and log ends
 		Rings = Color3.fromRGB(205, 160, 105), -- growth rings on stump tops and log ends
 		BirchMark = Color3.fromRGB(45, 42, 40), -- the dark marks on birch bark
-		HazardYellow = Color3.fromRGB(250, 210, 30), -- the striped edge around sell pads
+		HazardYellow = Color3.fromRGB(250, 210, 30), -- warning stripes in the shop's showroom
 		HazardBlack = Color3.fromRGB(30, 30, 30),
 		Window = Color3.fromRGB(190, 230, 255),
 		Metal = Color3.fromRGB(175, 182, 195), -- saw blades
@@ -1597,9 +1605,12 @@ local Config = {
 		CatchTime = 0.45, -- seconds a caught ghost takes to fly into the nozzle and fade out
 		Reward = 20, -- coins for each ghost caught
 		CourageReward = 20, -- courage back for each ghost caught
-		-- How a ghost looks (blocks, so it fits the style; a "Ghost" Blender model is used instead
-		-- when it's imported, see Build/Assets)
+		-- How a ghost looks. The model comes from Claude Design; until it's imported into Studio,
+		-- blocks stand in (see GhostManager).
+		Model = "Ghost",
 		Size = 2.6, -- studs: its head is this wide
+		ModelSize = 2.6, -- how wide the model's head is, before it's sized to Size
+		ModelFloat = 3.3, -- how far above its origin the middle of the model's head is
 		Color = Color3.fromRGB(235, 242, 255),
 		Transparency = 0.25,
 		LightColor = Color3.fromRGB(170, 210, 255),
@@ -1812,7 +1823,7 @@ local Config = {
 	Sawmill = {
 		BuildingSize = Vector3.new(20, 11, 14), -- the open-fronted mill shed
 		RoofHeight = 6,
-		PadSize = Vector2.new(16, 12), -- the "DROP LOGS" pad: studs across the sawmill's front, and out from it
+		PadSize = Vector2.new(16, 12), -- the sell pad: studs across the sawmill's front, and out from it
 		SellCooldown = 1, -- seconds between sells for one player (stops double-selling)
 		-- The SELL button (phones and tablets): it works this many studs from a pad's middle
 		-- (the pad is 16 x 12, so this is about the sell yard around it).
@@ -1825,30 +1836,97 @@ local Config = {
 		Wear = { 0, 0.15, 0.28 }, -- how much darker each zone's sawmill is: zones 2 and 3 are old and worn
 
 		-- The sell yard in front of each sawmill (see Server/Build/SellYard and
-		-- Client/Controllers/SellYardController): a conveyor runs from the pad's left end up
-		-- into a big orange wood chipper, and a billboard floats above the pad.
-		ConveyorLength = 8, -- studs along the ground from the pad's edge to the chipper
-		ChipperHeight = 4.4, -- how high the chipper's mouth (the top of the conveyor) is
-		ChipperColor = Color3.fromRGB(240, 128, 30),
-		BillboardHeight = 18, -- studs above the ground
-		BillboardSize = Vector2.new(14, 8), -- studs
-		ArrowBob = 0.6, -- studs the yellow arrow under the billboard bobs up and down
-		ArrowBobSpeed = 3, -- radians per second (about one bob every 2 seconds)
-		-- When you sell, your logs drop onto the pad and ride the conveyor into the chipper, one
+		-- Client/Controllers/SellYardController): a wooden chute runs from the pad's left end up to
+		-- Gnawbert's lip.
+		ChuteLength = 8, -- studs along the ground from the pad's edge to Gnawbert's lip
+		ChuteWidth = 3,
+		ChuteHeight = 4.4, -- how high its top is: the same as Gnawbert's bottom lip
+		-- When you sell, your logs drop onto the pad, slide to the chute, hop up it and get eaten, one
 		-- by one (only for looks, on every player's screen; the server pays straight away).
-		LogGap = 0.15, -- seconds between two logs
+		LogGap = 0.28, -- seconds between two logs
 		DropTime = 0.25, -- seconds a log takes to fall onto the pad
 		SlideSpeed = 16, -- studs per second across the pad
-		BeltSpeed = 9, -- studs per second up the conveyor
-		MaxShownLogs = 30, -- a bigger sale still pays for every log, but only this many are drawn
+		HopSpeed = 9, -- studs per second up the chute
+		Hops = 3, -- how many hops a log makes on the way up
+		HopHeight = 1.1, -- studs
+		LastHop = 1.2, -- studs: how high its last jump into the mouth goes
+		MaxShownLogs = 20, -- a bigger sale still pays for every log, but only this many are drawn
+
+		-- Gnawbert, the chained stump mimic that eats the logs (see Server/Build/Gnawbert and
+		-- Client/Controllers/SellYardController).
+		Gnawbert = {
+			Model = "Gnawbert", -- made in Claude Design, imported into ServerStorage > MapAssets
+			-- All in studs, from the middle of its bottom, with +Z its front.
+			Front = 3.4, -- from its middle to its bottom lip, where the chute ends
+			Hinge = Vector3.new(0, 4.55, -3), -- where its lid turns
+			Mouth = Vector3.new(0, 5.2, 1.2), -- where a log disappears
+			ColliderSize = Vector3.new(8.4, 9, 7.6), -- the invisible block you bump into
+			EyesFromHinge = Vector3.new(0, 2.5, 6.4), -- where its eyes are, seen from the hinge
+			-- Which of the model's parts move with the lid, and which also shift to watch you.
+			LidParts = { Lid = true, LidRidge = true, Rings = true, RingLines = true, LidGum = true, Fangs = true, Eye = true, Moss = true } :: { [string]: boolean },
+			PupilParts = { Pupil = true, Glint = true } :: { [string]: boolean },
+			Looks = {
+				Trunk = { Color = Color3.fromRGB(104, 82, 66), Material = Enum.Material.Wood },
+				Ridge = { Color = Color3.fromRGB(80, 60, 47), Material = Enum.Material.Wood },
+				Root = { Color = Color3.fromRGB(94, 76, 62), Material = Enum.Material.Wood },
+				-- Plain Plastic on the dark parts: SmoothPlastic is shiny, and the low sun washes it out.
+				Gum = { Color = Color3.fromRGB(44, 18, 34), Material = Enum.Material.Plastic },
+				Throat = { Color = Color3.fromRGB(16, 12, 26), Material = Enum.Material.Plastic },
+				Tongue = { Color = Color3.fromRGB(200, 84, 72), Material = Enum.Material.SmoothPlastic },
+				Teeth = { Color = Color3.fromRGB(240, 232, 205), Material = Enum.Material.SmoothPlastic },
+				Collar = { Color = Color3.fromRGB(40, 40, 46), Material = Enum.Material.Metal },
+				Tag = { Color = Color3.fromRGB(190, 152, 82), Material = Enum.Material.Metal },
+				Chain = { Color = Color3.fromRGB(70, 70, 78), Material = Enum.Material.Metal },
+				Lid = { Color = Color3.fromRGB(116, 92, 72), Material = Enum.Material.Wood },
+				LidRidge = { Color = Color3.fromRGB(80, 60, 47), Material = Enum.Material.Wood },
+				Rings = { Color = Color3.fromRGB(235, 200, 150), Material = Enum.Material.Wood },
+				RingLines = { Color = Color3.fromRGB(186, 146, 98), Material = Enum.Material.Wood },
+				LidGum = { Color = Color3.fromRGB(44, 18, 34), Material = Enum.Material.Plastic },
+				Fangs = { Color = Color3.fromRGB(240, 232, 205), Material = Enum.Material.SmoothPlastic },
+				Eye = { Color = Color3.fromRGB(245, 190, 80), Material = Enum.Material.SmoothPlastic },
+				Pupil = { Color = Color3.fromRGB(12, 10, 18), Material = Enum.Material.Plastic },
+				Glint = { Color = Color3.fromRGB(240, 232, 205), Material = Enum.Material.SmoothPlastic },
+				Moss = { Color = Color3.fromRGB(112, 138, 92), Material = Enum.Material.Grass },
+			} :: { [string]: Types.SkinLook },
+			-- The parts that get darker at the worn sawmills (Sawmill.Wear).
+			Wears = { Trunk = true, Ridge = true, Root = true, Lid = true, LidRidge = true, Rings = true, RingLines = true, Moss = true } :: { [string]: boolean },
+			-- How far its lid is open, in degrees (0 is shut).
+			RestAngle = 9,
+			Breathe = 1.5, -- it moves this much around that, breathing
+			BreatheSpeed = 1.2, -- radians per second
+			HungryAngle = 24, -- when you come close with logs, and while it waits for the next one
+			HungryDistance = 26, -- studs from its mouth
+			OpenAngle = 36, -- when a log is about to arrive
+			OpenBefore = 0.45, -- seconds before the log arrives
+			ChompAngle = 1, -- snapping shut on a log
+			ChompTime = 0.14, -- seconds it stays shut
+			LidSpeed = 9, -- how quickly the lid follows (bigger is faster)
+			SnapSpeed = 45, -- the same, when it snaps shut
+			-- The burp after the last log.
+			BurpDelay = 0.5, -- seconds after the last bite
+			BurpTime = 0.9, -- seconds its lid stays up, shaking
+			BurpAngle = 30,
+			BurpShake = 4, -- degrees
+			BurpShakeSpeed = 26, -- radians per second
+			BurpDirection = Vector3.new(0, 1, 1), -- which way the coins fly
+			BurpCoinsMin = 8,
+			BurpCoinsMax = 30,
+			CoinSize = 0.5, -- studs
+			CoinLife = 1.3, -- seconds
+			CoinSpeed = 22, -- studs per second
+			CoinSpread = 28, -- degrees
+			CoinGravity = 45, -- studs per second per second
+			-- Its pupils watch you.
+			PupilShift = 0.14, -- studs
+			PupilSpeed = 5, -- how quickly they follow (bigger is faster)
+			ViewDistance = 160, -- it only moves on your screen when you're this close
+		},
 		Text = {
-			DropLogs = "DROP LOGS",
+			FeedMe = "FEED ME", -- painted on the pad
 			SellLogs = "SELL LOGS",
-			PerLog = "%s PER LOG", -- the coins one log from this zone's trees is worth
-			ChipperName = "TIMBER CHOMP",
-			ChipperInfo = "heavy duty drum chipper",
-			Danger = "DANGER",
-			DangerInfo = "keep clear of feed rollers",
+			PerLog = "%s COINS A LOG", -- what one log from this zone's trees is worth
+			GnawbertName = "GNAWBERT",
+			DoNotPet = "DO NOT PET",
 			Sold = "Sold %d log(s) for %s coins!",
 		},
 	},
@@ -2087,7 +2165,7 @@ local Config = {
 		SpawnOut = 12,
 		OwnerOnlyLoading = true, -- false: teammates can load your bed too (you get paid for it)
 		LoadDistance = 10, -- how close to the back of the bed you must be to see "Load logs"
-		SellMargin = 4, -- the truck's middle may be this far outside a DROP LOGS pad and still sell
+		SellMargin = 4, -- the truck's middle may be this far outside a sell pad and still sell
 		SellCooldown = 1, -- seconds between two sells of the same truck
 		-- How it drives. The wheels are real: motors turn them, and the front ones steer.
 		WheelFriction = 1.4,
@@ -2104,7 +2182,7 @@ local Config = {
 			NotYourTruck = "This is %s's truck. Only they can drive it.",
 			NotYourBed = "This is %s's truck. Only they can load it.",
 			NothingToLoad = "You have no logs to load.",
-			BedFull = "The truck is full! Drive it to a sawmill's DROP LOGS pad.",
+			BedFull = "The truck is full! Drive it onto a sawmill's pad.",
 			Loaded = "Loaded %d log(s). The truck has %d / %d.",
 			Sold = "Sold %d log(s) from your truck for %s coins!",
 		},

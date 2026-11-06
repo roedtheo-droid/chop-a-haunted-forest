@@ -1,11 +1,11 @@
 --!strict
 -- Builds the look of a sawmill (see the map design): an open-fronted log shed where you can
 -- see the big round saw with a log on its table, a conveyor belt running in from the
--- "DROP LOGS" pad, a water wheel turning in a stream on the side, a log pile, a chimney
+-- sell pad, a water wheel turning in a stream on the side, a log pile, a chimney
 -- with smoke and a lamp post. The saw and the wheel are tagged Spinner, so every player's
 -- computer turns them (see Client/SpinnerController).
 -- Zones 2 and 3 get the same sawmill, only darker and more worn (Config.Sawmill.Wear).
--- Only for looks: Build/SellYard builds the pad, the signs and the chipper in front, and
+-- Only for looks: Build/SellYard builds the pad, the signs and Gnawbert in front, and
 -- SawmillManager does the selling.
 -- When the Blender models are imported (Config.Models.Buildings), the shed, the saw's table,
 -- the saw, the water wheel, the workshop and the log pile are those models, each over its
@@ -254,7 +254,7 @@ local function buildSaw()
 	local beltTop = TABLE_TOP - 0.2
 	piece("Belt", Vector3.new(2.6, 0.3, beltLength), at(0, beltTop - 0.15, beltZ), Color3.fromRGB(45, 45, 50), Enum.Material.Fabric)
 	for _, side in { -1, 1 } do
-		piece("BeltRail", Vector3.new(0.3, 0.7, beltLength), at(side * 1.45, beltTop - 0.1, beltZ), Config.Style.HazardYellow, Enum.Material.Metal)
+		piece("BeltRail", Vector3.new(0.3, 0.7, beltLength), at(side * 1.45, beltTop - 0.1, beltZ), DARK_METAL, Enum.Material.Metal)
 		for _, z in { beltBack + 0.4, beltFront - 0.4 } do
 			decor("BeltLeg", Vector3.new(0.4, beltTop - FLOOR_TOP, 0.4), at(side * 1.2, (beltTop + FLOOR_TOP) / 2, z), DARK_METAL, Enum.Material.Metal)
 		end
@@ -275,7 +275,7 @@ local function buildSaw()
 		Table = { Color = darkWood, Material = Enum.Material.Wood },
 		Top = { Color = Blocky.shade(wood, 0.15), Material = Enum.Material.WoodPlanks },
 		Belt = { Color = Color3.fromRGB(45, 45, 50), Material = Enum.Material.Fabric },
-		Rail = { Color = Config.Style.HazardYellow, Material = Enum.Material.Metal },
+		Rail = { Color = DARK_METAL, Material = Enum.Material.Metal },
 		Metal = { Color = Config.Style.Metal, Material = Enum.Material.Metal },
 		Iron = { Color = DARK_METAL, Material = Enum.Material.Metal },
 		Log = { Color = wood, Material = Enum.Material.Wood },

@@ -1,6 +1,6 @@
 --!strict
 -- Helpers that build the blocky, cartoony look (see STYLE_GUIDE.md) out of plain parts:
--- trees, log cabins and log walls, gable roofs, wooden signs, striped pad edges and wood rings.
+-- trees, log cabins and log walls, gable roofs, wooden signs and wood rings.
 -- No art needed: everything is Parts, colours and a little SurfaceGui. Trees use the Blender
 -- models instead once they're imported into Studio (see Build/Assets).
 -- Used by ForestSpawner, SceneryManager, SawmillManager, ToolShed, ZoneManager, CampManager,
@@ -605,44 +605,6 @@ function Blocky.sign(text: string, cframe: CFrame, width: number, height: number
 		Blocky.label(border, text, style.TitleFont, textColor)
 	end
 	return board
-end
-
--- Yellow and black stripes around the edge of a flat pad (like a warning sign).
--- The stripes can't be touched, so they don't get in the way of the pad's Touched event.
-function Blocky.hazardEdge(pad: BasePart, edgeWidth: number, parent: Instance)
-	local style = Config.Style
-	local size = pad.Size
-	local height = 0.3
-	local topY = size.Y / 2 + height / 2
-	-- The front and back sides also cover the corners.
-	local sides: { { Middle: Vector3, Length: number, Along: Vector3 } } = {
-		{ Middle = Vector3.new(0, topY, size.Z / 2 + edgeWidth / 2), Length = size.X + edgeWidth * 2, Along = Vector3.xAxis },
-		{ Middle = Vector3.new(0, topY, -size.Z / 2 - edgeWidth / 2), Length = size.X + edgeWidth * 2, Along = Vector3.xAxis },
-		{ Middle = Vector3.new(size.X / 2 + edgeWidth / 2, topY, 0), Length = size.Z, Along = Vector3.zAxis },
-		{ Middle = Vector3.new(-size.X / 2 - edgeWidth / 2, topY, 0), Length = size.Z, Along = Vector3.zAxis },
-	}
-	for _, side in sides do
-		local middle, length, along = side.Middle, side.Length, side.Along
-		local count = math.max(math.round(length / 1.5), 1)
-		local stripe = length / count
-		for index = 1, count do
-			local offset = middle + along * ((index - 0.5) * stripe - length / 2)
-			local blockSize = if along == Vector3.xAxis
-				then Vector3.new(stripe, height, edgeWidth)
-				else Vector3.new(edgeWidth, height, stripe)
-			local block = Blocky.part(
-				"Stripe",
-				blockSize,
-				pad.CFrame * CFrame.new(offset),
-				if index % 2 == 0 then style.HazardBlack else style.HazardYellow,
-				Enum.Material.SmoothPlastic,
-				parent
-			)
-			block.CanCollide = false
-			block.CanTouch = false
-			block.CanQuery = false
-		end
-	end
 end
 
 return Blocky

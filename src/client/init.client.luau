@@ -43,7 +43,7 @@ local controllers: { Types.Module } = {
 	require(Controllers.GhostController), -- clicks with the Ghost Vacuum
 	require(Controllers.LogVacuumController), -- hold click with the Log Vacuum; logs whooshing into it
 	require(Controllers.SpinnerController),
-	require(Controllers.SellYardController), -- sold logs riding into the chipper, the billboards' arrows
+	require(Controllers.SellYardController), -- sold logs hopping into Gnawbert, and Gnawbert moving
 	require(Controllers.AmbientController),
 	require(Controllers.BossController),
 	require(Controllers.ForestClearedController),

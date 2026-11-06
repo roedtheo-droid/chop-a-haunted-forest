@@ -354,7 +354,7 @@ local function buildLanterns()
 		local spot = Vector2.new(side * w * 0.22, -d * 0.05)
 		decor("LampChain", Vector3.new(0.2, chain, 0.2), at(spot.X, lampY + 0.6 + chain / 2, spot.Y), DARK_METAL, Enum.Material.Metal)
 		local lamp = decor("Lamp", Vector3.new(1, 1.2, 1), at(spot.X, lampY, spot.Y), LAMP_COLOR, Enum.Material.Neon)
-		addLight(lamp, LAMP_COLOR, math.min(18 * w / 32, 40), 1.2)
+		addLight(lamp, LAMP_COLOR, math.min(18 * w / 32, 40), 0.6)
 		if dressed then
 			local skin = Assets.placed(model, Config.Models.Buildings.HangingLamp, origin * at(spot.X, lampY, spot.Y))
 			if skin then

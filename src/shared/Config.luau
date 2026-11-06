@@ -349,6 +349,7 @@ local sounds: { [string]: Types.SoundConfig } = {
 	QuestDone = { Id = "rbxasset://sounds/electronicpingshort.wav", Volume = 0.5 },
 	KnockedDown = { Id = "rbxassetid://9113525487", Volume = 0.7 }, -- body slam
 	ForestCleared = { Id = "rbxassetid://9042409054", Volume = 0.6 }, -- fanfare (APM Music)
+	Bite = { Id = "rbxassetid://86164339653462", Volume = 0.8 }, -- the jaws on the title screen snapping shut
 }
 
 -- Particle bursts (see Server/Systems/EffectsManager).
@@ -364,30 +365,30 @@ local particles: { [string]: Types.ParticleConfig } = {
 -- Mixed colours make the "bark colour slightly off" mimic tell (Phase 6) harder to spot.
 -- The look follows STYLE_GUIDE.md: blocky trunks with roots, crowns made of leaf blocks.
 local treeTypes: { [string]: Types.TreeTypeConfig } = {
-	-- Pale Pines: bright, happy and green, with white birches and a few autumn trees.
+	-- Pale Pines: a pale, misty morning. Washed-out greens, bone-white birches and a few rusty trees.
 	Birch = {
 		Name = "Oak", -- the parts version of these trees is an oak
 		MaxHP = 50, -- 10 punches with Fists, like in Chop a Forest
 		LogValue = 5,
 		Scale = 1,
-		TrunkColors = { Color3.fromRGB(120, 75, 45), Color3.fromRGB(135, 85, 50), Color3.fromRGB(110, 68, 40) },
+		TrunkColors = { Color3.fromRGB(104, 82, 66), Color3.fromRGB(116, 92, 72), Color3.fromRGB(94, 76, 62) },
 		LeafColors = {
-			Color3.fromRGB(60, 130, 45),
-			Color3.fromRGB(75, 150, 55),
-			Color3.fromRGB(95, 165, 60),
-			Color3.fromRGB(60, 130, 45),
-			Color3.fromRGB(75, 150, 55),
-			Color3.fromRGB(95, 165, 60),
-			Color3.fromRGB(60, 130, 45),
-			Color3.fromRGB(75, 150, 55),
-			Color3.fromRGB(95, 165, 60),
-			Color3.fromRGB(200, 60, 45), -- red autumn tree
-			Color3.fromRGB(230, 140, 50), -- orange autumn tree
-			Color3.fromRGB(235, 150, 185), -- pink blossom tree
+			Color3.fromRGB(112, 138, 92),
+			Color3.fromRGB(128, 150, 100),
+			Color3.fromRGB(146, 164, 112),
+			Color3.fromRGB(112, 138, 92),
+			Color3.fromRGB(128, 150, 100),
+			Color3.fromRGB(146, 164, 112),
+			Color3.fromRGB(112, 138, 92),
+			Color3.fromRGB(128, 150, 100),
+			Color3.fromRGB(146, 164, 112),
+			Color3.fromRGB(150, 84, 52), -- a rusty tree
+			Color3.fromRGB(190, 152, 82), -- an old gold tree
+			Color3.fromRGB(176, 180, 156), -- a pale, nearly dead tree
 		},
 		LeafBlocks = 4,
 		BirchChance = 0.3,
-		BirchColor = Color3.fromRGB(235, 232, 222),
+		BirchColor = Color3.fromRGB(226, 222, 208),
 		-- Blender models (see Models below): 60% oaks and 40% pines, two shapes of each, and
 		-- the birches use the two birch shapes. Until they're imported into Studio, these
 		-- trees are built from parts.
@@ -436,7 +437,7 @@ local treeTypes: { [string]: Types.TreeTypeConfig } = {
 -- Tree shapes made in Blender (see Models below). TrunkWidth is the trunk's width at Scale 1:
 -- keep it the same as in blender/models/trees.py, or the trees come out the wrong size.
 -- Pines stay green (no autumn colours), a little darker than the oaks.
-local pineGreens = { Color3.fromRGB(47, 107, 42), Color3.fromRGB(58, 127, 51), Color3.fromRGB(70, 138, 56) }
+local pineGreens = { Color3.fromRGB(58, 92, 68), Color3.fromRGB(70, 104, 76), Color3.fromRGB(84, 116, 84) }
 local treeShapes: { [string]: Types.TreeShapeConfig } = {
 	Oak = { Name = "Oak", TrunkWidth = 3 },
 	Oak2 = { Name = "Oak", TrunkWidth = 3 },
@@ -458,27 +459,27 @@ local zones: { Types.ZoneConfig } = {
 		Length = 260,
 		TreeCount = 60,
 		TreeType = "Birch",
-		GroundColor = Color3.fromRGB(90, 170, 60),
+		GroundColor = Color3.fromRGB(112, 134, 84),
 		GroundMaterial = Enum.Material.Grass,
 		Sawmill = Vector3.new(50, 0, 410), -- in the camp, by the river
 		ClearRadius = 30, -- no trees this close to the sawmill
 		MimicPercent = 5, -- this % of the zone's trees are secretly mimics
-		-- A sunny, cartoony midday: clear colours, soft shadows, almost no fog.
+		-- A pale, misty morning: a low sun, long shadows and soft colours.
 		Look = {
-			ClockTime = 13,
-			Brightness = 2.3,
-			Ambient = Color3.fromRGB(95, 95, 100),
-			FogDensity = 0.28,
-			FogOffset = 0.3,
-			FogColor = Color3.fromRGB(200, 225, 240),
-			FogDecay = Color3.fromRGB(150, 180, 210),
-			Haze = 0,
-			Saturation = 0.05,
-			Tint = Color3.fromRGB(255, 250, 240),
-			CloudCover = 0.55, -- fluffy white clouds and a little sunshine through the trees
-			CloudDensity = 0.3,
-			CloudColor = Color3.fromRGB(255, 255, 255),
-			SunRays = 0.06,
+			ClockTime = 9,
+			Brightness = 3,
+			Ambient = Color3.fromRGB(142, 144, 150),
+			FogDensity = 0.42,
+			FogOffset = 0.2,
+			FogColor = Color3.fromRGB(226, 228, 222),
+			FogDecay = Color3.fromRGB(190, 196, 200),
+			Haze = 2.4,
+			Saturation = -0.08,
+			Tint = Color3.fromRGB(252, 248, 240),
+			CloudCover = 0.62, -- thin, pale clouds and soft morning sun through the trees
+			CloudDensity = 0.18,
+			CloudColor = Color3.fromRGB(245, 245, 240),
+			SunRays = 0.12,
 			Ambience = { Id = "rbxassetid://9112832288", Volume = 0.25 }, -- light birds, mountain air
 		},
 	},
@@ -558,7 +559,7 @@ local zoneDetails: { { Types.DetailConfig } } = {
 			Part = "Grass",
 			Count = 150,
 			Size = { 0.8, 1.4 },
-			Colors = { Color3.fromRGB(95, 170, 60), Color3.fromRGB(80, 150, 50), Color3.fromRGB(120, 180, 70) },
+			Colors = { Color3.fromRGB(116, 140, 90), Color3.fromRGB(100, 124, 80), Color3.fromRGB(134, 150, 98) },
 		},
 		{
 			Model = "Flowers",
@@ -566,12 +567,12 @@ local zoneDetails: { { Types.DetailConfig } } = {
 			Count = 50,
 			Size = { 1.2, 1.8 },
 			Colors = {
-				Color3.fromRGB(255, 215, 70),
-				Color3.fromRGB(250, 250, 245),
-				Color3.fromRGB(240, 150, 200),
-				Color3.fromRGB(170, 130, 230),
+				Color3.fromRGB(214, 196, 112),
+				Color3.fromRGB(232, 230, 218),
+				Color3.fromRGB(186, 160, 178),
+				Color3.fromRGB(146, 132, 178),
 			},
-			StemColor = Color3.fromRGB(60, 140, 50),
+			StemColor = Color3.fromRGB(92, 118, 76),
 		},
 	},
 	{ -- Fog Hollow
@@ -822,7 +823,7 @@ local Config = {
 		HedgeOffset = 1.6, -- the hedge's middle is this far past the walls' inside, so you bump into its leaves
 		HedgeHeight = { 6, 11 }, -- lowest and highest (only for the parts version, without the models)
 		-- The hedge's colour next to the camp and zone 1, zone 2 and zone 3.
-		HedgeColors = { Color3.fromRGB(55, 110, 45), Color3.fromRGB(78, 100, 72), Color3.fromRGB(38, 52, 40) },
+		HedgeColors = { Color3.fromRGB(74, 98, 66), Color3.fromRGB(78, 100, 72), Color3.fromRGB(38, 52, 40) },
 		TwigZone = 3, -- from this zone on, dark dead twigs poke out of the hedge
 		TwigColor = Color3.fromRGB(58, 42, 36),
 		BoulderEvery = 26, -- studs between the boulders at the hedge's foot
@@ -855,10 +856,10 @@ local Config = {
 		PatchSize = { 8, 24 }, -- smallest and biggest, in studs
 		BlendPatches = 10, -- on each side of a border between two zones
 		BlendDepth = 24, -- how far (studs) into the next zone they reach
-		CampColors = { Color3.fromRGB(146, 212, 102), Color3.fromRGB(104, 173, 68) },
+		CampColors = { Color3.fromRGB(142, 158, 104), Color3.fromRGB(112, 132, 84) },
 		-- One list per zone. Each patch picks one colour at random.
 		ZoneColors = {
-			{ Color3.fromRGB(110, 190, 70), Color3.fromRGB(76, 146, 51), Color3.fromRGB(132, 176, 70) }, -- grass, dark grass, mossy
+			{ Color3.fromRGB(128, 148, 94), Color3.fromRGB(100, 120, 78), Color3.fromRGB(146, 152, 100) }, -- grass, dark grass, mossy
 			{ Color3.fromRGB(111, 138, 98), Color3.fromRGB(85, 72, 58), Color3.fromRGB(72, 98, 70) }, -- grey-green, mud, dark moss
 			{ Color3.fromRGB(77, 61, 68), Color3.fromRGB(92, 47, 43), Color3.fromRGB(46, 36, 40) }, -- dusty, dead leaves, dark mud
 		},
@@ -869,13 +870,13 @@ local Config = {
 	Camp = {
 		Length = 150, -- studs from the back hedge to where zone 1 starts
 		Spawn = Vector3.new(0, 0, 480), -- where players appear
-		GroundColor = Color3.fromRGB(124, 196, 81), -- a bit brighter than zone 1
+		GroundColor = Color3.fromRGB(124, 144, 90), -- a bit brighter than zone 1
 		RiverWidth = 14,
 		RiverGap = 3, -- studs between the river and zone 1
-		RiverColor = Color3.fromRGB(90, 169, 230),
+		RiverColor = Color3.fromRGB(110, 146, 160),
 		RiverTransparency = 0.35, -- you see the darker riverbed through the water
-		RiverbedColor = Color3.fromRGB(52, 98, 118),
-		BankColor = Color3.fromRGB(226, 205, 150), -- the sandy banks along both sides
+		RiverbedColor = Color3.fromRGB(58, 84, 94),
+		BankColor = Color3.fromRGB(206, 196, 160), -- the sandy banks along both sides
 		BankLength = 12, -- studs per piece of bank (each one a little longer or shorter)
 		RiverRocks = 6, -- small rocks sticking out of the water
 		RiverReeds = 12, -- clumps of reeds on the banks
@@ -897,10 +898,10 @@ local Config = {
 	Path = {
 		Width = 8,
 		TreeClearance = 9, -- no trees closer than this to the middle of the path
-		Color = Color3.fromRGB(210, 173, 115),
+		Color = Color3.fromRGB(186, 164, 128),
 		Smoothness = 6, -- pieces between two points: more = rounder bends (and more parts)
 		EdgeWidth = 1.2, -- a darker strip of dirt along each side
-		EdgeColor = Color3.fromRGB(168, 129, 79),
+		EdgeColor = Color3.fromRGB(146, 122, 92),
 		PebbleSpacing = 7, -- studs between little groups of pebbles along the edges
 		Points = {
 			Vector2.new(0, 480),
@@ -979,17 +980,37 @@ local Config = {
 		SunRaySpread = 0.3, -- how wide the sun's rays fan out (0 to 1); how strong they are is in each zone's Look
 	},
 
-	-- The intro when you join (see Client/Controllers/IntroController): the camera flies over
-	-- the forest, then the title and a PLAY button show while it circles over the camp.
-	-- PLAY swoops the camera down behind your character. Positions are (X, Y, Z) on the map.
+	-- The intro when you join (see Client/Controllers/IntroController): you look out from inside a
+	-- mouth while the camera flies over the forest, then the title and a PLAY button show while it
+	-- circles over the camp. PLAY makes the jaws bite shut, and they open on the game.
+	-- Positions are (X, Y, Z) on the map.
 	Intro = {
 		Enabled = true, -- false skips it (handy when you're testing other things in Studio)
 		SkipIfSeen = true, -- people who pressed PLAY on an earlier visit skip the flyover and start at the title
-		Title = "CHOP A HAUNTED FOREST",
-		Subtitle = "Chop every tree... but watch out for the mimics!",
+		Title = "TREES WITH TEETH",
+		BiteWord = "TEETH", -- this word of the title gets BiteColor
+		Subtitle = "Chop every tree. Some of them bite back.",
+		TitleColor = Color3.fromRGB(240, 232, 205), -- bone white
+		BiteColor = Color3.fromRGB(255, 107, 92),
+		OutlineColor = Color3.fromRGB(26, 20, 42), -- around the title
 		FadeTime = 1, -- seconds the screen takes to fade in from black at the start
 		CutTime = 0.35, -- seconds of black between two camera shots
-		BarSize = 0.08, -- black bars at the top and bottom during the flyover, as a share of the screen
+		-- A jaw of teeth along the top and the bottom of the screen. Sizes are shares of the screen.
+		Jaws = {
+			Size = 0.08, -- how far the gums reach in from the top and bottom
+			Teeth = 13, -- teeth along each jaw
+			ToothSizes = { 0.85, 1.15 }, -- each tooth is a random size between these
+			ToothTilt = 6, -- degrees a tooth may lean
+			ToothColor = Color3.fromRGB(240, 232, 205),
+			ToothEdge = 3, -- pixels of dark outline around a tooth
+			GumColor = Color3.fromRGB(26, 20, 42),
+			LipColor = Color3.fromRGB(120, 34, 52), -- a dark red line along the gum
+			LipSize = 5, -- pixels
+			BiteTime = 0.14, -- seconds they take to snap shut after PLAY
+			HoldTime = 0.25, -- seconds they stay shut
+			OpenTime = 0.35, -- seconds they take to open on the game
+			GoneAt = -0.3, -- where they end up: off the screen, teeth and all
+		},
 		-- Each shot moves the camera from From to To while it turns from looking at LookFrom
 		-- to looking at LookTo, over Time seconds.
 		Shots = {
@@ -1027,13 +1048,11 @@ local Config = {
 		OrbitRadius = 55, -- small enough that the camera stays inside the camp, clear of the big trees behind it
 		OrbitHeight = 42,
 		OrbitSpeed = 0.06, -- radians per second (lower = slower)
-		SwoopTime = 1.6, -- seconds the camera takes to swoop down behind your character after PLAY
-		SwoopOffset = Vector3.new(0, 6, 14), -- where the camera ends up, seen from your character
 	},
 
 	-- The cartoony look (see STYLE_GUIDE.md): colours and fonts for buildings, signs and the UI.
 	Style = {
-		TitleFont = Enum.Font.LuckiestGuy, -- big words: signs, "FOREST CLEARED!"
+		TitleFont = Enum.Font.Creepster, -- big words: signs, "FOREST CLEARED!"
 		BodyFont = Enum.Font.FredokaOne, -- everything else
 		TextStroke = 3, -- the black outline around text, in pixels
 		Wood = Color3.fromRGB(168, 105, 58), -- cabin walls and signs
@@ -1230,7 +1249,7 @@ local Config = {
 	-- Scenery around the forest, only for looks: you can't chop it (see Server/Systems/SceneryManager).
 	Scenery = {
 		FenceColor = Color3.fromRGB(120, 78, 45), -- wooden fences (see Build/Props)
-		OutsideGround = Color3.fromRGB(85, 160, 55), -- the grass around the forest (the baseplate and the big tiles below)
+		OutsideGround = Color3.fromRGB(100, 122, 78), -- the grass around the forest (the baseplate and the big tiles below)
 		BorderTreeSpacing = 14, -- studs between the big trees just outside the walls
 		BorderTreeDistance = 10, -- studs from the wall to the first row of them
 		BorderTreeRows = 2, -- rows of them, one behind the other
@@ -1242,8 +1261,8 @@ local Config = {
 		HillDistance = { 60, 100 }, -- studs from the forest's edge to the middle of each hill
 		HillWidth = { 100, 160 },
 		HillSink = 1, -- hills sit this far down, so their flat edge is under the grass
-		HillColor = Color3.fromRGB(85, 150, 55),
-		FarTreeColor = Color3.fromRGB(48, 100, 50), -- the little trees on the hills
+		HillColor = Color3.fromRGB(96, 118, 78),
+		FarTreeColor = Color3.fromRGB(64, 88, 68), -- the little trees on the hills
 		-- Mountain ranges in two rings: a near one, and a far one that's paler and bluer, so it
 		-- looks further away.
 		MountainCount = 18,
@@ -1562,7 +1581,7 @@ local Config = {
 	Cursed = {
 		Chance = 0.03, -- 3% of trees
 		LogMultiplier = 3, -- their logs are worth 3x
-		Color = Color3.fromRGB(170, 70, 255),
+		Color = Color3.fromRGB(120, 70, 240),
 	},
 
 	-- Trees (sizes are for Scale 1; see TreeTypes for HP and log value)

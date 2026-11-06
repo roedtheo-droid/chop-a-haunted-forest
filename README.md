@@ -1,6 +1,7 @@
-# Chop a Haunted Forest
+# Trees With Teeth
 
-A co-op Roblox game: chop every tree in a haunted forest, and watch out for mimics.
+A co-op Roblox game: chop every tree in a haunted forest, and watch out for the ones that bite.
+(It was called Chop a Haunted Forest until Phase 13. The project folder and the GitHub repo keep that name.)
 The full design is in [GAME_DESIGN.md](GAME_DESIGN.md). Rules for working on it are in [CLAUDE.md](CLAUDE.md).
 
 ## How the code is laid out

@@ -1,18 +1,22 @@
 --!strict
--- The intro when you join, in the Chop a Forest style (see STYLE_GUIDE.md):
+-- The intro when you join (see STYLE_GUIDE.md). You look out from inside a mouth:
 --   1. The screen fades in from black and the camera flies over the forest in a few shots,
---      from the sunny camp to the dark graveyard. A Skip button jumps past it.
+--      from the camp to the dark graveyard, between two jaws of teeth. A Skip button jumps past it.
 --   2. The title and a big PLAY button pop up while the camera circles slowly over the camp.
---   3. PLAY swoops the camera down behind your character and gives you back the controls and the HUD.
+--   3. PLAY makes the jaws bite shut. Behind them you get your character, the controls and the
+--      HUD back, and the jaws open on the game.
 -- It only plays once, when you join (not when you respawn). If you pressed PLAY on an earlier
 -- visit, it skips the flyover and starts at the title (Config.Intro.SkipIfSeen).
 --
 -- It's only for looks on YOUR screen. The server only hears that you pressed PLAY, and saves that.
 -- The texts, timings and camera shots are in Config.Intro.
 
+local ContentProvider = game:GetService("ContentProvider")
+local Debris = game:GetService("Debris")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local SoundService = game:GetService("SoundService")
 local StarterGui = game:GetService("StarterGui")
 local TweenService = game:GetService("TweenService")
 
@@ -36,7 +40,7 @@ local CORE_GUIS = {
 	Enum.CoreGuiType.Health,
 }
 
-type CameraMode = "Shot" | "Orbit" | "Swoop"
+type CameraMode = "Shot" | "Orbit"
 
 local IntroController = {}
 
@@ -45,16 +49,16 @@ local player = Players.LocalPlayer
 -- What the camera is doing right now (updateCamera moves it every frame).
 local mode: CameraMode = "Shot"
 local shot: Types.IntroShot = shots[1]
-local modeStart = 0 -- os.clock() when the current shot, orbit or swoop began
-local swoopFrom = CFrame.identity -- where the camera was when PLAY was pressed
+local modeStart = 0 -- os.clock() when the current shot or orbit began
 local skipped = false
 local finished = false -- true once the intro is over (or switched off)
 local finishedCallbacks: { () -> () } = {}
 
 local introGui: ScreenGui
 local blackout: Frame -- the black screen we fade in from and dip to between shots
-local topBar: Frame -- black "cinema" bars at the top and bottom during the flyover
-local bottomBar: Frame
+local topJaw: Frame -- the teeth along the top and bottom of the screen
+local bottomJaw: Frame
+local biteSound: Sound
 local titleGroup: Frame -- the title, the subtitle and the PLAY button
 local titleScale: UIScale
 local playButton: TextButton
@@ -141,32 +145,73 @@ local function updateCamera()
 		-- Glide steadily from From to To, while the view turns gently from LookFrom to LookTo.
 		local t = math.clamp(elapsed / shot.Time, 0, 1)
 		camera.CFrame = CFrame.lookAt(shot.From:Lerp(shot.To, t), shot.LookFrom:Lerp(shot.LookTo, smooth(t)))
-	elseif mode == "Orbit" then
+	else
 		local angle = elapsed * cfg.OrbitSpeed
 		local offset = Vector3.new(math.sin(angle) * cfg.OrbitRadius, cfg.OrbitHeight, math.cos(angle) * cfg.OrbitRadius)
 		camera.CFrame = CFrame.lookAt(cfg.OrbitCenter + offset, cfg.OrbitCenter)
-	else
-		-- Swoop: from wherever the orbit was to just behind your character.
-		local root = getRoot()
-		if root then
-			local t = smooth(math.clamp(elapsed / cfg.SwoopTime, 0, 1))
-			local behind = (root.CFrame * CFrame.new(cfg.SwoopOffset)).Position
-			local goal = CFrame.lookAt(behind, root.Position + Vector3.new(0, 2, 0))
-			camera.CFrame = swoopFrom:Lerp(goal, t)
-		end
 	end
 end
 
-local function makeBar(name: string, anchorY: number): Frame
-	local bar = Instance.new("Frame")
-	bar.Name = name
-	bar.AnchorPoint = Vector2.new(0, anchorY)
-	bar.Position = UDim2.fromScale(0, anchorY)
-	bar.Size = UDim2.fromScale(1, cfg.BarSize)
-	bar.BackgroundColor3 = Color3.new(0, 0, 0)
-	bar.BorderSizePixel = 0
-	bar.Parent = introGui
-	return bar
+-- One jaw along the top or bottom of the screen: a row of teeth pointing at the middle, with
+-- the dark gum over their roots. Half the screen tall, so two shut jaws cover all of it.
+local function makeJaw(name: string, isTop: boolean): Frame
+	local jaws = cfg.Jaws
+	local edge = if isTop then 1 else 0 -- the side of the jaw that faces the middle of the screen
+
+	local jaw = Instance.new("Frame")
+	jaw.Name = name
+	jaw.BackgroundTransparency = 1
+	jaw.AnchorPoint = Vector2.new(0, edge)
+	jaw.Position = UDim2.fromScale(0, if isTop then jaws.Size else 1 - jaws.Size)
+	jaw.Size = UDim2.fromScale(1, 0.5)
+	jaw.ZIndex = 5
+
+	local random = Random.new()
+	local spacing = 1 / jaws.Teeth
+	for index = 0, jaws.Teeth do
+		-- A square standing on its corner, half hidden behind the gum, looks like a pointed tooth.
+		-- The bottom jaw's teeth sit half a tooth along, so they fit between the top jaw's.
+		local side = spacing / math.sqrt(2) * random:NextNumber(jaws.ToothSizes[1], jaws.ToothSizes[2])
+		local tooth = Instance.new("Frame")
+		tooth.Name = "Tooth"
+		tooth.AnchorPoint = Vector2.new(0.5, 0.5)
+		tooth.Position = UDim2.fromScale((index + (if isTop then 0 else 0.5)) * spacing, edge)
+		tooth.Size = UDim2.fromScale(side, side)
+		tooth.SizeConstraint = Enum.SizeConstraint.RelativeXX -- both sizes follow the width, so it stays square
+		tooth.Rotation = 45 + random:NextNumber(-jaws.ToothTilt, jaws.ToothTilt)
+		tooth.BackgroundColor3 = jaws.ToothColor
+		tooth.BorderSizePixel = 0
+		tooth.ZIndex = 1
+		UiKit.border(tooth, jaws.GumColor, jaws.ToothEdge)
+		tooth.Parent = jaw
+	end
+
+	local gum = Instance.new("Frame")
+	gum.Name = "Gum"
+	gum.Size = UDim2.fromScale(1, 1)
+	gum.BackgroundColor3 = jaws.GumColor
+	gum.BorderSizePixel = 0
+	gum.ZIndex = 2
+	gum.Parent = jaw
+
+	local lip = Instance.new("Frame")
+	lip.Name = "Lip"
+	lip.AnchorPoint = Vector2.new(0, edge)
+	lip.Position = UDim2.fromScale(0, edge)
+	lip.Size = UDim2.new(1, 0, 0, jaws.LipSize)
+	lip.BackgroundColor3 = jaws.LipColor
+	lip.BorderSizePixel = 0
+	lip.Parent = gum
+
+	jaw.Parent = introGui
+	return jaw
+end
+
+-- Move the jaws so their edges are `reach` of the screen in from the top and bottom (0.5 is shut).
+local function moveJaws(reach: number, seconds: number, direction: Enum.EasingDirection)
+	local info = TweenInfo.new(seconds, Enum.EasingStyle.Quad, direction)
+	tween(topJaw, seconds, { Position = UDim2.fromScale(0, reach) }, info)
+	tween(bottomJaw, seconds, { Position = UDim2.fromScale(0, 1 - reach) }, info)
 end
 
 local function buildGui()
@@ -175,9 +220,10 @@ local function buildGui()
 	introGui.ResetOnSpawn = false
 	introGui.IgnoreGuiInset = true -- cover the whole screen, also behind Roblox's top bar
 	introGui.DisplayOrder = 20 -- on top of every other screen
+	introGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-	topBar = makeBar("TopBar", 0)
-	bottomBar = makeBar("BottomBar", 1)
+	topJaw = makeJaw("TopJaw", true)
+	bottomJaw = makeJaw("BottomJaw", false)
 
 	-- The title block uses a share of the screen, but never gets too big on a PC.
 	titleGroup = Instance.new("Frame")
@@ -194,13 +240,17 @@ local function buildGui()
 	titleScale = Instance.new("UIScale")
 	titleScale.Parent = titleGroup
 
-	local title = UiKit.text(titleGroup, "Name", cfg.Title, Style.Gold, Style.TitleFont)
+	-- The title, with one word in its own colour.
+	local title = UiKit.text(titleGroup, "Name", "", cfg.TitleColor, Style.TitleFont)
+	title.RichText = true
+	title.Text = (string.gsub(cfg.Title, cfg.BiteWord, `<font color="#{cfg.BiteColor:ToHex()}">{cfg.BiteWord}</font>`))
 	title.TextWrapped = true
 	title.Size = UDim2.fromScale(1, 0.5)
 	title.Rotation = -3 -- a little crooked, for the cartoony look
 	local titleStroke = title:FindFirstChildOfClass("UIStroke")
 	if titleStroke then
 		titleStroke.Thickness = Style.TextStroke * 2 -- big letters need a thicker outline
+		titleStroke.Color = cfg.OutlineColor
 	end
 
 	local subtitle = UiKit.smallText(titleGroup, "Subtitle", cfg.Subtitle)
@@ -217,14 +267,18 @@ local function buildGui()
 	playHolder.Parent = titleGroup
 	playScale = Instance.new("UIScale")
 	playScale.Parent = playHolder
-	local button = UiKit.button(playHolder, "Play", "PLAY", Style.Green)
+	local button = UiKit.button(playHolder, "Play", "PLAY", Style.Ember)
 	button.Size = UDim2.fromScale(1, 1)
 	playButton = button
 
 	local skip = UiKit.button(introGui, "Skip", "Skip", Style.Grey)
 	skip.AnchorPoint = Vector2.new(1, 1)
-	skip.Position = UDim2.new(1, -16, 1 - cfg.BarSize, -12) -- just above the bottom bar
-	skip.Size = UDim2.fromOffset(110, 40)
+	skip.Position = UDim2.new(1, -16, 1, -6) -- on the bottom jaw's gum
+	skip.Size = UDim2.new(0, 110, cfg.Jaws.Size, -12)
+	skip.ZIndex = 6
+	local skipSize = Instance.new("UISizeConstraint")
+	skipSize.MinSize = Vector2.new(110, 34) -- big enough to tap on a phone
+	skipSize.Parent = skip
 	skip.Activated:Connect(function()
 		skipped = true
 	end)
@@ -236,9 +290,20 @@ local function buildGui()
 	blackout.Size = UDim2.fromScale(1, 1)
 	blackout.BackgroundColor3 = Color3.new(0, 0, 0)
 	blackout.BorderSizePixel = 0
+	blackout.ZIndex = 10
 	blackout.Parent = introGui
 
 	introGui.Parent = player:WaitForChild("PlayerGui")
+
+	-- Load the bite now, so it isn't late.
+	biteSound = Instance.new("Sound")
+	biteSound.Name = "IntroBite"
+	biteSound.SoundId = Config.Sounds.Bite.Id
+	biteSound.Volume = Config.Sounds.Bite.Volume
+	biteSound.Parent = SoundService
+	task.spawn(function()
+		ContentProvider:PreloadAsync({ biteSound })
+	end)
 end
 
 local function hideGui(instance: Instance)
@@ -319,8 +384,6 @@ local function showTitle()
 	modeStart = os.clock()
 	AtmosphereController.setViewPoint(cfg.OrbitCenter, 0)
 	skipButton.Visible = false
-	topBar.Visible = false
-	bottomBar.Visible = false
 	fade(1, cfg.CutTime)
 
 	-- Pop in: start small and grow to full size with a little overshoot.
@@ -339,19 +402,16 @@ local function showTitle()
 	end)
 end
 
-local function swoopToCharacter()
-	tween(titleScale, 0.25, { Scale = 0 }, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.In))
-	task.delay(0.25, function()
-		titleGroup.Visible = false
-	end)
-
-	waitForRoot()
-	local camera = workspace.CurrentCamera
-	swoopFrom = if camera then camera.CFrame else CFrame.identity
-	mode = "Swoop"
-	modeStart = os.clock()
-	AtmosphereController.setViewPoint(nil)
-	task.wait(cfg.SwoopTime)
+-- PLAY: the jaws snap shut on the title, with a chomp.
+local function bite()
+	local jaws = cfg.Jaws
+	tween(titleScale, jaws.BiteTime, { Scale = 0 }, TweenInfo.new(jaws.BiteTime, Enum.EasingStyle.Back, Enum.EasingDirection.In))
+	moveJaws(0.5, jaws.BiteTime, Enum.EasingDirection.In)
+	task.wait(jaws.BiteTime)
+	biteSound:Play()
+	Debris:AddItem(biteSound, 3)
+	titleGroup.Visible = false
+	waitForRoot() -- so your character is there when they open
 end
 
 -- The intro is over: tell everyone who asked (see IntroController.onFinished).
@@ -363,7 +423,8 @@ local function markFinished()
 	table.clear(finishedCallbacks)
 end
 
--- Hand the camera back to Roblox (following your character) and remove the intro.
+-- Behind the shut jaws: hand the camera back to Roblox (following your character) and bring
+-- back the HUD. Then the jaws open on the game and the intro is removed.
 local function finish()
 	RunService:UnbindFromRenderStep(RENDER_NAME)
 	local camera = workspace.CurrentCamera
@@ -374,11 +435,22 @@ local function finish()
 		if humanoid then
 			camera.CameraSubject = humanoid
 		end
+		-- Look the way your character looks: the camera was high up, looking down at the camp.
+		local root = getRoot()
+		local head = if character then character:FindFirstChild("Head") else nil
+		if root and head and head:IsA("BasePart") then
+			camera.CFrame = CFrame.new(head.Position) * root.CFrame.Rotation
+		end
 	end
 	AtmosphereController.setViewPoint(nil)
 	showEverythingElse()
-	introGui:Destroy()
 	markFinished()
+
+	local jaws = cfg.Jaws
+	task.wait(jaws.HoldTime)
+	moveJaws(jaws.GoneAt, jaws.OpenTime, Enum.EasingDirection.Out)
+	task.wait(jaws.OpenTime)
+	introGui:Destroy()
 end
 
 -- Run `callback` once the intro is over and you have control (right away if it already is).
@@ -418,7 +490,7 @@ function IntroController.start()
 	showTitle()
 	playButton.Activated:Wait()
 	Remotes.getEvent("PressedPlay"):FireServer()
-	swoopToCharacter()
+	bite()
 	finish()
 end
 

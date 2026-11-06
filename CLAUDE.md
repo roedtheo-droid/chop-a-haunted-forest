@@ -1,7 +1,7 @@
 # Project rules for Claude Code
 
 ## About this project
-- Roblox game: "Chop a Haunted Forest". Full design is in GAME_DESIGN.md.
+- Roblox game: "Trees With Teeth" (called "Chop a Haunted Forest" until Phase 13; the repo keeps that name). Full design is in GAME_DESIGN.md.
 - I'm building it phase by phase. Check GAME_DESIGN.md for the current phase list.
 
 ## How to work with me

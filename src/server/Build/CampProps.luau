@@ -19,12 +19,12 @@ local TILE_GAP = 0.25
 local TILE_THICKNESS = 0.3 -- the tiles sit just above the dirt path
 
 local STONE = Color3.fromRGB(143, 150, 163)
-local WATER_COLOR = Color3.fromRGB(70, 140, 205)
+local WATER_COLOR = Color3.fromRGB(90, 130, 150)
 local SOIL = Color3.fromRGB(100, 70, 45)
-local STEM = Color3.fromRGB(60, 140, 50)
+local STEM = Color3.fromRGB(92, 118, 76)
 local PAPER = Color3.fromRGB(236, 233, 222)
 local PIN = Color3.fromRGB(216, 70, 60)
-local FLOWERS = { Color3.fromRGB(216, 90, 70), Color3.fromRGB(232, 141, 184), Color3.fromRGB(255, 215, 70), Color3.fromRGB(150, 120, 230) }
+local FLOWERS = { Color3.fromRGB(176, 104, 84), Color3.fromRGB(186, 160, 178), Color3.fromRGB(214, 196, 112), Color3.fromRGB(146, 132, 178) }
 
 local MODELS = Config.Models.Camp
 

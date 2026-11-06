@@ -12,8 +12,9 @@
 -- the player holds a Ghost Vacuum they own, isn't clicking too fast, and finds the closest
 -- ghost in front of them within VacuumRange. So nobody can catch ghosts from across the map.
 --
--- A ghost is one anchored "Root" block that moves; the rest of its blocks are welded to it.
--- When a "Ghost" Blender model is imported (see Build/Assets) it's used instead of the blocks.
+-- A ghost is one anchored "Root" part that moves; everything else is welded to it. It's the model
+-- made in Claude Design (design-system/src/models/Ghost.tsx, models/Ghost.gltf), and until that's
+-- imported into Studio, blocks stand in (see Build/Assets).
 
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
@@ -135,55 +136,46 @@ local function buildBlocks(model: Model): BasePart
 	return root
 end
 
--- The imported "Ghost" model: its biggest part becomes the Root and the rest are welded to it.
-local function fromAsset(model: Model, asset: Model): BasePart?
-	local parts: { BasePart } = {}
-	for _, part in asset:GetChildren() do
-		if part:IsA("BasePart") then
-			table.insert(parts, part)
-		end
-	end
-	table.sort(parts, function(a: BasePart, b: BasePart): boolean
-		return a.Size.Magnitude > b.Size.Magnitude
-	end)
-	local root = parts[1]
-	if not root then
+-- The imported model: an invisible Root in the middle of its head, with the parts welded to it
+-- so it moves and faces like the blocks (-Z is its front). The model is built facing +Z, so it's
+-- turned around. nil if it isn't imported.
+local function fromAsset(model: Model): BasePart?
+	local scale = cfg.Size / cfg.ModelSize
+	local root = block(model, "Root", Vector3.new(1, 1, 1), CFrame.new(), nil)
+	root.Transparency = 1
+	local spot = CFrame.new(0, -cfg.ModelFloat * scale, 0) * CFrame.Angles(0, math.pi, 0)
+	local skin = Assets.gltf(model, cfg.Model, spot, scale)
+	if not skin then
+		root:Destroy()
 		return nil
 	end
-	for _, part in parts do
-		part.CanCollide = false
-		part.CanTouch = false
-		part.CanQuery = false
-		part.CastShadow = false
-		part.Parent = model
-		if part ~= root then
+	for _, part in skin:GetChildren() do
+		if part:IsA("BasePart") then
+			local dark = part.Name == "Eye" or part.Name == "Mouth"
+			part.Color = if dark then BLACK else cfg.Color
+			part.Material = Enum.Material.SmoothPlastic
+			part.Transparency = if dark then 0 else cfg.Transparency
+			part.CastShadow = false
+			part.CanCollide = false
+			part.CanTouch = false
+			part.CanQuery = false
 			part.Anchored = false
 			part.Massless = true
 			local weld = Instance.new("WeldConstraint")
 			weld.Part0 = root
 			weld.Part1 = part
 			weld.Parent = part
+			part.Parent = model
 		end
 	end
-	root.Name = "Root"
-	asset:Destroy()
+	skin:Destroy()
 	return root
 end
 
 local function buildGhost(zone: number, position: Vector3): Model
 	local model = Instance.new("Model")
 	model.Name = "Ghost"
-	local root: BasePart? = nil
-	if Assets.has("Ghost") then
-		local asset = Assets.model("Ghost")
-		if asset then
-			root = fromAsset(model, asset)
-		end
-	end
-	if not root then
-		root = buildBlocks(model)
-	end
-	local rootPart = root :: BasePart
+	local rootPart = fromAsset(model) or buildBlocks(model)
 	model.PrimaryPart = rootPart
 
 	local light = Instance.new("PointLight")

@@ -1,36 +1,32 @@
 --!strict
--- The sell yard in front of a sawmill, like the one in Chop a Forest:
---   * a big floor of wooden planks with a yellow and black hazard edge and "DROP LOGS"
---     painted on it, with logs lying along its sides
---   * a wooden "SELL LOGS" sign standing next to it, and a billboard floating high above it:
---     "[coin] N PER LOG" and "SELL LOGS", with a yellow arrow that bobs (on every player's
---     computer, see Client/Controllers/SellYardController)
---   * a conveyor with orange rails running from the pad's left end up into a big orange
---     drum chipper with a chute, a control panel, wheels and warning signs
+-- The sell yard in front of a sawmill:
+--   * a big floor of wooden planks with a dark timber edge and "FEED ME" painted on it, with logs
+--     lying along its sides
+--   * a wooden chute from the pad's left end up to the lip of Gnawbert (see Build/Gnawbert), a
+--     chained stump mimic that eats the logs
+--   * a wooden SELL LOGS sign with the price, and a sign with Gnawbert's name and a warning
 --   * a chopping block with an axe in it and a small pile of firewood
 -- Below, +Z is the side facing spawn and the zone's gate (the sawmill's open front), and
 -- (0, 0, 0) is the middle of the sawmill's floor plan at ground level.
--- The pad's attributes say where the conveyor and the chipper's mouth are, so every player's
--- computer can slide the sold logs along them. SawmillManager does the selling.
+-- The pad's attributes say where the chute and Gnawbert's mouth are, so every player's computer
+-- can hop the sold logs along them (see Client/Controllers/SellYardController). SawmillManager
+-- does the selling.
 -- It's not a system, so it has no init()/start().
 
-local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
-local Tags = require(ReplicatedStorage.Shared.Tags)
 local Blocky = require(script.Parent.Blocky)
+local Gnawbert = require(script.Parent.Gnawbert)
 
 local PAD_COLOR = Color3.fromRGB(196, 138, 85) -- light wooden planks
 local PAD_THICKNESS = 0.4
-local STRIPE_WIDTH = 0.8 -- the yellow and black edge around the pad
-local BELT_WIDTH = 2.4
-local BELT_COLOR = Color3.fromRGB(45, 45, 50)
-local DARK_METAL = Color3.fromRGB(70, 70, 78)
-local PANEL_RED = Color3.fromRGB(205, 45, 40)
-local SIGN_WHITE = Color3.fromRGB(245, 242, 235)
+local EDGE_WIDTH = 0.8 -- the dark beams around the pad
+local EDGE_HEIGHT = 0.3
 local LOG_COLOR = Color3.fromRGB(125, 80, 48)
-local BUTTON_COLORS = { Color3.fromRGB(80, 200, 80), Color3.fromRGB(230, 50, 40), Color3.fromRGB(250, 210, 30) }
+local CHUTE_FLOOR = 0.25 -- how thick its floor boards are
+local CHUTE_RAIL = Vector2.new(0.35, 0.8) -- how wide and tall its side rails are
+local CHUTE_SLATS = 7 -- boards across its floor, for the logs to hop over
 
 local SellYard = {}
 
@@ -64,14 +60,6 @@ local function decor(name: string, size: Vector3, cframe: CFrame, color: Color3,
 	return part
 end
 
--- A cylinder whose round ends face along `axis` ("X", "Y" or "Z").
-local function cylinder(name: string, length: number, diameter: number, position: CFrame, axis: string, color: Color3, material: Enum.Material): Part
-	local turn = if axis == "Y" then CFrame.Angles(0, 0, math.pi / 2) elseif axis == "Z" then CFrame.Angles(0, math.pi / 2, 0) else CFrame.identity
-	local part = decor(name, Vector3.new(length, diameter, diameter), position * turn, color, material)
-	part.Shape = Enum.PartType.Cylinder
-	return part
-end
-
 -- Outlined text on one face of a part. `box` is where it goes on that face (scale numbers).
 local function paint(part: BasePart, face: Enum.NormalId, text: string, box: Rect, color: Color3?, font: Enum.Font?): TextLabel
 	local gui = part:FindFirstChild(`{face.Name}Face`) or Blocky.face(part, face)
@@ -80,18 +68,27 @@ local function paint(part: BasePart, face: Enum.NormalId, text: string, box: Rec
 	return Blocky.label(holder, text, font or Config.Style.TitleFont, color)
 end
 
--- Yellow and black stripes across one face of a part (the frame around the chipper's mouth).
-local function hazardStripes(part: BasePart, face: Enum.NormalId, count: number)
-	local gui = Blocky.face(part, face, Config.Style.HazardYellow)
-	for index = 0, count - 1, 2 do
-		Blocky.rect(gui, index / count, 0, 1 / count, 1, Config.Style.HazardBlack)
-	end
-end
-
 -- How far out in front of the sawmill (Z) the middle of the pad is.
 local function padZ(): number
 	local cfg = Config.Sawmill
-	return cfg.BuildingSize.Z / 2 + STRIPE_WIDTH + cfg.PadSize.Y / 2
+	return cfg.BuildingSize.Z / 2 + EDGE_WIDTH + cfg.PadSize.Y / 2
+end
+
+-- Dark beams around the pad. They can't be touched, so they don't get in the way of its Touched event.
+local function addEdge(z: number)
+	local size = Config.Sawmill.PadSize
+	local y = PAD_THICKNESS + EDGE_HEIGHT / 2 - 0.1
+	local beams = {
+		{ Size = Vector3.new(size.X + EDGE_WIDTH * 2, EDGE_HEIGHT, EDGE_WIDTH), Spot = at(0, y, z + size.Y / 2 + EDGE_WIDTH / 2) },
+		{ Size = Vector3.new(size.X + EDGE_WIDTH * 2, EDGE_HEIGHT, EDGE_WIDTH), Spot = at(0, y, z - size.Y / 2 - EDGE_WIDTH / 2) },
+		{ Size = Vector3.new(EDGE_WIDTH, EDGE_HEIGHT, size.Y), Spot = at(size.X / 2 + EDGE_WIDTH / 2, y, z) },
+		{ Size = Vector3.new(EDGE_WIDTH, EDGE_HEIGHT, size.Y), Spot = at(-size.X / 2 - EDGE_WIDTH / 2, y, z) },
+	}
+	for _, beam in beams do
+		local part = decor("Edge", beam.Size, beam.Spot, darkWood, Enum.Material.Wood)
+		part.CanTouch = false
+		part.CanQuery = false
+	end
 end
 
 local function buildPad(): Part
@@ -99,19 +96,19 @@ local function buildPad(): Part
 	local size = Config.Sawmill.PadSize
 	local z = padZ()
 	local pad = piece("DropPad", Vector3.new(size.X, PAD_THICKNESS, size.Y), at(0, PAD_THICKNESS / 2, z), Blocky.shade(PAD_COLOR, -wear), Enum.Material.WoodPlanks)
-	Blocky.hazardEdge(pad, STRIPE_WIDTH, model)
+	addEdge(z)
 
-	-- "DROP LOGS" on a see-through square lying on the pad (a square, so the turned text fits).
+	-- "FEED ME" on a see-through square lying on the pad (a square, so the turned text fits).
 	local side = math.min(size.X, size.Y) * 0.95
-	local words = decor("DropLogsText", Vector3.new(side, 0.05, side), at(0, PAD_THICKNESS + 0.03, z), Color3.new(1, 1, 1), Enum.Material.SmoothPlastic)
+	local words = decor("FeedMeText", Vector3.new(side, 0.05, side), at(0, PAD_THICKNESS + 0.03, z), Color3.new(1, 1, 1), Enum.Material.SmoothPlastic)
 	words.Transparency = 1
 	words.CanQuery = false
 	words.CanTouch = false
-	local label = Blocky.label(Blocky.face(words, Enum.NormalId.Top), Config.Sawmill.Text.DropLogs, Config.Style.TitleFont)
+	local label = Blocky.label(Blocky.face(words, Enum.NormalId.Top), Config.Sawmill.Text.FeedMe, Config.Style.TitleFont)
 	label.Rotation = 90 -- so it reads the right way up when you walk onto the pad from the front
 
-	-- Logs lying along the pad's sides (the left side has the conveyor in the middle).
-	local logX = size.X / 2 + STRIPE_WIDTH + 1
+	-- Logs lying along the pad's sides (the left side has the chute in the middle).
+	local logX = size.X / 2 + EDGE_WIDTH + 1
 	local logLength = 3.4
 	for _, spot in { Vector2.new(logX, -1), Vector2.new(logX, 0), Vector2.new(logX, 1), Vector2.new(-logX, -1), Vector2.new(-logX, 1) } do
 		local log = Blocky.block(
@@ -129,178 +126,73 @@ local function buildPad(): Part
 	return pad
 end
 
--- The conveyor from the pad's left edge up to the chipper's mouth. Returns its two ends.
-local function buildConveyor(): (Vector3, Vector3)
-	group("Conveyor")
+-- The wooden chute from the pad's left edge up to Gnawbert's lip. Returns its two ends.
+local function buildChute(): (Vector3, Vector3)
+	group("Chute")
 	local cfg = Config.Sawmill
 	local z = padZ()
-	local startX = -cfg.PadSize.X / 2 - STRIPE_WIDTH
+	local startX = -cfg.PadSize.X / 2 - EDGE_WIDTH
 	local bottom = Vector3.new(startX, PAD_THICKNESS + 0.15, z)
-	local top = Vector3.new(startX - cfg.ConveyorLength, cfg.ChipperHeight, z)
+	local top = Vector3.new(startX - cfg.ChuteLength, cfg.ChuteHeight, z)
 	local length = (top - bottom).Magnitude
-	local belt = CFrame.lookAt((bottom + top) / 2, top) -- its Z runs along the belt
-	decor("Belt", Vector3.new(BELT_WIDTH, 0.3, length), belt, BELT_COLOR, Enum.Material.Fabric)
+	local slope = CFrame.lookAt((bottom + top) / 2, top) -- its Z runs along the chute
+	decor("ChuteFloor", Vector3.new(cfg.ChuteWidth, CHUTE_FLOOR, length), slope, wood, Enum.Material.WoodPlanks)
 	for _, side in { -1, 1 } do
-		decor("BeltRail", Vector3.new(0.3, 0.7, length), belt * CFrame.new(side * (BELT_WIDTH / 2 + 0.15), 0.2, 0), cfg.ChipperColor, Enum.Material.Metal)
+		decor(
+			"ChuteRail",
+			Vector3.new(CHUTE_RAIL.X, CHUTE_RAIL.Y, length),
+			slope * CFrame.new(side * (cfg.ChuteWidth / 2 + CHUTE_RAIL.X / 2), CHUTE_RAIL.Y / 2 - CHUTE_FLOOR / 2, 0),
+			darkWood,
+			Enum.Material.Wood
+		)
+	end
+	for index = 1, CHUTE_SLATS do
+		local along = (index - 0.5) / CHUTE_SLATS * length - length / 2
+		decor("ChuteSlat", Vector3.new(cfg.ChuteWidth, 0.1, 0.45), slope * CFrame.new(0, CHUTE_FLOOR / 2 + 0.05, along), Blocky.shade(wood, 0.12), Enum.Material.WoodPlanks)
 	end
 	for index = 1, 3 do
 		local point = bottom:Lerp(top, index / 3.5)
 		for _, side in { -1, 1 } do
-			local height = point.Y - 0.2
-			decor("BeltLeg", Vector3.new(0.3, height, 0.3), at(point.X, height / 2, z + side * (BELT_WIDTH / 2 - 0.2)), DARK_METAL, Enum.Material.Metal)
+			local height = point.Y - 0.1
+			decor("ChuteLeg", Vector3.new(0.4, height, 0.4), at(point.X, height / 2, z + side * (cfg.ChuteWidth / 2 + 0.1)), darkWood, Enum.Material.Wood)
 		end
-	end
-	for index = 0, 4 do
-		local roller = belt * CFrame.new(0, -0.3, -length / 2 + 0.4 + index * (length - 0.8) / 4)
-		cylinder("Roller", BELT_WIDTH + 0.4, 0.4, roller, "X", Config.Style.Metal, Enum.Material.Metal)
 	end
 	return bottom, top
 end
 
--- The big orange drum chipper at the top of the conveyor. `mouth` is where the belt ends.
-local function buildChipper(mouth: Vector3): Vector3
-	group("Chipper")
-	local cfg = Config.Sawmill
-	local text = cfg.Text
-	local color = cfg.ChipperColor
-	local style = Config.Style
-	local z = mouth.Z
-	local size = Vector3.new(6, 4.6, 5)
-	local right = mouth.X - 0.3 -- its side with the mouth faces the conveyor (+X)
-	local x = right - size.X / 2
-	local bottomY = 1.2
-	local middleY = bottomY + size.Y / 2
-	piece("Chipper", size, at(x, middleY, z), color, Enum.Material.Metal)
-	piece("Chassis", Vector3.new(size.X + 0.4, 0.6, size.Z - 0.8), at(x, bottomY - 0.3, z), DARK_METAL, Enum.Material.Metal)
-	for _, corner in { Vector2.new(-1, -1), Vector2.new(1, -1), Vector2.new(-1, 1), Vector2.new(1, 1) } do
-		cylinder("Wheel", 0.6, 1.8, at(x + corner.X * 2, 0.9, z + corner.Y * (size.Z / 2 - 0.1)), "Z", Color3.fromRGB(35, 35, 38), Enum.Material.Rubber)
-	end
-
-	-- The mouth: a dark opening with a hazard-striped frame, right where the belt ends.
-	local mouthY = cfg.ChipperHeight + 0.4
-	decor("Mouth", Vector3.new(0.2, 1.8, 2.8), at(right + 0.05, mouthY, z), Color3.fromRGB(20, 18, 18), Enum.Material.SmoothPlastic)
-	for _, side in { -1, 1 } do
-		local bar = decor("MouthFrame", Vector3.new(0.3, 0.5, 3.8), at(right + 0.15, mouthY + side * 1.15, z), style.HazardYellow, Enum.Material.SmoothPlastic)
-		hazardStripes(bar, Enum.NormalId.Right, 8)
-		local post = decor("MouthFrame", Vector3.new(0.3, 1.8, 0.5), at(right + 0.15, mouthY, z + side * 1.65), style.HazardYellow, Enum.Material.SmoothPlastic)
-		hazardStripes(post, Enum.NormalId.Right, 2)
-	end
-
-	-- The chute on top: a pipe going up, then bending out over the back.
-	local topY = bottomY + size.Y
-	cylinder("Chute", 3, 1.3, at(x - 1.2, topY + 1.5, z), "Y", color, Enum.Material.Metal)
-	cylinder("Chute", 3, 1.1, at(x - 2.4, topY + 3.3, z) * CFrame.Angles(0, 0, math.rad(35)), "X", color, Enum.Material.Metal)
-	decor("ChuteRim", Vector3.new(0.4, 1.5, 1.5), at(x - 1.2, topY + 0.2, z), DARK_METAL, Enum.Material.Metal)
-
-	-- The red and white control panel on the front (+Z), near the mouth.
-	local frontZ = z + size.Z / 2
-	decor("ControlPanel", Vector3.new(1.8, 2.2, 0.4), at(right - 1.2, middleY + 0.3, frontZ + 0.2), PANEL_RED, Enum.Material.SmoothPlastic)
-	decor("ControlPlate", Vector3.new(1.4, 1.2, 0.1), at(right - 1.2, middleY + 0.5, frontZ + 0.42), SIGN_WHITE, Enum.Material.SmoothPlastic)
-	for index, buttonColor in BUTTON_COLORS do
-		cylinder("Button", 0.15, 0.3, at(right - 1.7 + index * 0.25, middleY - 0.45, frontZ + 0.45), "Z", buttonColor, Enum.Material.Neon)
-	end
-
-	-- Its name plate on the front, and a DANGER sign on a post by the mouth.
-	local plate = decor("NamePlate", Vector3.new(3.4, 1.6, 0.1), at(x - 1.1, middleY + 0.4, frontZ + 0.05), SIGN_WHITE, Enum.Material.SmoothPlastic)
-	paint(plate, Enum.NormalId.Back, text.ChipperName, Rect.new(0.05, 0.05, 0.95, 0.6), color)
-	paint(plate, Enum.NormalId.Back, text.ChipperInfo, Rect.new(0.08, 0.62, 0.92, 0.92), nil, style.BodyFont)
-	local signX, signZ = right + 2, z + Config.Sawmill.PadSize.Y / 2 - 1
-	decor("DangerPost", Vector3.new(0.3, 3.4, 0.3), at(signX, 1.7, signZ), darkWood, Enum.Material.Wood)
-	local danger = decor("DangerSign", Vector3.new(2.6, 1.8, 0.1), at(signX, 3.4, signZ + 0.2), SIGN_WHITE, Enum.Material.SmoothPlastic)
-	local band = Blocky.face(danger, Enum.NormalId.Back)
-	Blocky.rect(band, 0, 0, 1, 0.45, PANEL_RED)
-	paint(danger, Enum.NormalId.Back, text.Danger, Rect.new(0.05, 0.04, 0.95, 0.42))
-	paint(danger, Enum.NormalId.Back, text.DangerInfo, Rect.new(0.06, 0.52, 0.94, 0.92), Color3.fromRGB(30, 30, 30), style.BodyFont)
-	return Vector3.new(right - 0.6, mouthY, z)
+-- Gnawbert, facing along the chute with its lip at the chute's top. Returns its mouth.
+local function buildGnawbert(lip: Vector3): Vector3
+	local middle = lip - Vector3.new(Config.Sawmill.Gnawbert.Front, lip.Y, 0)
+	return Gnawbert.build(origin * CFrame.new(middle) * CFrame.Angles(0, math.pi / 2, 0), wear, yard)
 end
 
--- The wooden "SELL LOGS" sign on two posts at the pad's front right corner.
-local function buildSign()
+-- The wooden "SELL LOGS" sign and the price under it, on two posts at the pad's front right corner.
+local function buildSign(perLog: number)
 	group("SellSign")
 	local cfg = Config.Sawmill
 	local x = cfg.PadSize.X / 2 + 3
 	local z = padZ() + cfg.PadSize.Y / 2 + 1.5
-	local signY = 3.8
+	local signY = 6.2
 	for _, side in { -1, 1 } do
 		decor("SignPost", Vector3.new(0.4, signY + 0.6, 0.4), at(x + side * 2.4, (signY + 0.6) / 2, z), darkWood, Enum.Material.Wood)
 	end
 	Blocky.sign(cfg.Text.SellLogs, origin * at(x, signY, z + 0.3), 6, 2.2, nil, model)
+	Blocky.sign(string.format(cfg.Text.PerLog, tostring(perLog)), origin * at(x, signY - 1.9, z + 0.3), 5, 1.3, Config.Style.Gold, model)
 end
 
--- The billboard floating high over the pad: "[coin] N PER LOG", "SELL LOGS" and an arrow.
--- It always turns to face you (a BillboardGui), and each player's computer bobs the arrow.
-local function buildBillboard(perLog: number)
-	group("Billboard")
+-- A sign on a post by the chute: Gnawbert's name, and a warning.
+local function buildWarning()
+	group("WarningSign")
 	local cfg = Config.Sawmill
-	local style = Config.Style
-	local anchor = decor("BillboardAnchor", Vector3.new(1, 1, 1), at(0, cfg.BillboardHeight, padZ()), Color3.new(1, 1, 1), Enum.Material.SmoothPlastic)
-	anchor.Transparency = 1
-	anchor.CanQuery = false
-	anchor.CanTouch = false
-
-	local gui = Instance.new("BillboardGui")
-	gui.Name = "SellBillboard"
-	gui.Size = UDim2.fromScale(cfg.BillboardSize.X, cfg.BillboardSize.Y)
-	gui.LightInfluence = 0
-	gui.MaxDistance = 300
-	gui.Parent = anchor
-
-	-- Top row: a coin and the price per log, in yellow.
-	local row = Instance.new("Frame")
-	row.Name = "PerLog"
-	row.Size = UDim2.fromScale(1, 0.24)
-	row.BackgroundTransparency = 1
-	row.Parent = gui
-	local coin = Instance.new("Frame")
-	coin.Name = "Coin"
-	coin.AnchorPoint = Vector2.new(0, 0.5)
-	coin.Position = UDim2.fromScale(0.12, 0.5)
-	coin.Size = UDim2.fromScale(0.85, 0.85)
-	coin.SizeConstraint = Enum.SizeConstraint.RelativeYY
-	coin.BackgroundColor3 = style.Gold
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0.5, 0)
-	corner.Parent = coin
-	local ring = Instance.new("UIStroke")
-	ring.Thickness = 3
-	ring.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	ring.Parent = coin
-	coin.Parent = row
-	local price = Blocky.label(row, string.format(cfg.Text.PerLog, tostring(perLog)), style.TitleFont, style.Gold)
-	price.Position = UDim2.fromScale(0.25, 0)
-	price.Size = UDim2.fromScale(0.65, 1)
-
-	local title = Blocky.label(gui, cfg.Text.SellLogs, style.TitleFont)
-	title.Name = "Title"
-	title.Position = UDim2.fromScale(0, 0.24)
-	title.Size = UDim2.fromScale(1, 0.4)
-
-	-- The arrow pointing down at the pad: a shaft and two slanted bars making the point.
-	local arrow = Instance.new("Frame")
-	arrow.Name = "Arrow"
-	arrow.AnchorPoint = Vector2.new(0.5, 0)
-	arrow.Position = UDim2.fromScale(0.5, 0.66)
-	arrow.Size = UDim2.fromScale(0.3, 0.3)
-	arrow.SizeConstraint = Enum.SizeConstraint.RelativeYY
-	arrow.BackgroundTransparency = 1
-	arrow.Parent = gui
-	local function bar(position: UDim2, size: UDim2, rotation: number)
-		local part = Instance.new("Frame")
-		part.AnchorPoint = Vector2.new(0.5, 0.5)
-		part.Position = position
-		part.Size = size
-		part.Rotation = rotation
-		part.BackgroundColor3 = style.HazardYellow
-		local stroke = Instance.new("UIStroke")
-		stroke.Thickness = 3
-		stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-		stroke.Parent = part
-		part.Parent = arrow
+	local text = cfg.Text
+	local x = -cfg.PadSize.X / 2 - EDGE_WIDTH - cfg.ChuteLength / 2 - 1
+	local z = padZ() + cfg.PadSize.Y / 2 - 0.5
+	decor("WarningPost", Vector3.new(0.4, 4, 0.4), at(x, 2, z), darkWood, Enum.Material.Wood)
+	local board = decor("WarningBoard", Vector3.new(4.4, 2.4, 0.3), at(x, 4.2, z + 0.25) * CFrame.Angles(0, math.rad(-12), 0), wood, Enum.Material.WoodPlanks)
+	for _, face in { Enum.NormalId.Front, Enum.NormalId.Back } do
+		paint(board, face, text.GnawbertName, Rect.new(0.06, 0.08, 0.94, 0.54), Config.Style.Gold)
+		paint(board, face, text.DoNotPet, Rect.new(0.1, 0.56, 0.9, 0.92))
 	end
-	bar(UDim2.fromScale(0.5, 0.35), UDim2.fromScale(0.26, 0.6), 0)
-	bar(UDim2.fromScale(0.32, 0.68), UDim2.fromScale(0.24, 0.62), -45)
-	bar(UDim2.fromScale(0.68, 0.68), UDim2.fromScale(0.24, 0.62), 45)
-	CollectionService:AddTag(anchor, Tags.SellBillboard)
 end
 
 -- A chopping block with an axe stuck in it, and a small pile of firewood, at the pad's front left.
@@ -321,15 +213,15 @@ local function buildChoppingBlock()
 	end
 end
 
--- How far out (Z) the pad's middle is, and where its right edge is (X, with the striped edge),
+-- How far out (Z) the pad's middle is, and where its right edge is (X, with its dark edge),
 -- from the middle of the sawmill's floor plan (Build/YardShop stands beside it).
 function SellYard.padSpot(): (number, number)
-	return padZ(), Config.Sawmill.PadSize.X / 2 + STRIPE_WIDTH
+	return padZ(), Config.Sawmill.PadSize.X / 2 + EDGE_WIDTH
 end
 
 -- Builds the yard in front of the sawmill whose floor plan's middle is at `ground`, into
--- `parent`. `wear` (0 to 1) makes it darker and more worn; `perLog` is what one log from this
--- zone's trees is worth (the billboard shows it). Returns the DROP LOGS pad.
+-- `parent`. `worn` (0 to 1) makes it darker and more worn; `perLog` is what one log from this
+-- zone's trees is worth (the sign shows it). Returns the pad.
 function SellYard.build(ground: Vector3, worn: number, perLog: number, parent: Model): BasePart
 	origin = CFrame.new(ground)
 	yard = parent
@@ -337,15 +229,15 @@ function SellYard.build(ground: Vector3, worn: number, perLog: number, parent: M
 	wood = Blocky.shade(LOG_COLOR, -worn)
 	darkWood = Blocky.shade(Config.Style.DarkWood, -worn)
 	local pad = buildPad()
-	local bottom, top = buildConveyor()
-	local mouth = buildChipper(top)
-	buildSign()
-	buildBillboard(perLog)
+	local bottom, top = buildChute()
+	local mouth = buildGnawbert(top)
+	buildSign(perLog)
+	buildWarning()
 	buildChoppingBlock()
-	-- Where the sold logs slide (world positions, for Client/Controllers/SellYardController).
-	pad:SetAttribute("BeltStart", (origin * CFrame.new(bottom)).Position)
-	pad:SetAttribute("BeltEnd", (origin * CFrame.new(top)).Position)
-	pad:SetAttribute("Mouth", (origin * CFrame.new(mouth)).Position)
+	-- Where the sold logs go (world positions, for Client/Controllers/SellYardController).
+	pad:SetAttribute("ChuteStart", (origin * CFrame.new(bottom)).Position)
+	pad:SetAttribute("ChuteEnd", (origin * CFrame.new(top)).Position)
+	pad:SetAttribute("Mouth", mouth)
 	return pad
 end
 

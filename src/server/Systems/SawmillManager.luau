@@ -1,14 +1,14 @@
 --!strict
 -- Builds a sawmill in every zone (the building is in Build/SawmillBuilding), each with a sell
--- yard in front (Build/SellYard): the striped "DROP LOGS" pad, signs, and a conveyor into a
--- wood chipper, with shop extras beside it (Build/YardShop, sold by PerkManager).
+-- yard in front (Build/SellYard): the "FEED ME" pad, signs, and a chute up to Gnawbert, with shop
+-- extras beside it (Build/YardShop, sold by PerkManager).
 -- When a player steps on a pad, the SERVER takes all their logs and pays them coins.
 -- On phones and tablets the round SELL button (Client/HudController) does the same while you
 -- stand near a pad: the server keeps a "NearSellPad" attribute up to date to light it up, and
 -- checks the distance again when you tap it.
 -- The client never says how many logs it has or what they're worth, so it can't fake the amount.
--- Every player's computer then shows the logs dropping onto the pad and riding the conveyor
--- into the chipper (the LogsSold remote, see Client/Controllers/SellYardController).
+-- Every player's computer then shows the logs dropping onto the pad and hopping up the chute
+-- into Gnawbert's mouth (the LogsSold remote, see Client/Controllers/SellYardController).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -46,7 +46,7 @@ local function groundHeightAt(x: number, z: number): number
 	return if result then result.Position.Y else 0
 end
 
--- Show `count` logs dropping onto `pad` at `from` and riding into the chipper, on every
+-- Show `count` logs dropping onto `pad` at `from` and hopping into Gnawbert, on every
 -- player's screen. Only for looks: the coins are already paid. TruckManager uses it too.
 function SawmillManager.showSell(pad: BasePart, count: number, from: Vector3)
 	soldRemote:FireAllClients(pad, math.min(count, Config.Sawmill.MaxShownLogs), from)
@@ -137,7 +137,7 @@ local function build(center: Vector3, index: number): BasePart
 	SawmillBuilding.build(ground, wear, riverZ, model)
 
 	-- The sell yard sits in front of the building, on the side facing spawn and the zone's gate (+Z).
-	-- Its billboard shows what one log from this zone's trees is worth.
+	-- Its sign shows what one log from this zone's trees is worth.
 	local treeType = Config.TreeTypes[zone.TreeType]
 	local perLog = if treeType then treeType.LogValue else 0
 	local pad = SellYard.build(ground, wear, perLog, model)
@@ -149,7 +149,7 @@ local function build(center: Vector3, index: number): BasePart
 	return pad
 end
 
--- Every DROP LOGS pad (TruckManager sells a truck's bed when it drives onto one).
+-- Every sell pad (TruckManager sells a truck's bed when it drives onto one).
 function SawmillManager.getPads(): { BasePart }
 	return pads
 end

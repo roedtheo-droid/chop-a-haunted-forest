@@ -20,13 +20,13 @@ local controllers: { Types.Module } = {
 	require(Controllers.NotifyController),
 	require(Controllers.HudController),
 	require(Controllers.ZoneController),
-	require(Controllers.DayController), -- the day/night bar at the top middle
+	require(Controllers.DayController), -- the clock plank at the top middle
 	require(Controllers.AtmosphereController),
 	require(Controllers.SoundController),
 	require(Controllers.QuestController),
 	require(Controllers.BackpackController),
-	require(Controllers.MenuButtonsController), -- PETS, SHOP and UPGRADES on the right
-	require(Controllers.MenusController), -- the SHOP and UPGRADES menus those buttons open
+	require(Controllers.MenuButtonsController), -- the signpost with SHOP and UPGRADES on the right
+	require(Controllers.MenusController), -- the SHOP and UPGRADES menus the signpost opens
 	require(Controllers.CarveController), -- draws carved trunks; used by ChopEffectsController
 	require(Controllers.ChopEffectsController), -- before ChopController, which uses it
 	require(Controllers.ToolAnimController), -- everyone's arms swinging axes and sawing; used by the two below

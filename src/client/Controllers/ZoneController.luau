@@ -1,9 +1,10 @@
 --!strict
--- The HUD's top-right corner, laid out like Chop a Forest (sizes and texts in Config.Hud):
---   * a stopwatch and the run's time ("0:31"), from the server's start time
---   * a red pin and the zone you're in ("Pale Pines"), "ZONE 1/3" under it
---   * a bar with "45.0% cleared" and the Elder Hollow's face on its end, and a small line under it
--- In the camp it only shows the stopwatch and "Lumber Camp".
+-- The zone sign at the top middle of the screen, hanging on two ropes under the clock plank
+-- (see DayController; sizes and texts are in Config.Hud):
+--   * the zone you're in ("Pale Pines") in big letters
+--   * a bar with "45.0% cleared" and the Elder Hollow's face on its end
+--   * a small line about what to do, and "ZONE 1/3"
+-- In the camp it's a small sign with only "Lumber Camp".
 -- When the zone is almost cleared, a glowing line points to the nearest tree that's left,
 -- so nobody gets stuck hunting for the last tree.
 -- It only DISPLAYS the progress the server shares in ReplicatedStorage.ZoneState.
@@ -11,8 +12,6 @@
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local RunService = game:GetService("RunService")
 
 local Boss = require(ReplicatedStorage.Shared.Boss)
 local Config = require(ReplicatedStorage.Shared.Config)
@@ -24,21 +23,19 @@ local UiKit = require(script.Parent.Parent.UiKit)
 local GOLD = Config.Style.Gold
 local Hud = Config.Hud
 local Text = Hud.Text
-local RUN_STARTED_AT = "RunStartedAt" -- set on ReplicatedStorage by Server/Systems/RunManager
-local RUN_ENDED_AT = "RunEndedAt"
+local Timber = Config.TimberUi
 local MARKER_HEIGHT = 3 -- the line ends this far up the trunk
 
 local ZoneController = {}
 
 local player = Players.LocalPlayer
 local stateFolder: Instance
-local zoneRow: Frame
+local sign: Frame
 local zoneLabel: TextLabel
 local countLabel: TextLabel
 local barHolder: Frame
 local bar: UiKit.Bar
 local hintLabel: TextLabel
-local timerLabel: TextLabel
 -- The "nearest tree" helper. These only exist on this player's screen.
 local marker: Part -- invisible; sits at the nearest tree, the line ends here
 local markerSign: BillboardGui -- an arrow above that tree
@@ -93,7 +90,8 @@ end
 
 -- Show the zone's name, and its count, bar and hint (or only the name, in the camp).
 local function showZone(name: string?, withProgress: boolean)
-	zoneRow.Visible = name ~= nil
+	sign.Visible = name ~= nil
+	sign.Size = UDim2.fromOffset(Hud.SignWidth, if withProgress then Hud.SignHeight else Hud.CampSignHeight)
 	zoneLabel.Text = name or ""
 	countLabel.Visible = withProgress
 	barHolder.Visible = withProgress
@@ -157,127 +155,54 @@ local function update()
 	end
 end
 
--- Text at a fixed size (in 1080p pixels) that's exactly as wide as its words.
-local function autoText(parent: Instance, name: string, size: number, color: Color3?): TextLabel
-	local label = UiKit.text(parent, name, "", color)
-	label.TextScaled = false
-	label.TextSize = size
-	label.Size = UDim2.fromOffset(0, size)
-	label.AutomaticSize = Enum.AutomaticSize.X
-	return label
-end
-
--- A row of things lined up from the right edge: an icon, then text.
-local function rightRow(parent: Instance, name: string, y: number, height: number): Frame
-	local row = Instance.new("Frame")
-	row.Name = name
-	row.BackgroundTransparency = 1
-	row.AnchorPoint = Vector2.new(1, 0)
-	row.Position = UDim2.new(1, 0, 0, y)
-	row.Size = UDim2.new(1, 0, 0, height)
-	row.Parent = parent
-	local layout = Instance.new("UIListLayout")
-	layout.FillDirection = Enum.FillDirection.Horizontal
-	layout.HorizontalAlignment = Enum.HorizontalAlignment.Right
-	layout.VerticalAlignment = Enum.VerticalAlignment.Center
-	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.Padding = UDim.new(0, 10)
-	layout.Parent = row
-	return row
-end
-
 local function buildGui()
-	local gui = Instance.new("ScreenGui")
-	gui.Name = "Zone"
-	gui.ResetOnSpawn = false
-	UiKit.hudScale(gui)
+	local gui = UiKit.screen("Zone")
+	local edge = Timber.NailInset + 10
 
-	-- Everything is stacked in the top-right corner, lined up on the right.
-	local stack = Instance.new("Frame")
-	stack.Name = "TopRight"
-	stack.BackgroundTransparency = 1
-	stack.AnchorPoint = Vector2.new(1, 0)
-	stack.Position = UDim2.new(1, -Hud.Margin, 0, Hud.Margin)
-	stack.Size = UDim2.fromOffset(Hud.StackWidth, 260)
-	stack.Parent = gui
+	sign = UiKit.plank(gui, "Sign", 2)
+	sign.AnchorPoint = Vector2.new(0.5, 0)
+	sign.Position = UDim2.new(0.5, 0, 0, Hud.SignY)
 
-	-- The stopwatch and the run's time.
-	local timerRow = rightRow(stack, "Timer", 0, Hud.TimerIcon)
-	local watch = Icons.stopwatch(timerRow, "Icon")
-	watch.LayoutOrder = 1
-	watch.Size = UDim2.fromOffset(Hud.TimerIcon, Hud.TimerIcon)
-	timerLabel = autoText(timerRow, "Time", Hud.TimerText)
-	timerLabel.LayoutOrder = 2
+	-- The ropes it hangs on, from behind the clock plank.
+	local ropeLength = Hud.SignY - Hud.ClockY - Hud.ClockHeight + 14
+	for _, x in { Hud.RopeInset, Hud.SignWidth - Hud.RopeInset } do
+		UiKit.rope(sign, "Rope", UDim2.fromOffset(x, 8 - ropeLength), ropeLength)
+	end
 
-	-- The pin and the zone's name.
-	local y = Hud.TimerIcon + 8
-	zoneRow = rightRow(stack, "Zone", y, Hud.PinIcon)
-	local pin = Icons.pin(zoneRow, "Icon")
-	pin.LayoutOrder = 1
-	pin.Size = UDim2.fromOffset(Hud.PinIcon, Hud.PinIcon)
-	zoneLabel = autoText(zoneRow, "Name", Hud.ZoneText)
-	zoneLabel.LayoutOrder = 2
-
-	-- "ZONE 1/3"
-	y += Hud.PinIcon + 2
-	countLabel = UiKit.smallText(stack, "Count", "")
-	countLabel.AnchorPoint = Vector2.new(1, 0)
-	countLabel.Position = UDim2.new(1, 0, 0, y)
-	countLabel.Size = UDim2.fromOffset(Hud.StackWidth, Hud.ZoneCountText)
-	countLabel.TextXAlignment = Enum.TextXAlignment.Right
+	zoneLabel = UiKit.text(sign, "Name", "", GOLD, Config.Style.TitleFont)
+	zoneLabel.Position = UDim2.new(0, edge, 0, 10)
+	zoneLabel.Size = UDim2.new(1, -2 * edge, 0, Hud.ZoneText)
 
 	-- The "% cleared" bar, with the Elder Hollow's face sitting on its right end.
-	y += Hud.ZoneCountText + 10
 	barHolder = Instance.new("Frame")
 	barHolder.Name = "Progress"
 	barHolder.BackgroundTransparency = 1
-	barHolder.AnchorPoint = Vector2.new(1, 0)
-	barHolder.Position = UDim2.new(1, 0, 0, y)
-	barHolder.Size = UDim2.fromOffset(Hud.ZoneBarWidth + Hud.BossIcon / 2, Hud.BossIcon)
-	barHolder.Parent = stack
+	barHolder.Position = UDim2.new(0, edge, 0, Hud.ZoneText + 12)
+	barHolder.Size = UDim2.new(1, -2 * edge, 0, Hud.ZoneBarHeight)
+	barHolder.Parent = sign
 	bar = UiKit.bar(barHolder, "Bar")
-	bar.Frame.AnchorPoint = Vector2.new(0, 0.5)
-	bar.Frame.Position = UDim2.fromScale(0, 0.5)
-	bar.Frame.Size = UDim2.fromOffset(Hud.ZoneBarWidth, Hud.ZoneBarHeight)
-	UiKit.corner(bar.Frame, 999)
-	UiKit.corner(bar.Fill, 999)
+	bar.Frame.Size = UDim2.new(1, -Hud.BossIcon / 2, 1, 0)
 	local face = Icons.bossFace(barHolder, "Boss")
 	face.AnchorPoint = Vector2.new(1, 0.5)
 	face.Position = UDim2.fromScale(1, 0.5)
 	face.Size = UDim2.fromOffset(Hud.BossIcon, Hud.BossIcon)
-	face.ZIndex = 5
-	for _, child in face:GetDescendants() do
-		if child:IsA("GuiObject") then
-			child.ZIndex += 5
-		end
-	end
+	face.ZIndex = 2
 
-	-- The small line under the bar.
-	y += Hud.BossIcon + 4
-	hintLabel = UiKit.smallText(stack, "Hint", "")
-	hintLabel.AnchorPoint = Vector2.new(1, 0)
-	hintLabel.Position = UDim2.new(1, 0, 0, y)
-	hintLabel.Size = UDim2.fromOffset(Hud.StackWidth, Hud.ZoneHintText)
-	hintLabel.TextXAlignment = Enum.TextXAlignment.Right
+	-- The small line under the bar, and "ZONE 1/3" at its end.
+	local lineY = Hud.ZoneText + Hud.ZoneBarHeight + 18
+	hintLabel = UiKit.smallText(sign, "Hint", "")
+	hintLabel.Position = UDim2.new(0, edge, 0, lineY)
+	hintLabel.Size = UDim2.new(1, -(2 * edge + Hud.ZoneCountWidth), 0, Hud.ZoneHintText)
+	hintLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+	countLabel = UiKit.smallText(sign, "Count", "", Config.Style.Cream)
+	countLabel.AnchorPoint = Vector2.new(1, 0)
+	countLabel.Position = UDim2.new(1, -edge, 0, lineY)
+	countLabel.Size = UDim2.fromOffset(Hud.ZoneCountWidth, Hud.ZoneCountText)
+	countLabel.TextXAlignment = Enum.TextXAlignment.Right
 
 	showZone(nil, false)
 	gui.Parent = player:WaitForChild("PlayerGui")
-end
-
--- The run's time: from when the server started the run until now (or until the forest was cleared).
-local function updateTimer()
-	local started = ReplicatedStorage:GetAttribute(RUN_STARTED_AT)
-	if typeof(started) ~= "number" then
-		timerLabel.Text = string.format(Text.RunTime, 0, 0)
-		return
-	end
-	local ended = ReplicatedStorage:GetAttribute(RUN_ENDED_AT)
-	local now = if typeof(ended) == "number" then ended else workspace:GetServerTimeNow()
-	local seconds = math.max(0, math.floor(now - started))
-	local hours = seconds // 3600
-	timerLabel.Text = if hours > 0
-		then string.format(Text.RunTimeLong, hours, (seconds // 60) % 60, seconds % 60)
-		else string.format(Text.RunTime, seconds // 60, seconds % 60)
 end
 
 local function buildHelper()
@@ -331,16 +256,6 @@ end
 
 function ZoneController.start()
 	stateFolder = ReplicatedStorage:WaitForChild(Zones.StateFolderName)
-
-	-- The run timer ticks a few times a second, so the seconds never skip.
-	local sinceTimer = math.huge
-	RunService.Heartbeat:Connect(function(deltaTime: number)
-		sinceTimer += deltaTime
-		if sinceTimer >= 0.2 then
-			sinceTimer = 0
-			updateTimer()
-		end
-	end)
 
 	-- A few times a second: check which zone we're in and update the box and the line.
 	task.spawn(function()

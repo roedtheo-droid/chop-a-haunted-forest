@@ -1,5 +1,5 @@
 --!strict
--- Shows short messages from the server at the top of the screen,
+-- Shows short messages from the server on a small plank under the zone sign,
 -- like "Your backpack is full!".
 
 local Players = game:GetService("Players")
@@ -36,23 +36,24 @@ function NotifyController.show(message: string)
 end
 
 function NotifyController.init()
-	local gui = Instance.new("ScreenGui")
-	gui.Name = "Notify"
-	gui.ResetOnSpawn = false
+	local gui = UiKit.screen("Notify")
 	gui.DisplayOrder = 10 -- on top of other windows, like the shop
-	UiKit.hudScale(gui) -- the same size as the rest of the HUD
 
-	-- Top middle, just under the day bar (sizes in pixels on a 1080p screen).
-	box = UiKit.box(gui, "Message")
+	-- Sizes in pixels on a 1080p screen.
+	box = UiKit.plank(gui, "Message", 1)
 	box.AnchorPoint = Vector2.new(0.5, 0)
-	box.Position = UDim2.new(0.5, 0, 0, Config.Hud.Margin + Config.Day.Icon + 12)
+	box.Position = UDim2.new(0.5, 0, 0, Config.Hud.MessageY)
 	box.Size = UDim2.fromOffset(Config.UI.NotifyWidth, Config.UI.NotifyHeight)
 	box.Visible = false
 
 	label = UiKit.text(box, "Text", "")
 	label.AnchorPoint = Vector2.new(0.5, 0.5)
 	label.Position = UDim2.fromScale(0.5, 0.5)
-	label.Size = UDim2.new(1, -20, 1, -10)
+	label.Size = UDim2.new(1, -2 * Config.TimberUi.NailInset - 20, 1, -10)
+	label.TextWrapped = true
+	local limit = Instance.new("UITextSizeConstraint")
+	limit.MaxTextSize = Config.UI.NotifyText
+	limit.Parent = label
 
 	gui.Parent = player:WaitForChild("PlayerGui")
 end

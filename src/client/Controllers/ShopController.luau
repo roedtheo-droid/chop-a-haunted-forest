@@ -1,5 +1,5 @@
 --!strict
--- The Tool Shed shop window: a wooden panel that opens when you press E at the shed's counter.
+-- The Tool Shed shop window: a timber panel that opens when you press E at the shed's counter.
 -- It also keeps the "Buy" prompts and price plates on the shed's boards, and the Log Sack
 -- stumps by the sell pads, up to date.
 -- It only SHOWS prices and what you own (from attributes the server sets).
@@ -191,6 +191,7 @@ local function buildGui()
 	gui.ResetOnSpawn = false
 	gui.Enabled = false
 	gui.DisplayOrder = 5 -- below the Notify messages, so "Bought ..." shows on top
+	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling -- keeps the wood behind what's on it
 	UiKit.freeMouse(gui) -- so you can click the buttons in first person
 
 	local window = UiKit.panel(gui, "Window")

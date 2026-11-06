@@ -1,6 +1,6 @@
 --!strict
 -- Little pictures for the HUD, drawn from coloured frames (no image uploads needed), in the
--- cartoony style: bright colours and a black outline. Every icon is a see-through square
+-- cartoony style: warm colours and a dark outline. Every icon is a see-through square
 -- holder; its pieces are placed in "scale" (0 to 1 across the holder), so set the holder's
 -- Size to any size and the whole picture grows or shrinks with it.
 -- It's not a controller, so it has no init()/start().
@@ -8,16 +8,20 @@
 --   local coin = Icons.coin(parent, "Coin")
 --   coin.Size = UDim2.fromOffset(80, 80)
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+
 local Icons = {}
 
-local BLACK = Color3.new(0, 0, 0)
+local DARK = Config.TimberUi.Outline
 local WHITE = Color3.new(1, 1, 1)
 local OUTLINE = 2.5 -- pixels
 
 type PieceOptions = {
 	Round: number?, -- 0.5 makes a circle (or a pill), 0.2 a rounded square
 	Rotation: number?,
-	Outline: boolean?, -- false: no black outline
+	Outline: boolean?, -- false: no dark outline
 	Transparency: number?,
 	Z: number?, -- higher numbers are drawn on top
 }
@@ -43,7 +47,7 @@ local function piece(holder: Frame, name: string, x: number, y: number, w: numbe
 	if opts.Outline ~= false then
 		local stroke = Instance.new("UIStroke")
 		stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-		stroke.Color = BLACK
+		stroke.Color = DARK
 		stroke.Thickness = OUTLINE
 		stroke.Parent = frame
 	end
@@ -121,30 +125,35 @@ function Icons.backpack(parent: Instance, name: string): Frame
 	return h
 end
 
--- A stopwatch: a white face with a red hand and a button on top.
+-- A brass stopwatch: a pale face with a red hand and a button on top.
 function Icons.stopwatch(parent: Instance, name: string): Frame
 	local h = holder(parent, name)
-	piece(h, "Button", 0.5, 0.1, 0.2, 0.12, Color3.fromRGB(200, 60, 50), { Round = 0.2 })
-	piece(h, "Knob", 0.8, 0.22, 0.14, 0.1, Color3.fromRGB(170, 170, 180), { Round = 0.3, Rotation = 45 })
-	piece(h, "Case", 0.5, 0.58, 0.84, 0.8, Color3.fromRGB(170, 175, 190), { Round = 0.5, Z = 2 })
-	piece(h, "Face", 0.5, 0.58, 0.66, 0.63, WHITE, { Round = 0.5, Outline = false, Z = 3 })
+	local brass = Color3.fromRGB(206, 162, 84)
+	piece(h, "Button", 0.5, 0.1, 0.2, 0.12, brass, { Round = 0.2 })
+	piece(h, "Knob", 0.8, 0.22, 0.14, 0.1, brass, { Round = 0.3, Rotation = 45 })
+	piece(h, "Case", 0.5, 0.58, 0.84, 0.8, brass, { Round = 0.5, Z = 2 })
+	piece(h, "Face", 0.5, 0.58, 0.66, 0.63, Color3.fromRGB(245, 235, 210), { Round = 0.5, Outline = false, Z = 3 })
 	for index, angle in { 0, 90, 180, 270 } do
 		local radians = math.rad(angle)
-		piece(h, `Tick{index}`, 0.5 + 0.25 * math.sin(radians), 0.58 - 0.24 * math.cos(radians), 0.05, 0.05, Color3.fromRGB(60, 60, 70), { Round = 0.5, Outline = false, Z = 4 })
+		piece(h, `Tick{index}`, 0.5 + 0.25 * math.sin(radians), 0.58 - 0.24 * math.cos(radians), 0.05, 0.05, Color3.fromRGB(60, 44, 30), { Round = 0.5, Outline = false, Z = 4 })
 	end
-	piece(h, "Hand", 0.56, 0.5, 0.05, 0.22, Color3.fromRGB(220, 50, 50), { Round = 0.5, Rotation = 35, Outline = false, Z = 5 })
-	piece(h, "Middle", 0.5, 0.58, 0.09, 0.09, Color3.fromRGB(40, 40, 45), { Round = 0.5, Outline = false, Z = 6 })
+	piece(h, "Hand", 0.56, 0.5, 0.05, 0.22, Color3.fromRGB(190, 60, 50), { Round = 0.5, Rotation = 35, Outline = false, Z = 5 })
+	piece(h, "Middle", 0.5, 0.58, 0.09, 0.09, Color3.fromRGB(60, 44, 30), { Round = 0.5, Outline = false, Z = 6 })
 	return h
 end
 
--- A red map pin with a white hole.
-function Icons.pin(parent: Instance, name: string): Frame
+-- A red heart with a shine (the health bar).
+function Icons.heart(parent: Instance, name: string): Frame
 	local h = holder(parent, name)
-	piece(h, "Shadow", 0.5, 0.95, 0.36, 0.08, BLACK, { Round = 0.5, Outline = false, Transparency = 0.6 })
-	piece(h, "Point", 0.5, 0.6, 0.42, 0.42, Color3.fromRGB(205, 40, 40), { Rotation = 45, Round = 0.1 })
-	piece(h, "Head", 0.5, 0.38, 0.72, 0.68, Color3.fromRGB(235, 55, 50), { Round = 0.5, Z = 2 })
-	piece(h, "Hole", 0.5, 0.38, 0.28, 0.27, WHITE, { Round = 0.5, Z = 3 })
-	piece(h, "Shine", 0.32, 0.24, 0.12, 0.08, WHITE, { Round = 0.5, Rotation = -40, Outline = false, Transparency = 0.3, Z = 4 })
+	local red = Color3.fromRGB(205, 66, 58)
+	piece(h, "Point", 0.5, 0.58, 0.54, 0.54, red, { Rotation = 45, Round = 0.1 })
+	piece(h, "Left", 0.31, 0.36, 0.46, 0.46, red, { Round = 0.5, Z = 2 })
+	piece(h, "Right", 0.69, 0.36, 0.46, 0.46, red, { Round = 0.5, Z = 2 })
+	-- Cover the outlines where the pieces overlap.
+	piece(h, "Join", 0.5, 0.5, 0.46, 0.36, red, { Outline = false, Z = 3 })
+	piece(h, "JoinLeft", 0.32, 0.38, 0.32, 0.3, red, { Round = 0.5, Outline = false, Z = 3 })
+	piece(h, "JoinRight", 0.68, 0.38, 0.32, 0.3, red, { Round = 0.5, Outline = false, Z = 3 })
+	piece(h, "Shine", 0.3, 0.3, 0.14, 0.1, WHITE, { Round = 0.5, Rotation = -35, Outline = false, Transparency = 0.25, Z = 4 })
 	return h
 end
 
@@ -186,43 +195,31 @@ function Icons.fist(parent: Instance, name: string): Frame
 	for index, x in { 0.42, 0.57, 0.72 } do
 		piece(h, `Finger{index}`, x, 0.4, 0.03, 0.22, line, { Outline = false, Z = 3 })
 	end
-	piece(h, "Cuff", 0.6, 0.9, 0.46, 0.14, Color3.fromRGB(70, 110, 190), { Round = 0.3 })
+	piece(h, "Cuff", 0.6, 0.9, 0.46, 0.14, Color3.fromRGB(170, 60, 50), { Round = 0.3 })
 	return h
 end
 
--- A red shopping basket with a handle (the SHOP button).
+-- A woven basket with a handle (the SHOP board).
 function Icons.basket(parent: Instance, name: string): Frame
 	local h = holder(parent, name)
-	ring(h, "Handle", 0.5, 0.36, 0.5, 0.46, Color3.fromRGB(150, 30, 30), 5)
-	piece(h, "Body", 0.5, 0.66, 0.74, 0.44, Color3.fromRGB(220, 55, 50), { Round = 0.2, Z = 2 })
-	piece(h, "Rim", 0.5, 0.45, 0.86, 0.12, Color3.fromRGB(180, 35, 35), { Round = 0.4, Z = 3 })
+	ring(h, "Handle", 0.5, 0.36, 0.5, 0.46, Color3.fromRGB(120, 84, 48), 5)
+	piece(h, "Body", 0.5, 0.66, 0.74, 0.44, Color3.fromRGB(196, 150, 92), { Round = 0.2, Z = 2 })
+	piece(h, "Rim", 0.5, 0.45, 0.86, 0.12, Color3.fromRGB(150, 108, 62), { Round = 0.4, Z = 3 })
 	for index, x in { 0.34, 0.5, 0.66 } do
-		piece(h, `Slot{index}`, x, 0.68, 0.07, 0.24, Color3.fromRGB(160, 30, 30), { Round = 0.5, Outline = false, Z = 3 })
+		piece(h, `Slot{index}`, x, 0.68, 0.07, 0.24, Color3.fromRGB(140, 100, 58), { Round = 0.5, Outline = false, Z = 3 })
 	end
 	return h
 end
 
--- A thick green arrow pointing up (the UPGRADES button).
+-- A thick moss-green arrow pointing up (the UPGRADES board).
 function Icons.upArrow(parent: Instance, name: string): Frame
 	local h = holder(parent, name)
-	local green = Color3.fromRGB(80, 200, 70)
+	local green = Color3.fromRGB(130, 178, 76)
 	piece(h, "Head", 0.5, 0.42, 0.52, 0.52, green, { Rotation = 45, Round = 0.12 })
 	piece(h, "Stem", 0.5, 0.7, 0.3, 0.42, green, { Round = 0.15 })
 	-- Cover the outline where the head and the stem overlap.
 	piece(h, "Join", 0.5, 0.56, 0.26, 0.22, green, { Outline = false, Z = 2 })
 	piece(h, "Shine", 0.44, 0.38, 0.08, 0.2, WHITE, { Round = 0.5, Outline = false, Transparency = 0.4, Z = 3 })
-	return h
-end
-
--- A pink paw (the PETS button).
-function Icons.paw(parent: Instance, name: string): Frame
-	local h = holder(parent, name)
-	local pink = Color3.fromRGB(240, 130, 175)
-	piece(h, "Pad", 0.5, 0.68, 0.5, 0.42, pink, { Round = 0.5 })
-	piece(h, "Toe1", 0.2, 0.42, 0.2, 0.24, pink, { Round = 0.5 })
-	piece(h, "Toe2", 0.38, 0.24, 0.2, 0.24, pink, { Round = 0.5 })
-	piece(h, "Toe3", 0.62, 0.24, 0.2, 0.24, pink, { Round = 0.5 })
-	piece(h, "Toe4", 0.8, 0.42, 0.2, 0.24, pink, { Round = 0.5 })
 	return h
 end
 
@@ -243,16 +240,6 @@ function Icons.ghost(parent: Instance, name: string): Frame
 	return h
 end
 
--- A scroll with a "!" (next to the quest).
-function Icons.quest(parent: Instance, name: string): Frame
-	local h = holder(parent, name)
-	piece(h, "Paper", 0.5, 0.5, 0.64, 0.74, Color3.fromRGB(245, 225, 175), { Round = 0.12 })
-	piece(h, "RollTop", 0.5, 0.15, 0.8, 0.14, Color3.fromRGB(215, 175, 115), { Round = 0.5, Z = 2 })
-	piece(h, "RollBottom", 0.5, 0.86, 0.8, 0.14, Color3.fromRGB(215, 175, 115), { Round = 0.5, Z = 2 })
-	glyph(h, "!", 0.5, 0.5, 0.5, Color3.fromRGB(200, 60, 40), 3)
-	return h
-end
-
 -- An axe (the Chop Damage upgrade).
 function Icons.axe(parent: Instance, name: string): Frame
 	local h = holder(parent, name)
@@ -262,18 +249,18 @@ function Icons.axe(parent: Instance, name: string): Frame
 	return h
 end
 
--- A blue running shoe with speed lines (the Walk Speed upgrade).
+-- A leather boot with speed lines (the Walk Speed upgrade).
 function Icons.boot(parent: Instance, name: string): Frame
 	local h = holder(parent, name)
-	local blue = Color3.fromRGB(70, 130, 230)
+	local leather = Color3.fromRGB(150, 98, 58)
 	for index, y in { 0.42, 0.56, 0.7 } do
 		piece(h, `Speed{index}`, 0.12, y, 0.16, 0.06, WHITE, { Round = 0.5, Outline = false, Transparency = 0.2 })
 	end
-	piece(h, "Leg", 0.46, 0.36, 0.3, 0.46, blue, { Round = 0.15 })
-	piece(h, "Foot", 0.6, 0.66, 0.64, 0.26, blue, { Round = 0.4, Z = 2 })
-	piece(h, "Join", 0.46, 0.58, 0.26, 0.14, blue, { Outline = false, Z = 3 })
-	piece(h, "Sole", 0.6, 0.8, 0.7, 0.1, WHITE, { Round = 0.5, Z = 3 })
-	piece(h, "Lace", 0.5, 0.56, 0.16, 0.05, WHITE, { Outline = false, Z = 4 })
+	piece(h, "Leg", 0.46, 0.36, 0.3, 0.46, leather, { Round = 0.15 })
+	piece(h, "Foot", 0.6, 0.66, 0.64, 0.26, leather, { Round = 0.4, Z = 2 })
+	piece(h, "Join", 0.46, 0.58, 0.26, 0.14, leather, { Outline = false, Z = 3 })
+	piece(h, "Sole", 0.6, 0.8, 0.7, 0.1, Color3.fromRGB(70, 48, 30), { Round = 0.5, Z = 3 })
+	piece(h, "Lace", 0.5, 0.56, 0.16, 0.05, Color3.fromRGB(245, 235, 210), { Outline = false, Z = 4 })
 	return h
 end
 
@@ -287,24 +274,6 @@ function Icons.lantern(parent: Instance, name: string): Frame
 	piece(h, "Glass", 0.5, 0.55, 0.46, 0.48, Color3.fromRGB(255, 215, 90), { Round = 0.2, Z = 2 })
 	piece(h, "Flame", 0.5, 0.57, 0.14, 0.22, Color3.fromRGB(255, 130, 40), { Round = 0.5, Outline = false, Z = 3 })
 	piece(h, "Base", 0.5, 0.83, 0.58, 0.1, metal, { Round = 0.3, Z = 3 })
-	return h
-end
-
--- A big brown beaver with buck teeth (the Big Beaver in the SHOP).
-function Icons.beaver(parent: Instance, name: string): Frame
-	local h = holder(parent, name)
-	local fur = Color3.fromRGB(150, 95, 55)
-	local dark = Color3.fromRGB(50, 30, 20)
-	piece(h, "Tail", 0.78, 0.74, 0.34, 0.22, Color3.fromRGB(90, 60, 35), { Round = 0.5, Rotation = -20 })
-	piece(h, "Body", 0.48, 0.68, 0.56, 0.48, fur, { Round = 0.5, Z = 2 })
-	piece(h, "Ear1", 0.26, 0.2, 0.12, 0.12, fur, { Round = 0.5, Z = 2 })
-	piece(h, "Ear2", 0.58, 0.2, 0.12, 0.12, fur, { Round = 0.5, Z = 2 })
-	piece(h, "Head", 0.42, 0.38, 0.46, 0.42, fur, { Round = 0.5, Z = 3 })
-	for _, x in { 0.34, 0.5 } do
-		piece(h, "Eye", x, 0.33, 0.07, 0.09, dark, { Round = 0.5, Outline = false, Z = 4 })
-	end
-	piece(h, "Nose", 0.42, 0.45, 0.12, 0.08, dark, { Round = 0.5, Outline = false, Z = 4 })
-	piece(h, "Teeth", 0.42, 0.54, 0.1, 0.09, WHITE, { Round = 0.15, Z = 4 })
 	return h
 end
 

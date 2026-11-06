@@ -59,6 +59,7 @@ local function buildGui()
 	gui.Name = "ForestCleared"
 	gui.ResetOnSpawn = false
 	gui.DisplayOrder = 10 -- on top of the HUD and the knockdown screen
+	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling -- keeps the wood behind what's on it
 	gui.Enabled = false
 	UiKit.freeMouse(gui) -- so you can click the buttons in first person
 
@@ -76,6 +77,7 @@ local function buildGui()
 	panel.AnchorPoint = Vector2.new(0.5, 0.5)
 	panel.Position = UDim2.fromScale(0.5, 0.5)
 	panel.Size = UDim2.fromScale(0.9, 0.85)
+	panel.ZIndex = 2 -- in front of the shade
 
 	local sizeLimit = Instance.new("UISizeConstraint")
 	sizeLimit.MaxSize = Vector2.new(420, 400)

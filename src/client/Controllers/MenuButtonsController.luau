@@ -1,10 +1,10 @@
 --!strict
--- The three round wooden buttons on the right side of the screen, like Chop a Forest's:
--- PETS (greyed out, "Soon"), SHOP (R key) and UPGRADES (U key). Each one has a picture,
--- a big label and a small key badge. Sizes are in Config.Hud (pixels on a 1080p screen).
+-- The signpost on the right side of the screen: a post with two boards shaped like arrows,
+-- SHOP (R key) and UPGRADES (U key). Each board has a picture, a word and a small key badge
+-- (no badge on phones). Sizes are in Config.Hud (pixels on a 1080p screen).
 --
 -- The menus they open are in MenusController, which plugs them in with
--- MenuButtonsController.setAction("Shop", toggleShop). A button with no action shows a short message.
+-- MenuButtonsController.setAction("Shop", toggleShop). A board with no action shows a short message.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -17,31 +17,22 @@ local UiKit = require(script.Parent.Parent.UiKit)
 local NotifyController = require(script.Parent.NotifyController)
 
 local Hud = Config.Hud
-local Style = Config.Style
-local PRESS_SCALE = 0.9 -- how small a badge gets while it's pressed
+local Timber = Config.TimberUi
+local PRESS_SCALE = 0.92 -- how small a board gets while it's pressed
 
-export type ButtonName = "Pets" | "Shop" | "Upgrades"
+export type ButtonName = "Shop" | "Upgrades"
 
 type ButtonInfo = {
 	Name: ButtonName,
 	Label: string,
 	Key: string, -- the text on the key badge
-	KeyCode: Enum.KeyCode?, -- nil: no key
-	Soon: boolean, -- greyed out, does nothing yet
+	KeyCode: Enum.KeyCode,
 	Icon: (parent: Instance, name: string) -> Frame,
 }
 
 local BUTTONS: { ButtonInfo } = {
-	{ Name = "Pets", Label = Hud.Text.Pets, Key = Hud.Text.Soon, KeyCode = nil, Soon = true, Icon = Icons.paw },
-	{ Name = "Shop", Label = Hud.Text.Shop, Key = Hud.Text.ShopKey, KeyCode = Hud.ShopKey, Soon = false, Icon = Icons.basket },
-	{
-		Name = "Upgrades",
-		Label = Hud.Text.Upgrades,
-		Key = Hud.Text.UpgradesKey,
-		KeyCode = Hud.UpgradesKey,
-		Soon = false,
-		Icon = Icons.upArrow,
-	},
+	{ Name = "Shop", Label = Hud.Text.Shop, Key = Hud.Text.ShopKey, KeyCode = Hud.ShopKey, Icon = Icons.basket },
+	{ Name = "Upgrades", Label = Hud.Text.Upgrades, Key = Hud.Text.UpgradesKey, KeyCode = Hud.UpgradesKey, Icon = Icons.upArrow },
 }
 
 local MenuButtonsController = {}
@@ -49,15 +40,12 @@ local MenuButtonsController = {}
 local player = Players.LocalPlayer
 local actions: { [string]: () -> () } = {}
 
--- What a button does. The menus set this when they're built.
+-- What a board does. The menus set this when they're built.
 function MenuButtonsController.setAction(name: ButtonName, action: () -> ())
 	actions[name] = action
 end
 
 local function press(info: ButtonInfo)
-	if info.Soon then
-		return
-	end
 	local action = actions[info.Name]
 	if action then
 		action()
@@ -66,85 +54,75 @@ local function press(info: ButtonInfo)
 	end
 end
 
--- One round wooden badge with its picture, label and key badge.
-local function makeBadge(parent: Instance, info: ButtonInfo, order: number)
-	local size = Hud.BadgeSize
-	local labelHeight = Hud.BadgeLabelText
+-- One board shaped like an arrow pointing left. The point is a square turned 45 degrees behind the
+-- board's left end, and a patch hides the line where the two meet.
+local function makeBoard(parent: Instance, info: ButtonInfo, order: number)
+	local height = Hud.PostBoardHeight
+	local color = Timber.Planks[order]
 
-	-- The whole button (circle + label), so clicking the label works too.
 	local button = Instance.new("TextButton")
 	button.Name = info.Name
 	button.Text = ""
 	button.AutoButtonColor = false
 	button.BackgroundTransparency = 1
 	button.LayoutOrder = order
-	button.Size = UDim2.fromOffset(size + 60, size + labelHeight / 2)
+	button.Size = UDim2.fromOffset(Hud.PostBoardWidth, height)
 
-	local circle = Instance.new("Frame")
-	circle.Name = "Circle"
-	circle.AnchorPoint = Vector2.new(0.5, 0)
-	circle.Position = UDim2.fromScale(0.5, 0)
-	circle.Size = UDim2.fromOffset(size, size)
-	circle.BackgroundColor3 = if info.Soon then Hud.Soon else Style.Wood
-	UiKit.corner(circle, 999)
-	UiKit.border(circle, Style.DarkWood, Style.PanelStroke)
-	circle.Parent = button
+	local side = height / math.sqrt(2)
+	local point = Instance.new("Frame")
+	point.Name = "Point"
+	point.AnchorPoint = Vector2.new(0.5, 0.5)
+	point.BackgroundColor3 = color
+	point.Position = UDim2.new(0, height / 2, 0.5, 0)
+	point.Rotation = 45
+	point.Size = UDim2.fromOffset(side, side)
+	UiKit.corner(point, 3)
+	UiKit.border(point, Timber.Edge, Timber.BoardStroke)
+	point.Parent = button
 
-	-- A lighter ring inside the border, so it looks like a carved wooden badge.
-	local inner = Instance.new("Frame")
-	inner.Name = "Inner"
-	inner.AnchorPoint = Vector2.new(0.5, 0.5)
-	inner.Position = UDim2.fromScale(0.5, 0.5)
-	inner.Size = UDim2.fromScale(0.82, 0.82)
-	inner.BackgroundColor3 = if info.Soon then Hud.Soon else Style.CardWood
-	UiKit.corner(inner, 999)
-	inner.Parent = circle
+	local board = Instance.new("Frame")
+	board.Name = "Board"
+	board.BackgroundColor3 = color
+	board.Position = UDim2.fromOffset(height / 2, 0)
+	board.Size = UDim2.new(1, -height / 2, 1, 0)
+	UiKit.corner(board, 3)
+	UiKit.border(board, Timber.Edge, Timber.BoardStroke)
+	UiKit.grain(board, Random.new(order))
+	board.Parent = button
 
-	local icon = info.Icon(circle, "Icon")
-	icon.AnchorPoint = Vector2.new(0.5, 0.5)
-	icon.Position = UDim2.fromScale(0.5, 0.46)
-	icon.Size = UDim2.fromScale(0.62, 0.62)
+	local patch = Instance.new("Frame")
+	patch.Name = "Patch"
+	patch.BackgroundColor3 = color
+	patch.BorderSizePixel = 0
+	patch.Position = UDim2.fromOffset(height / 2 - 5, 0)
+	patch.Size = UDim2.new(0, 10, 1, 0)
+	patch.Parent = button
 
-	if info.Soon then
-		-- Grey the picture out with a see-through cover.
-		local cover = Instance.new("Frame")
-		cover.Name = "Cover"
-		cover.AnchorPoint = Vector2.new(0.5, 0.5)
-		cover.Position = UDim2.fromScale(0.5, 0.5)
-		cover.Size = UDim2.fromScale(1, 1)
-		cover.BackgroundColor3 = Hud.Soon
-		cover.BackgroundTransparency = 0.4
-		cover.ZIndex = 2
-		UiKit.corner(cover, 999)
-		cover.Parent = circle
-	end
+	local icon = info.Icon(button, "Icon")
+	icon.AnchorPoint = Vector2.new(0, 0.5)
+	icon.Position = UDim2.new(0, height / 2 - 12, 0.5, 0)
+	icon.Size = UDim2.fromOffset(Hud.PostIcon, Hud.PostIcon)
 
-	-- The big label, half over the circle's bottom edge.
-	local label = UiKit.text(button, "Label", info.Label, if info.Soon then Hud.Soon else nil)
-	label.AnchorPoint = Vector2.new(0.5, 1)
-	label.Position = UDim2.fromScale(0.5, 1)
-	label.Size = UDim2.new(1, 0, 0, labelHeight)
-	label.ZIndex = 3
+	local textLeft = height / 2 - 12 + Hud.PostIcon + 4
+	local hasKeyboard = UiKit.hasKeyboard()
+	local badgeRoom = if hasKeyboard then Hud.KeyBadge + 14 else 8
+	local label = UiKit.text(button, "Label", info.Label)
+	label.AnchorPoint = Vector2.new(0, 0.5)
+	label.Position = UDim2.new(0, textLeft, 0.5, 0)
+	label.Size = UDim2.new(1, -(textLeft + badgeRoom), 0, Hud.PostText)
+	label.TextXAlignment = Enum.TextXAlignment.Left
 
-	-- The key badge on the circle's top-right edge.
-	local badge = UiKit.keyBadge(button, "KeyBadge", info.Key)
-	badge.AnchorPoint = Vector2.new(0.5, 0.5)
-	badge.Position = UDim2.new(0.5, size * 0.36, 0, size * 0.14)
-	-- On top of the circle. Its letters must be above the badge itself, or the dark badge hides them.
-	badge.ZIndex = 3
-	for _, child in badge:GetDescendants() do
-		if child:IsA("GuiObject") then
-			child.ZIndex = 4
-		end
+	if hasKeyboard then
+		local badge = UiKit.keyBadge(button, "KeyBadge", info.Key)
+		badge.AnchorPoint = Vector2.new(1, 0.5)
+		badge.Position = UDim2.new(1, -8, 0.5, 0)
 	end
 
 	-- Squish a little while pressed, then spring back (like UiKit.button).
 	local scale = Instance.new("UIScale")
 	scale.Parent = button
 	button.MouseButton1Down:Connect(function()
-		if not info.Soon then
-			TweenService:Create(scale, TweenInfo.new(0.06), { Scale = PRESS_SCALE }):Play()
-		end
+		TweenService:Create(scale, TweenInfo.new(0.06), { Scale = PRESS_SCALE }):Play()
 	end)
 	local function release()
 		TweenService:Create(scale, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 })
@@ -160,29 +138,44 @@ local function makeBadge(parent: Instance, info: ButtonInfo, order: number)
 end
 
 function MenuButtonsController.init()
-	local gui = Instance.new("ScreenGui")
-	gui.Name = "MenuButtons"
-	gui.ResetOnSpawn = false
-	UiKit.hudScale(gui)
+	local gui = UiKit.screen("MenuButtons")
 
-	local stack = Instance.new("Frame")
-	stack.Name = "Stack"
-	stack.BackgroundTransparency = 1
-	stack.AnchorPoint = Vector2.new(1, 0.5)
-	stack.Position = UDim2.new(1, -Hud.Margin, Hud.BadgeY, 0)
-	local itemHeight = Hud.BadgeSize + Hud.BadgeLabelText / 2
-	stack.Size = UDim2.fromOffset(Hud.BadgeSize + 60, #BUTTONS * itemHeight + (#BUTTONS - 1) * Hud.BadgeGap)
-	stack.Parent = gui
+	local boardsHeight = #BUTTONS * Hud.PostBoardHeight + (#BUTTONS - 1) * Hud.PostBoardGap
+	local signpost = Instance.new("Frame")
+	signpost.Name = "Signpost"
+	signpost.BackgroundTransparency = 1
+	signpost.AnchorPoint = Vector2.new(1, 0)
+	signpost.Position = UDim2.new(1, -Hud.Margin, 0, Hud.SignpostY)
+	signpost.Size = UDim2.fromOffset(Hud.PostBoardWidth, boardsHeight)
+	signpost.Parent = gui
+
+	-- The post, behind the boards near their right end.
+	local post = Instance.new("Frame")
+	post.Name = "Post"
+	post.AnchorPoint = Vector2.new(0.5, 0.5)
+	post.BackgroundColor3 = Timber.Bark
+	post.Position = UDim2.new(1, -Hud.PostWidth / 2 - 22, 0.5, 0)
+	post.Size = UDim2.new(0, Hud.PostWidth, 1, 2 * Hud.PostOver)
+	UiKit.corner(post, 4)
+	UiKit.border(post, Timber.Edge, Timber.BoardStroke)
+	UiKit.grain(post, Random.new(7))
+	post.Parent = signpost
+
+	-- The boards go in their own frame, so the layout doesn't move the post.
+	local boards = Instance.new("Frame")
+	boards.Name = "Boards"
+	boards.BackgroundTransparency = 1
+	boards.Size = UDim2.fromScale(1, 1)
+	boards.ZIndex = 2
+	boards.Parent = signpost
 
 	local layout = Instance.new("UIListLayout")
-	layout.FillDirection = Enum.FillDirection.Vertical
-	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
-	layout.Padding = UDim.new(0, Hud.BadgeGap)
-	layout.Parent = stack
+	layout.Padding = UDim.new(0, Hud.PostBoardGap)
+	layout.Parent = boards
 
 	for index, info in BUTTONS do
-		makeBadge(stack, info, index)
+		makeBoard(boards, info, index)
 	end
 
 	gui.Parent = player:WaitForChild("PlayerGui")
@@ -195,7 +188,7 @@ function MenuButtonsController.start()
 			return
 		end
 		for _, info in BUTTONS do
-			if info.KeyCode and input.KeyCode == info.KeyCode then
+			if input.KeyCode == info.KeyCode then
 				press(info)
 				return
 			end

@@ -140,8 +140,8 @@ mimics first and burn them safely with a torch.
 - Do NOT save mid-run progress in the MVP.
 
 ## UI
-- HUD: Coins, Embers, backpack counter at the bottom (e.g. 0/5, then 5/5 when
-  full), zone %, equipped tool.
+- HUD: Coins, Embers, backpack counter (e.g. 0/5, then 5/5 when full), zone %, equipped tool.
+  Everything looks like the forest: planks, log slices, rope and parchment (see STYLE_GUIDE.md).
 - Shop UI at the Tool Shed. Simple and readable on mobile.
 
 ## BUILD PHASES (one at a time, stop after each)
@@ -191,8 +191,8 @@ It becomes its own game: this list moves away from matching Chop a Forest's look
 Chopping, selling logs and upgrading tools are the genre, so they stay.
 12. Clean start: analytics, the tutorial and flyover are remembered, walk over logs to collect
     them, fairer ghosts, dying drops your logs. (done, tested)
-13. Make it yours: a new name, Theo's own purple HUD, a "spooky storybook" style, a camp with its
-    own ideas (a chained mimic that eats logs and burps coins).
+13. Make it yours: a new name, a timber HUD, a "spooky storybook" style, a camp with its own ideas
+    (a chained mimic that eats logs and burps coins).
 14. The trees bite: a real wake-up moment, sprint stamina, being swallowed, mimic species with one
     rule each, a first scare within 3 minutes, the Forest Journal. Then test with real friends.
 15. Friends save friends: mark trees for the party, the Torch stuns, a quick-chat wheel, shared

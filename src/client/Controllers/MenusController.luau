@@ -1,5 +1,6 @@
 --!strict
--- The two timber menus that the signpost on the right opens (see MenuButtonsController):
+-- The two timber menus that the signpost on the right opens (see MenuButtonsController). The
+-- peddler's cart by each sell pad opens the SHOP too:
 --   * SHOP (R): the Robux items. Infinite Bag and 2X COINS are game passes (Server/Systems/
 --     PerkManager) and the Chainsaw Trial is the trial table's deal (Server/Systems/TrialManager).
 --     While an item has no id in Config it says "Coming soon".
@@ -8,13 +9,16 @@
 -- Pressing the same board (or key) again closes the menu. Sizes and texts are in Config.Menus.
 -- It only SHOWS prices and what you own; every button just asks the server, which decides.
 
+local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Format = require(ReplicatedStorage.Shared.Format)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Shop = require(ReplicatedStorage.Shared.Shop)
+local Tags = require(ReplicatedStorage.Shared.Tags)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Icons = require(script.Parent.Parent.Icons)
 local UiKit = require(script.Parent.Parent.UiKit)
@@ -47,6 +51,7 @@ local shopGui: ScreenGui
 local upgradesGui: ScreenGui
 local coinsLabel: TextLabel
 local refreshers: { () -> () } = {}
+local cartAt: BasePart? -- the cart the SHOP menu was opened at, if it was
 
 local function getNumber(name: string): number
 	local value = player:GetAttribute(name)
@@ -358,9 +363,42 @@ local function toggle(gui: ScreenGui)
 	local opening = not gui.Enabled
 	shopGui.Enabled = false
 	upgradesGui.Enabled = false
+	cartAt = nil
 	if opening then
 		refreshAll()
 		gui.Enabled = true
+	end
+end
+
+-- A peddler's cart's prompt opens the SHOP menu (Server/Systems/PerkManager puts it on the cart).
+local function hookCart(instance: Instance)
+	if not instance:IsA("ProximityPrompt") then
+		return
+	end
+	instance.Triggered:Connect(function()
+		local cart = instance.Parent
+		if cart and cart:IsA("BasePart") then
+			upgradesGui.Enabled = false
+			refreshAll()
+			shopGui.Enabled = true
+			cartAt = cart
+		end
+	end)
+end
+
+-- The SHOP menu closes when the player walks away from the cart they opened it at.
+local function checkCart()
+	local cart = cartAt
+	if not cart then
+		return
+	end
+	local character = player.Character
+	local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
+	if not shopGui.Enabled then
+		cartAt = nil
+	elseif root and root:IsA("BasePart") and (root.Position - cart.Position).Magnitude > Config.Perks.MenuDistance then
+		shopGui.Enabled = false
+		cartAt = nil
 	end
 end
 
@@ -376,6 +414,11 @@ function MenusController.start()
 	MenuButtonsController.setAction("Upgrades", function()
 		toggle(upgradesGui)
 	end)
+	for _, prompt in CollectionService:GetTagged(Tags.CartPrompt) do
+		hookCart(prompt)
+	end
+	CollectionService:GetInstanceAddedSignal(Tags.CartPrompt):Connect(hookCart)
+	RunService.Heartbeat:Connect(checkCart)
 	-- Keep an open menu up to date when coins, levels, passes or the trial change.
 	player.AttributeChanged:Connect(function()
 		if shopGui.Enabled or upgradesGui.Enabled then

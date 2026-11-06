@@ -1,7 +1,6 @@
 --!strict
 -- The Tool Shed shop window: a timber panel that opens when you press E at the shed's counter.
--- It also keeps the "Buy" prompts and price plates on the shed's boards, and the Log Sack
--- stumps by the sell pads, up to date.
+-- It also keeps the "Buy" prompts and the plates on the shed's tool stumps up to date.
 -- It only SHOWS prices and what you own (from attributes the server sets).
 -- Clicking "Buy" just asks the server; the server decides if the purchase happens.
 
@@ -91,10 +90,10 @@ local function refresh()
 	end
 end
 
--- The boards on the shed's walls: once you own a tool (or an upgrade is max level), its
--- "Buy" prompt says "Owned" and its price plate says OWNED, on your screen only.
+-- The tool stumps in the shed: once you own a tool (or an upgrade is max level), its "Buy" prompt
+-- says "Owned" and its plate says OWNED, on your screen only.
 -- An upgrade's plate shows the price of its next level.
-local function refreshBoards()
+local function refreshPlates()
 	local text = Config.Shop.Text
 	for _, instance in CollectionService:GetTagged(Tags.BuyPrompt) do
 		local itemId = instance:GetAttribute("ItemId")
@@ -126,27 +125,6 @@ local function refreshBoards()
 		end
 		if coin and coin:IsA("GuiObject") then
 			coin.Visible = price ~= nil
-		end
-	end
-
-	-- The Log Sack stumps by the sell pads: your next carry number and price, or MAX.
-	local perks = Config.Perks.Text
-	local sack = Shop.getItem("CarryLimit")
-	if not sack then
-		return
-	end
-	local price = Shop.priceOf(sack, getNumber(Shop.levelAttribute(sack.Id)))
-	local carry = getNumber("CarryLimit") + Config.Upgrades.CarryLimit.PerLevel
-	for _, instance in CollectionService:GetTagged(Tags.SackPrompt) do
-		if not instance:IsA("ProximityPrompt") then
-			continue
-		end
-		instance.ObjectText = if price then string.format(perks.SackObject, sack.Name, carry) else sack.Name
-		instance.ActionText = if price then string.format(perks.SackAction, Format.number(price)) else perks.Max
-		local stump = instance.Parent
-		local label = if stump then stump:FindFirstChild("Price", true) else nil
-		if label and label:IsA("TextLabel") then
-			label.Text = if price then Format.number(price) else perks.Max
 		end
 	end
 end
@@ -305,12 +283,11 @@ function ShopController.start()
 	end
 	CollectionService:GetInstanceAddedSignal(Tags.ShopPrompt):Connect(hookPrompt)
 
-	-- Keep the window and the boards up to date when coins, tools or levels change.
-	refreshBoards()
-	CollectionService:GetInstanceAddedSignal(Tags.BuyPrompt):Connect(refreshBoards)
-	CollectionService:GetInstanceAddedSignal(Tags.SackPrompt):Connect(refreshBoards)
+	-- Keep the window and the plates up to date when coins, tools or levels change.
+	refreshPlates()
+	CollectionService:GetInstanceAddedSignal(Tags.BuyPrompt):Connect(refreshPlates)
 	player.AttributeChanged:Connect(function()
-		refreshBoards()
+		refreshPlates()
 		if gui.Enabled then
 			refresh()
 		end

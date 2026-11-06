@@ -1,11 +1,10 @@
 --!strict
--- The shop extras beside every sell pad (built by Build/YardShop):
---   * Log Sack stump   buys the next Log Sack level (the CarryLimit upgrade) for coins,
---                      with the same checks as in the Tool Shed (ShopManager.buyAt)
---   * Infinite Bag     a Robux game pass: carry as many logs as you like (LogManager)
---   * 2X COINS board   a Robux game pass: logs sell for twice the coins (Shop.coinMultiplier)
+-- The Robux game passes, and the peddler's cart beside every sell pad (built by Build/PeddlerCart):
+--   * Infinite Bag     carry as many logs as you like (LogManager)
+--   * 2X COINS         logs sell for twice the coins (Shop.coinMultiplier)
 --
--- The two passes can also be bought from anywhere in the SHOP menu (the BuyPerk remote).
+-- The passes are bought in the SHOP menu (the BuyPerk remote). The signpost's SHOP button opens it
+-- from anywhere, and so does the cart's "Open shop" prompt (see Client/MenusController).
 --
 -- A game pass is bought once and kept forever: Roblox remembers who owns it, so nothing is
 -- saved here. When a player joins we ask Roblox what they own, and we hear right away when
@@ -18,13 +17,10 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
-local Format = require(ReplicatedStorage.Shared.Format)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Shop = require(ReplicatedStorage.Shared.Shop)
 local Tags = require(ReplicatedStorage.Shared.Tags)
 local SawmillManager = require(script.Parent.SawmillManager)
-local ShopManager = require(script.Parent.ShopManager)
-local YardShop = require(script.Parent.Parent.Build.YardShop)
 
 type Pass = {
 	GamePassId: number,
@@ -49,18 +45,6 @@ local passes: { [string]: Pass } = {
 		Name = Config.Perks.Text.DoubleCoins,
 	},
 }
-
-local function newPrompt(parent: Instance, action: string, object: string): ProximityPrompt
-	local prompt = Instance.new("ProximityPrompt")
-	prompt.ActionText = action
-	prompt.ObjectText = object
-	prompt.KeyboardKeyCode = Enum.KeyCode.E
-	prompt.HoldDuration = 0
-	prompt.MaxActivationDistance = Config.Perks.PromptDistance
-	prompt.RequiresLineOfSight = false
-	prompt.Parent = parent
-	return prompt
-end
 
 local function grant(player: Player, perkId: string)
 	player:SetAttribute(Shop.perkAttribute(perkId), true)
@@ -95,36 +79,27 @@ local function onPlayerAdded(player: Player)
 	end
 end
 
-local function addPrompts(spots: YardShop.Spots)
+-- The cart's prompt only opens a menu on the player's own computer (Client/MenusController), so
+-- the server doesn't listen to it. The menu's buttons still ask the server.
+local function addCartPrompt(spot: BasePart)
 	local text = Config.Perks.Text
-	-- The Log Sack: each player's computer writes their own next carry number and price on it
-	-- (see Client/ShopController); this is what a new player sees.
-	local sack = Config.Upgrades.CarryLimit
-	local sackPrompt = newPrompt(
-		spots.Sack,
-		string.format(text.SackAction, Format.number(sack.Prices[1])),
-		string.format(text.SackObject, text.SackName, Config.Logs.CarryLimit + sack.PerLevel)
-	)
-	CollectionService:AddTag(sackPrompt, Tags.SackPrompt)
-	sackPrompt.Triggered:Connect(function(player: Player)
-		ShopManager.buyAt(player, "CarryLimit", spots.Sack, Config.Perks.PromptDistance)
-	end)
-
-	for perkId, spot in { InfiniteBag = spots.Bag, DoubleCoins = spots.Coins } do
-		local pass = passes[perkId]
-		local action = if pass.GamePassId == 0 then text.ComingSoon else string.format(text.RobuxAction, tostring(pass.RobuxPrice))
-		newPrompt(spot, action, pass.Name).Triggered:Connect(function(player: Player)
-			buyPass(player, perkId)
-		end)
-	end
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = text.CartAction
+	prompt.ObjectText = text.CartName
+	prompt.KeyboardKeyCode = Enum.KeyCode.E
+	prompt.HoldDuration = 0
+	prompt.MaxActivationDistance = Config.Perks.PromptDistance
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = spot
+	CollectionService:AddTag(prompt, Tags.CartPrompt)
 end
 
 function PerkManager.init() end
 
 function PerkManager.start()
 	notifyRemote = Remotes.getEvent("Notify")
-	for _, spots in SawmillManager.getShopSpots() do
-		addPrompts(spots)
+	for _, spot in SawmillManager.getCartSpots() do
+		addCartPrompt(spot)
 	end
 
 	-- The SHOP menu's buttons (Client/MenusController). Only a perk Id comes from the client,

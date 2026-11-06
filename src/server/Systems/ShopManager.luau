@@ -1,9 +1,8 @@
 --!strict
 -- Builds the Tool Shed (see Build/ToolShed) and handles every purchase.
 --
--- There are two ways to buy: the "Buy" prompt on a tool's board on the wall, or the shop menu
--- (the "Open shop" prompt on the counter, whose Buy buttons fire the BuyItem remote). The Log
--- Sack can also be bought on its stump by each sell pad (PerkManager calls buyAt).
+-- There are two ways to buy: the "Buy" prompt on the plate of a tool's stump, or the shop menu
+-- (the "Open shop" prompt on the counter, whose Buy buttons fire the BuyItem remote).
 -- Upgrades can also be bought from anywhere, in the UPGRADES menu (Client/MenusController,
 -- the same BuyItem remote) while Config.Shop.UpgradesAnywhere is on.
 -- Either way the server checks that:
@@ -82,15 +81,7 @@ local function isAtShed(player: Player): boolean
 		and offset.Y <= size.Y + margin
 end
 
--- Is the player within `reach` studs of `spot` (like the Log Sack's stump by a sell pad)?
-local function isNear(player: Player, spot: BasePart, reach: number): boolean
-	local character = player.Character
-	local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
-	return root ~= nil and root:IsA("BasePart") and (root.Position - spot.Position).Magnitude <= reach + Config.Shop.BuyMargin
-end
-
--- `at` and `reach`: bought at a prompt outside the shed (only the server passes these).
-local function tryBuy(player: Player, itemId: unknown, at: BasePart?, reach: number?)
+local function tryBuy(player: Player, itemId: unknown)
 	-- 1. Is it a real item? (The client could send anything.)
 	if typeof(itemId) ~= "string" then
 		return
@@ -109,8 +100,7 @@ local function tryBuy(player: Player, itemId: unknown, at: BasePart?, reach: num
 	lastBuy[player] = now
 	-- Upgrades can be bought from anywhere (the UPGRADES menu), tools only at the shed.
 	local anywhere = item.Kind == "Upgrade" and Config.Shop.UpgradesAnywhere
-	local inPlace = anywhere or (if at and reach then isNear(player, at, reach) else isAtShed(player))
-	if not inPlace then
+	if not (anywhere or isAtShed(player)) then
 		notifyRemote:FireClient(player, Config.Shop.Text.NotAtShed)
 		return
 	end
@@ -165,7 +155,7 @@ local function tryBuy(player: Player, itemId: unknown, at: BasePart?, reach: num
 	end
 end
 
--- A "Buy" prompt on each board's price plate. Triggering it buys the item straight away
+-- A "Buy" prompt on each tool's plate. Triggering it buys the item straight away
 -- (prompts are triggered on the server, so no remote is needed). Each player's computer
 -- changes the text to "Owned" once they have it (see Client/ShopController).
 local function addBuyPrompts()
@@ -183,12 +173,6 @@ local function addBuyPrompts()
 			tryBuy(player, itemId)
 		end)
 	end
-end
-
--- Buy item `itemId` at a prompt outside the shed, on `spot` (PerkManager's Log Sack stumps).
--- The same checks as in the shed, but the player must be within `reach` studs of the spot.
-function ShopManager.buyAt(player: Player, itemId: string, spot: BasePart, reach: number)
-	tryBuy(player, itemId, spot, reach)
 end
 
 -- The top of the trial table in the shed (TrialManager puts its "Try" prompt on it).

@@ -31,28 +31,22 @@ local function refresh()
 end
 
 local function buildGui()
-	local gui = Instance.new("ScreenGui")
-	gui.Name = "BossBar"
-	gui.ResetOnSpawn = false
+	local gui = UiKit.screen("BossBar")
 
-	-- Top middle, under the zone box and the message line.
+	-- Top middle, under the zone sign.
 	box = UiKit.box(gui, "Box")
 	box.AnchorPoint = Vector2.new(0.5, 0)
-	box.Position = UDim2.new(0.5, 0, 0, 116)
-	box.Size = UDim2.new(0.6, 0, 0, 54)
+	box.Position = UDim2.new(0.5, 0, 0, Config.Hud.BossBarY)
+	box.Size = UDim2.fromOffset(Config.Hud.BossBarWidth, Config.Hud.BossBarHeight)
 	box.Visible = false
 
-	local sizeLimit = Instance.new("UISizeConstraint")
-	sizeLimit.MaxSize = Vector2.new(480, 54)
-	sizeLimit.Parent = box
-
 	local title = UiKit.text(box, "Title", "THE ELDER HOLLOW", BAR_COLOR, Config.Style.TitleFont)
-	title.Position = UDim2.fromOffset(10, 4)
-	title.Size = UDim2.new(1, -20, 0, 20)
+	title.Position = UDim2.fromOffset(12, 4)
+	title.Size = UDim2.new(1, -24, 0, 24)
 
 	bar = UiKit.bar(box, "Bar", BAR_COLOR)
-	bar.Frame.Position = UDim2.fromOffset(10, 28)
-	bar.Frame.Size = UDim2.new(1, -20, 0, 18)
+	bar.Frame.Position = UDim2.fromOffset(12, 30)
+	bar.Frame.Size = UDim2.new(1, -24, 0, 22)
 	bar.Fill.Size = UDim2.fromScale(1, 1)
 
 	gui.Parent = player:WaitForChild("PlayerGui")

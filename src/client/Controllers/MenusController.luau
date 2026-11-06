@@ -1,11 +1,11 @@
 --!strict
--- The two wooden menus that the round buttons on the right open (see MenuButtonsController):
+-- The two timber menus that the signpost on the right opens (see MenuButtonsController):
 --   * SHOP (R): the Robux items. Infinite Bag and 2X COINS are game passes (Server/Systems/
---     PerkManager), the Chainsaw Trial is the trial table's deal (Server/Systems/TrialManager)
---     and the Big Beaver is coming later. While an item has no id in Config it says "Coming soon".
+--     PerkManager) and the Chainsaw Trial is the trial table's deal (Server/Systems/TrialManager).
+--     While an item has no id in Config it says "Coming soon".
 --   * UPGRADES (U): the coin upgrades (Chop Damage, Log Sack, Walk Speed, Lantern Radius),
 --     with dots for their level. They can be bought from anywhere; tools stay in the Tool Shed.
--- Pressing the same button (or key) again closes the menu. Sizes and texts are in Config.Menus.
+-- Pressing the same board (or key) again closes the menu. Sizes and texts are in Config.Menus.
 -- It only SHOWS prices and what you own; every button just asks the server, which decides.
 
 local Players = game:GetService("Players")
@@ -19,14 +19,13 @@ local Types = require(ReplicatedStorage.Shared.Types)
 local Icons = require(script.Parent.Parent.Icons)
 local UiKit = require(script.Parent.Parent.UiKit)
 local MenuButtonsController = require(script.Parent.MenuButtonsController)
-local NotifyController = require(script.Parent.NotifyController)
 
 local Menus = Config.Menus
 local Text = Menus.Text
 local Style = Config.Style
 local EDGE = 20 -- pixels between the window's border and what's inside
 local HEADER = 14 + Menus.TitleIcon + 14 -- the title row's height
-local EMPTY_DOT = Color3.fromRGB(70, 45, 25)
+local EMPTY_DOT = Color3.fromRGB(44, 30, 20)
 
 type IconMaker = (parent: Instance, name: string) -> Frame
 
@@ -63,15 +62,12 @@ end
 ---------------------------------------------------------------------------------------------
 -- Building blocks
 
--- A wooden window in the middle of the screen: its picture and title at the top, a red X to
+-- A timber window in the middle of the screen: its picture and title at the top, a red X to
 -- close it, and a "Body" frame `bodyHeight` pixels tall for what's inside.
 local function makeWindow(name: string, title: string, icon: IconMaker, bodyHeight: number): (ScreenGui, Frame, Frame)
-	local gui = Instance.new("ScreenGui")
-	gui.Name = name
-	gui.ResetOnSpawn = false
+	local gui = UiKit.screen(name)
 	gui.Enabled = false
 	gui.DisplayOrder = 5 -- below the Notify messages, so "You got ..." shows on top
-	UiKit.hudScale(gui)
 	UiKit.freeMouse(gui) -- so you can click the buttons in first person
 
 	local window = UiKit.panel(gui, "Window")
@@ -188,33 +184,19 @@ local function shopEntries(): { ShopEntry }
 				trialRemote:FireServer() -- the same as the trial table (and the T key)
 			end,
 		},
-		{
-			Id = "BigBeaver",
-			Name = perkText.BigBeaver,
-			Info = Text.BigBeaverInfo,
-			Icon = Icons.beaver,
-			State = function(): (string, Color3)
-				return Text.ComingSoon, Style.Grey
-			end,
-			Press = function()
-				NotifyController.show(Text.BigBeaverSoon)
-			end,
-		},
 	}
 end
 
 local function buildShop()
 	local entries = shopEntries()
-	local rows = math.ceil(#entries / 2)
-	local bodyHeight = rows * Menus.ShopCardHeight + (rows - 1) * Menus.CardGap + 8
+	local bodyHeight = #entries * Menus.RowHeight + (#entries - 1) * Menus.CardGap + 8
 	local gui, _, body = makeWindow("RobuxShop", Text.ShopTitle, Icons.basket, bodyHeight)
 	shopGui = gui
 
-	local grid = Instance.new("UIGridLayout")
-	grid.CellSize = UDim2.fromOffset((Menus.Width - 2 * EDGE - Menus.CardGap) / 2 - 4, Menus.ShopCardHeight)
-	grid.CellPadding = UDim2.fromOffset(Menus.CardGap, Menus.CardGap)
-	grid.SortOrder = Enum.SortOrder.LayoutOrder
-	grid.Parent = body
+	local layout = Instance.new("UIListLayout")
+	layout.Padding = UDim.new(0, Menus.CardGap)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = body
 	local padding = Instance.new("UIPadding") -- room for the cards' borders
 	padding.PaddingTop = UDim.new(0, 4)
 	padding.PaddingLeft = UDim.new(0, 4)
@@ -223,18 +205,15 @@ local function buildShop()
 	for index, entry in entries do
 		local card = UiKit.card(body, entry.Id)
 		card.LayoutOrder = index
-		local picture, info = addInfo(card, entry.Icon, entry.Name, entry.Info, 12)
+		card.Size = UDim2.new(1, -8, 0, Menus.RowHeight)
+		local picture = addInfo(card, entry.Icon, entry.Name, entry.Info, (Menus.RowHeight - Menus.ItemIcon) / 2)
 		if entry.Badge then
 			addBadge(picture, entry.Badge)
 		end
-		-- The info line under the name can take two lines here.
-		info.Size = UDim2.new(info.Size.X.Scale, info.Size.X.Offset, 0, Menus.InfoText * 2 + 4)
-		info.TextWrapped = true
-		info.TextYAlignment = Enum.TextYAlignment.Top
 
 		local button, label = UiKit.button(card, "Buy", "", Style.Green)
-		button.AnchorPoint = Vector2.new(1, 1)
-		button.Position = UDim2.new(1, -14, 1, -14)
+		button.AnchorPoint = Vector2.new(1, 0.5)
+		button.Position = UDim2.new(1, -14, 0.5, 0)
 		button.Size = UDim2.fromOffset(Menus.ButtonWidth, Menus.ButtonHeight)
 		button.Activated:Connect(entry.Press)
 
@@ -259,8 +238,8 @@ local UPGRADE_ICONS: { [string]: IconMaker } = {
 local function addUpgradeRow(body: Frame, item: Types.ShopItem, order: number, buyRemote: RemoteEvent)
 	local card = UiKit.card(body, item.Id)
 	card.LayoutOrder = order
-	card.Size = UDim2.new(1, -8, 0, Menus.UpgradeRowHeight)
-	addInfo(card, UPGRADE_ICONS[item.Id] or Icons.upArrow, item.Name, item.Description, (Menus.UpgradeRowHeight - Menus.ItemIcon) / 2)
+	card.Size = UDim2.new(1, -8, 0, Menus.RowHeight)
+	addInfo(card, UPGRADE_ICONS[item.Id] or Icons.upArrow, item.Name, item.Description, (Menus.RowHeight - Menus.ItemIcon) / 2)
 
 	-- One dot per level: gold for the levels you have.
 	local dots = Instance.new("Frame")
@@ -333,7 +312,7 @@ local function buildUpgrades()
 			table.insert(items, item)
 		end
 	end
-	local bodyHeight = #items * Menus.UpgradeRowHeight + (#items - 1) * Menus.CardGap + 8
+	local bodyHeight = #items * Menus.RowHeight + (#items - 1) * Menus.CardGap + 8
 	local gui, window, body = makeWindow("Upgrades", Text.UpgradesTitle, Icons.upArrow, bodyHeight)
 	upgradesGui = gui
 

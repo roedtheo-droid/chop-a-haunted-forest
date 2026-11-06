@@ -1,8 +1,9 @@
 --!strict
--- The tool bar at the bottom middle of the screen, like Chop a Forest's: no boxes, just a
--- picture of each tool with a small number above it. "1" is your fists (hold nothing), then
--- your tools in the Tool Shed's order. The one you hold is a bit bigger. It replaces Roblox's
--- own tool bar. Sizes are in Config.Hud (pixels on a 1080p screen, see UiKit.hudScale).
+-- The tool bar at the bottom middle of the screen: round log slices standing on a shelf, with a
+-- picture of a tool on each. "1" is your fists (hold nothing), then your tools in the Tool Shed's
+-- order. The one you hold is bigger, lifted off the shelf and has an amber ring, and its name is
+-- above the bar. It replaces Roblox's own tool bar. Sizes are in Config.Hud (pixels on a 1080p
+-- screen, see UiKit.hudScale).
 -- Press a number key (1-9) or click/tap a picture to hold that tool; again to put it away.
 --
 -- The tool pictures are little 3D views (ViewportFrames) of the tool itself, so they look just
@@ -23,6 +24,7 @@ local Icons = require(script.Parent.Parent.Icons)
 local UiKit = require(script.Parent.Parent.UiKit)
 
 local Hud = Config.Hud
+local Timber = Config.TimberUi
 
 local NUMBER_KEYS: { Enum.KeyCode } = {
 	Enum.KeyCode.One,
@@ -40,13 +42,16 @@ local BackpackController = {}
 
 type Slot = {
 	Button: TextButton,
-	Number: TextLabel,
+	Slice: Frame, -- the log slice, with everything on it
+	Glow: Frame, -- the amber ring around the one you hold
 	Picture: Frame, -- holds the fist icon or the tool's 3D view
 	Tool: Tool?, -- the tool shown (nil for the fists)
 }
 
 local player = Players.LocalPlayer
 local bar: Frame
+local shelf: Frame
+local heldName: TextLabel
 local slots: { Slot } = {}
 local tools: { Tool } = {} -- your tools, in slot order (slot 2 is tools[1])
 local watched: { RBXScriptConnection } = {} -- the Backpack's and character's events
@@ -143,27 +148,58 @@ local function makeSlot(index: number): Slot
 	button.AutoButtonColor = false
 	button.BackgroundTransparency = 1
 	button.LayoutOrder = index
-	button.Size = UDim2.fromOffset(Hud.SlotIcon, Hud.SlotIcon + Hud.SlotNumberText)
+	button.Size = UDim2.fromOffset(Hud.SlotIcon, Hud.SlotIcon)
 
-	local number = UiKit.smallText(button, "Number", tostring(index))
-	number.AnchorPoint = Vector2.new(0.5, 0)
-	number.Position = UDim2.fromScale(0.5, 0)
-	number.Size = UDim2.new(1, 0, 0, Hud.SlotNumberText)
+	local glow = Instance.new("Frame")
+	glow.Name = "Glow"
+	glow.AnchorPoint = Vector2.new(0.5, 0.5)
+	glow.BackgroundColor3 = Timber.Amber
+	glow.BorderSizePixel = 0
+	glow.Position = UDim2.fromScale(0.5, 0.5)
+	glow.Size = UDim2.fromScale(1.14, 1.14)
+	glow.Visible = false
+	UiKit.corner(glow, 999)
+
+	local slice = UiKit.logSlice(button, "Slice")
+	slice.AnchorPoint = Vector2.new(0.5, 0.5)
+	slice.Position = UDim2.fromScale(0.5, 0.5)
+	slice.Size = UDim2.fromScale(1, 1)
+	slice.ZIndex = 2
+	glow.Parent = button
 
 	local picture = Instance.new("Frame")
 	picture.Name = "PictureHolder"
+	picture.AnchorPoint = Vector2.new(0.5, 0.5)
 	picture.BackgroundTransparency = 1
-	picture.AnchorPoint = Vector2.new(0.5, 1)
-	picture.Position = UDim2.fromScale(0.5, 1)
-	picture.Size = UDim2.new(1, 0, 1, -Hud.SlotNumberText)
-	picture.Parent = button
+	picture.Position = UDim2.fromScale(0.5, 0.5)
+	picture.Size = UDim2.fromScale(0.96, 0.96)
+	picture.ZIndex = 2
+	picture.Parent = slice
+
+	-- A small number on the slice's edge. Phones have no number keys, so they don't show it.
+	if UiKit.hasKeyboard() then
+		local number = Instance.new("Frame")
+		number.Name = "Number"
+		number.AnchorPoint = Vector2.new(0.5, 0.5)
+		number.BackgroundColor3 = Timber.Bark
+		number.Position = UDim2.fromScale(0.14, 0.14)
+		number.Size = UDim2.fromOffset(Hud.SlotNumber, Hud.SlotNumber)
+		number.ZIndex = 3
+		UiKit.corner(number, 999)
+		UiKit.border(number, Timber.Edge)
+		local label = UiKit.smallText(number, "Text", tostring(index))
+		label.AnchorPoint = Vector2.new(0.5, 0.5)
+		label.Position = UDim2.fromScale(0.5, 0.5)
+		label.Size = UDim2.fromScale(0.72, 0.72)
+		number.Parent = slice
+	end
 
 	button.Activated:Connect(function()
 		toggle(index)
 	end)
 
 	button.Parent = bar
-	return { Button = button, Number = number, Picture = picture, Tool = nil }
+	return { Button = button, Slice = slice, Glow = glow, Picture = picture, Tool = nil }
 end
 
 -- Put the right picture in a slot (only when the tool in it changed).
@@ -183,6 +219,14 @@ local function setPicture(slot: Slot, tool: Tool?)
 	end
 end
 
+local function toolName(tool: Tool?): string
+	if not tool then
+		return Hud.Text.Fists
+	end
+	local item = Shop.getItem(toolId(tool))
+	return if item then item.Name else tool.Name
+end
+
 local function refresh()
 	refreshQueued = false
 	tools = collectTools()
@@ -194,16 +238,24 @@ local function refresh()
 		local tool = if index == 1 then nil else tools[index - 1]
 		setPicture(slot, tool)
 		slot.Button.Visible = true
-		-- The one you hold is bigger (the fists when you hold nothing).
+		-- The one you hold stands out (the fists when you hold nothing).
 		local isHeld = if index == 1 then held == nil else tool == held
 		local size = if isHeld then Hud.SelectedSize else Hud.SlotIcon
-		slot.Button.Size = UDim2.fromOffset(size, size + Hud.SlotNumberText)
-		slot.Number.TextColor3 = if isHeld then Config.Style.Gold else Color3.new(1, 1, 1)
+		slot.Button.Size = UDim2.fromOffset(size, size)
+		local position = UDim2.new(0.5, 0, 0.5, if isHeld then -Hud.SlotLift else 0)
+		slot.Slice.Position = position
+		slot.Glow.Position = position
+		slot.Glow.Visible = isHeld
 	end
 	for index = count + 1, #slots do
 		slots[index].Button.Visible = false
 		setPicture(slots[index], nil)
 	end
+
+	-- The shelf is as wide as what stands on it.
+	local width = count * (Hud.SlotIcon + Hud.SlotGap) + Hud.SelectedSize - Hud.SlotIcon + Hud.ShelfOver
+	shelf.Size = UDim2.fromOffset(width, Hud.ShelfHeight)
+	heldName.Text = toolName(held)
 end
 
 -- Tools move between the Backpack and your hand a lot; redraw once, after they've all moved.
@@ -256,18 +308,30 @@ function BackpackController.init()
 	-- menus and show them again afterwards: they only show again what was on.)
 	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
 
-	local gui = Instance.new("ScreenGui")
-	gui.Name = "ToolBar"
-	gui.ResetOnSpawn = false
-	UiKit.hudScale(gui)
+	local gui = UiKit.screen("ToolBar")
 
+	local holder = Instance.new("Frame")
+	holder.Name = "Holder"
+	holder.AnchorPoint = Vector2.new(0.5, 1)
+	holder.BackgroundTransparency = 1
+	holder.Position = UDim2.new(0.5, if UiKit.hasKeyboard() then 0 else -Hud.TouchBarShift, 1, -Hud.Margin / 2)
+	holder.Size = UDim2.fromOffset(Hud.MaxSlots * (Hud.SelectedSize + Hud.SlotGap), Hud.SelectedSize + Hud.SlotLift + Hud.ShelfHeight / 2)
+	holder.Parent = gui
+
+	shelf = UiKit.plank(holder, "Shelf", 1)
+	shelf.AnchorPoint = Vector2.new(0.5, 1)
+	shelf.Position = UDim2.fromScale(0.5, 1)
+	shelf.Size = UDim2.fromOffset(0, Hud.ShelfHeight)
+
+	-- The slices stand on the shelf, a bit in front of it.
 	bar = Instance.new("Frame")
 	bar.Name = "Bar"
-	bar.BackgroundTransparency = 1
 	bar.AnchorPoint = Vector2.new(0.5, 1)
-	bar.Position = UDim2.new(0.5, 0, 1, -Hud.Margin)
-	bar.Size = UDim2.fromOffset(Hud.MaxSlots * (Hud.SelectedSize + Hud.SlotGap), Hud.SelectedSize + Hud.SlotNumberText)
-	bar.Parent = gui
+	bar.BackgroundTransparency = 1
+	bar.Position = UDim2.new(0.5, 0, 1, -Hud.ShelfHeight / 2)
+	bar.Size = UDim2.new(1, 0, 1, -Hud.ShelfHeight / 2)
+	bar.ZIndex = 2
+	bar.Parent = holder
 
 	local layout = Instance.new("UIListLayout")
 	layout.FillDirection = Enum.FillDirection.Horizontal
@@ -276,6 +340,12 @@ function BackpackController.init()
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Padding = UDim.new(0, Hud.SlotGap)
 	layout.Parent = bar
+
+	-- The name of the tool you hold, above the bar.
+	heldName = UiKit.text(holder, "HeldName", "")
+	heldName.AnchorPoint = Vector2.new(0.5, 1)
+	heldName.Position = UDim2.new(0.5, 0, 0, -2)
+	heldName.Size = UDim2.fromOffset(Hud.HeldNameWidth, Hud.HeldNameText)
 
 	for index = 1, Hud.MaxSlots do
 		table.insert(slots, makeSlot(index))

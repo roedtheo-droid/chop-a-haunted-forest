@@ -77,8 +77,13 @@ function MouseController.init()
 	hint.AnchorPoint = Vector2.new(0, 1)
 	hint.Position = UDim2.new(0, cfg.HintMargin, 1, -cfg.HintMargin)
 	hint.Size = UDim2.fromOffset(cfg.HintWidth, cfg.HintHeight)
+	hint.TextWrapped = true
 	hint.TextXAlignment = Enum.TextXAlignment.Left
+	hint.TextYAlignment = Enum.TextYAlignment.Bottom
 	hint.TextTransparency = cfg.HintTransparency
+	local limit = Instance.new("UITextSizeConstraint")
+	limit.MaxTextSize = cfg.HintText
+	limit.Parent = hint
 	hint.Visible = false
 	hintGui.Parent = playerGui
 end

@@ -1054,7 +1054,7 @@ local Config = {
 	Style = {
 		TitleFont = Enum.Font.Creepster, -- big words: signs, "FOREST CLEARED!"
 		BodyFont = Enum.Font.FredokaOne, -- everything else
-		TextStroke = 3, -- the black outline around text, in pixels
+		TextStroke = 3, -- the dark outline around text, in pixels
 		Wood = Color3.fromRGB(168, 105, 58), -- cabin walls and signs
 		DarkWood = Color3.fromRGB(95, 60, 30), -- borders and the lines between logs
 		Roof = Color3.fromRGB(125, 55, 35),
@@ -1065,89 +1065,167 @@ local Config = {
 		HazardBlack = Color3.fromRGB(30, 30, 30),
 		Window = Color3.fromRGB(190, 230, 255),
 		Metal = Color3.fromRGB(175, 182, 195), -- saw blades
-		-- The UI (see Client/UiKit): white text with a black outline on dark, rounded boxes,
-		-- and wooden panels for menus.
-		Box = Color3.fromRGB(30, 26, 24), -- HUD boxes
-		BoxTransparency = 0.2,
-		BoxStroke = 2, -- the black border around boxes, panels and buttons, in pixels
-		PanelStroke = 4, -- the dark wood border around menus
-		Corner = 10, -- how round the corners are, in pixels
-		CardWood = Color3.fromRGB(125, 80, 45), -- the rows inside a wooden menu
-		Gold = Color3.fromRGB(255, 215, 70), -- coins and headings
+		-- The UI (see Client/UiKit and Config.TimberUi below)
+		Box = Color3.fromRGB(58, 38, 24), -- plain dark boards: the boss bar, the dialogue box
+		BoxTransparency = 0,
+		BoxStroke = 2, -- the line around small things, in pixels
+		Corner = 6, -- how round the corners are, in pixels
+		CardWood = Color3.fromRGB(88, 58, 36), -- the dark rows inside a menu
+		Gold = Color3.fromRGB(250, 205, 90), -- coins and headings
 		Ember = Color3.fromRGB(255, 130, 60),
 		Cream = Color3.fromRGB(245, 225, 190), -- small text on wood
-		Green = Color3.fromRGB(90, 200, 70), -- buy buttons and progress bars
-		Red = Color3.fromRGB(220, 50, 50), -- close buttons, "can't afford", full backpack
-		Grey = Color3.fromRGB(125, 118, 110), -- buttons you can't press (Owned, MAX)
-		BarBack = Color3.fromRGB(55, 45, 40), -- the empty part of a progress bar
+		Green = Color3.fromRGB(112, 158, 66), -- buy buttons and progress bars: moss
+		Red = Color3.fromRGB(190, 60, 52), -- close buttons, "can't afford": berries
+		Grey = Color3.fromRGB(122, 106, 90), -- buttons you can't press (Owned, MAX): weathered wood
+		BarBack = Color3.fromRGB(44, 30, 20), -- the empty part of a progress bar
 	},
 
-	-- The HUD, laid out like Chop a Forest's (see Client/HudController, ZoneController,
-	-- QuestController, BackpackController, MenuButtonsController and Client/Icons).
+	-- The UI's look is rough timber: signs are boards nailed together, tool slots are slices of a
+	-- log, signs hang on rope and quests are parchment notes (see Client/UiKit).
+	TimberUi = {
+		Planks = { -- the boards of a plank, one after the other
+			Color3.fromRGB(150, 104, 66),
+			Color3.fromRGB(138, 94, 58),
+			Color3.fromRGB(126, 84, 50),
+		},
+		Grain = Color3.fromRGB(96, 62, 36), -- the thin lines and knots in the wood
+		Edge = Color3.fromRGB(52, 34, 22), -- the dark line around every board
+		Nail = Color3.fromRGB(58, 52, 48),
+		NailShine = Color3.fromRGB(170, 160, 150),
+		Bark = Color3.fromRGB(74, 54, 40), -- the rim of a log slice
+		CutWood = Color3.fromRGB(214, 178, 128), -- the face of a log slice
+		Rings = Color3.fromRGB(186, 146, 98), -- the rings on that face
+		Text = Color3.fromRGB(245, 235, 210), -- the normal text colour: cream
+		Outline = Color3.fromRGB(34, 22, 14), -- the dark brown around text and icons
+		Paper = Color3.fromRGB(232, 220, 190), -- parchment notes
+		Ink = Color3.fromRGB(60, 44, 30), -- the writing on them
+		Pin = Color3.fromRGB(190, 60, 50), -- the pin that holds a note up
+		Rope = Color3.fromRGB(196, 160, 104),
+		RopeShade = Color3.fromRGB(128, 98, 60),
+		Amber = Color3.fromRGB(238, 180, 70), -- the ring around the held tool, the CHOP button
+		Moss = { -- the tufts growing on planks
+			Color3.fromRGB(118, 150, 72),
+			Color3.fromRGB(96, 128, 60),
+			Color3.fromRGB(140, 168, 84),
+		},
+		-- Sizes, in pixels (on a 1080p screen in the HUD)
+		BoardStroke = 3, -- the dark line around a board
+		RoughEnds = 10, -- a board can be this much shorter than its plank, so the ends look rough
+		GrainLines = 3, -- thin lines per board
+		KnotChance = 0.35, -- how likely a board is to have a knot (0 to 1)
+		NailSize = 9,
+		NailInset = 12, -- how far nails are from a board's ends
+		PanelBoards = 6, -- boards in a big menu panel
+		MossTufts = 1, -- tufts of moss per plank
+		BarkMarks = 10, -- little dark marks around a log slice's rim
+		RopeWidth = 9,
+		RopeTwist = 12, -- pixels between the twists in a rope
+		PaperTeeth = 13, -- the torn bottom edge of a note is made of this many bits...
+		PaperTooth = 13, -- ...each this big
+		PinSize = 20,
+	},
+
+	-- The HUD, in the timber look (see Config.TimberUi, Client/UiKit and Client/Icons). Its parts are
+	-- in Client/Controllers: HudController, ZoneController, DayController, QuestController,
+	-- BackpackController and MenuButtonsController.
 	-- Sizes are in pixels on a 1080p screen: the whole HUD grows and shrinks with the screen
 	-- (UiKit.hudScale), so it fits on phones too.
 	Hud = {
 		DesignHeight = 1080, -- the screen height the sizes below are made for
-		MinScale = 0.5, -- never smaller than this (phones)...
-		MaxScale = 1.25, -- ...or bigger than this (big monitors)
+		DesignWidth = 1500, -- everything fits in this width: narrower screens shrink the HUD further
+		MinScale = 0.5, -- never smaller than this on a wide phone...
+		MaxScale = 1.25, -- ...or bigger than this on a big monitor
+		NarrowScale = 0.35, -- the smallest it gets on a very narrow screen
 		Margin = 24, -- pixels from the screen's edges
 
-		-- Left middle: coins, Embers and the tool trial
-		LeftY = 0.42, -- how far down the screen the coins sit (0 = top, 1 = bottom)
-		CurrencyIcon = 84,
-		CurrencyText = 60, -- how tall the numbers are
-		CurrencyWidth = 360,
-		CurrencyGap = 14,
-		TrialIcon = 46,
-		TrialText = 30,
-		KeyBadge = 34, -- the small dark key badges ("T", "R", "U")
-		RobuxGreen = Color3.fromRGB(70, 210, 90), -- Robux prices
-
-		-- Bottom left: backpack, courage and the key hint
-		BackpackIcon = 100,
-		BackpackText = 76,
-		CourageWidth = 270,
-		CourageHeight = 30,
-		CourageIcon = 40,
-		Courage = Color3.fromRGB(120, 190, 255), -- the courage bar
+		-- Top left: a plank with your health and courage
+		VitalsWidth = 380,
+		VitalsRow = 54, -- how tall each row is
+		VitalsPad = 6, -- pixels above and below the rows
+		VitalsIcon = 46,
+		VitalsBarHeight = 34,
+		Health = Color3.fromRGB(196, 66, 58), -- the health bar: berries
+		Courage = Color3.fromRGB(132, 182, 190), -- the courage bar: pale mist
 		Scared = Color3.fromRGB(220, 50, 50), -- the courage bar when you're scared (it pulses)
 
-		-- Top right: run time and the zone
-		TimerIcon = 52,
-		TimerText = 52,
-		PinIcon = 42,
-		ZoneText = 40,
+		-- Top right: a column with the ledger plank, the trial tag and the quest note
+		ColumnGap = 10,
+		LedgerWidth = 480,
+		LedgerHeight = 72,
+		CounterIcon = 46,
+		CounterText = 38, -- how tall the numbers are
+		CounterShare = { 0.31, 0.29, 0.4 }, -- how much of the plank the logs, Embers and coins get
+		FullText = Color3.fromRGB(255, 125, 100), -- your logs when the sack is full
+		TrialWidth = 350,
+		TrialHeight = 48,
+		TrialIcon = 36,
+		TrialText = 26,
+		KeyBadge = 30, -- the small dark key badges ("T", "R", "U")
+		RobuxGreen = Color3.fromRGB(140, 220, 110), -- Robux prices
+		QuestWidth = 360,
+		QuestHeight = 96, -- without the bar
+		QuestBarHeight = 22,
+		QuestTitleText = 24,
+		QuestText = 28, -- the biggest the quest's words get
+		QuestTilt = -1.2, -- degrees: a pinned note never hangs quite straight
+
+		-- Top middle: the clock and the zone sign, hanging on ropes, and then the messages
+		SignWidth = 460,
+		RopeInset = 46, -- pixels from a sign's ends to its ropes
+		ClockY = 12,
+		ClockHeight = 56,
+		TimerIcon = 40,
+		TimerText = 36,
+		TimerWidth = 96, -- the room for the run's time
+		SignY = 82,
+		SignHeight = 120,
+		CampSignHeight = 62, -- in the camp the sign only shows its name
+		ZoneText = 42,
 		ZoneCountText = 22,
-		ZoneBarWidth = 330,
-		ZoneBarHeight = 34,
-		BossIcon = 48, -- the Elder Hollow's face on the bar's end
-		ZoneHintText = 20,
-		StackWidth = 420, -- how wide the top-right stack is
+		ZoneCountWidth = 100, -- the room for "ZONE 1/3"
+		ZoneBarHeight = 28,
+		BossIcon = 46, -- the Elder Hollow's face on the bar's end
+		ZoneHintText = 22,
+		MessageY = 208, -- messages (NotifyController), under the sign
+		BossBarY = 208, -- the Elder Hollow's HP bar, under the sign (a message covers it for a moment)
+		BossBarWidth = 560,
+		BossBarHeight = 60,
 
-		-- Top left: the quest
-		QuestWidth = 330,
-		QuestText = 26,
+		-- Right side: the signpost with SHOP and UPGRADES, under the right column
+		SignpostY = 314,
+		PostBoardWidth = 236,
+		PostBoardHeight = 66,
+		PostBoardGap = 10,
+		PostIcon = 46,
+		PostText = 28,
+		PostWidth = 24,
+		PostOver = 14, -- how far the post sticks out above and below the boards
 
-		-- Bottom middle: the tool bar (no boxes, just pictures)
-		SlotIcon = 76,
-		SelectedSize = 96, -- the held tool's picture is this big
-		SlotGap = 16,
-		SlotNumberText = 26,
+		-- Bottom middle: the tool bar, log slices on a shelf
+		SlotIcon = 88,
+		SelectedSize = 104, -- the held tool's slice is this big...
+		SlotLift = 8, -- ...and lifted this far off the shelf
+		SlotGap = 10,
+		SlotNumber = 30, -- the little number on a slice's edge
+		ShelfHeight = 26,
+		ShelfOver = 40, -- how far the shelf sticks out past the slices, in total
+		HeldNameText = 30, -- the name of the tool you hold, above the bar
+		HeldNameWidth = 400,
 		MaxSlots = 9, -- number keys 1-9 (1 is your fists)
+		TouchBarShift = 70, -- on phones the bar sits this far left of the middle, to stay clear of CHOP
 		ToolCameraAngle = Vector3.new(1, 0.7, 1.2), -- the direction the tool pictures are seen from
 
-		-- Right middle: the round wooden badge buttons
-		BadgeY = 0.55, -- how far down the screen the middle badge sits
-		BadgeSize = 108,
-		BadgeLabelText = 30,
-		BadgeGap = 28,
-		Soon = Color3.fromRGB(150, 140, 130), -- PETS, greyed out
-
-		-- Phones and tablets: the round CHOP and SELL buttons (bottom-right, above Roblox's jump button)
+		-- Phones and tablets: CHOP and SELL log slices next to Roblox's jump button
 		ChopButtonSize = 150,
 		SellButtonSize = 118,
-		TouchButtonsUp = 250, -- pixels from the bottom of the screen to the buttons' bottom
-		SellDimTransparency = 0.5, -- how faded SELL is when you're not by a sawmill pad
+		TouchButtonGap = 14,
+		-- How far the buttons stay from the screen's right and bottom edges, in real screen pixels,
+		-- because Roblox's jump button doesn't grow with the HUD. It's 70 pixels on small screens
+		-- (shortest side SmallScreen or less) and 120 on bigger ones.
+		SmallScreen = 500,
+		JumpClearSmall = Vector2.new(126, 16),
+		JumpClearLarge = Vector2.new(185, 88),
+		SellDim = Color3.fromRGB(150, 134, 110), -- the SELL slice when you're not by a sawmill pad
 
 		-- Keys
 		TrialKey = Enum.KeyCode.T,
@@ -1169,7 +1247,8 @@ local Config = {
 			GateOpenHint = "The gate is open!", -- the small line once a zone is cleared...
 			BossAwakeHint = "Chop its glowing roots!", -- ...while the Elder Hollow is awake...
 			BossDefeatedHint = "The Elder Hollow has fallen!", -- ...and once it has fallen
-			Camp = "Lumber Camp", -- the zone name while you're in the camp
+			Camp = "Lumber Camp", -- the sign's name while you're in the camp
+			Health = "%d", -- on the health bar
 			Trial = "TRIAL %ds", -- the trial's length, before you start it
 			Free = "FREE", -- the trial's price while it has no product id (free once per run)
 			Robux = "R$%d",
@@ -1177,18 +1256,17 @@ local Config = {
 			InfiniteBackpack = "%d/∞",
 			Shop = "SHOP",
 			Upgrades = "UPGRADES",
-			Pets = "PETS",
-			Soon = "Soon",
 			ShopKey = "R",
 			UpgradesKey = "U",
 			TrialKey = "T",
+			Fists = "Fists", -- slot 1 of the tool bar
 			Chop = "CHOP",
 			Sell = "SELL",
-			NotReady = "Coming soon!", -- a round button whose menu isn't built
+			NotReady = "Coming soon!", -- a signpost board whose menu isn't built
 		},
 	},
 
-	-- The SHOP (Robux) and UPGRADES menus that the round buttons on the right open (see
+	-- The SHOP (Robux) and UPGRADES menus that the signpost on the right opens (see
 	-- Client/Controllers/MenusController). Sizes are in pixels on a 1080p screen, like Config.Hud.
 	-- Upgrades can be bought from anywhere (Config.Shop.UpgradesAnywhere); tools only in the Tool Shed.
 	Menus = {
@@ -1196,8 +1274,7 @@ local Config = {
 		TitleText = 52,
 		TitleIcon = 64,
 		CardGap = 14,
-		ShopCardHeight = 220, -- the SHOP shows 2 x 2 cards
-		UpgradeRowHeight = 104,
+		RowHeight = 104, -- both menus show their items in rows
 		ItemIcon = 84,
 		NameText = 32,
 		InfoText = 22,
@@ -1211,8 +1288,6 @@ local Config = {
 			DoubleCoinsInfo = "Logs sell for twice the coins",
 			TrialName = "Chainsaw Trial",
 			TrialInfo = "Try the Chainsaw for %d minutes",
-			BigBeaverInfo = "A big beaver pet, just for looks",
-			BigBeaverSoon = "The Big Beaver is coming soon!",
 			ComingSoon = "Coming soon",
 			Owned = "Owned",
 			Running = "Running",
@@ -1224,7 +1299,8 @@ local Config = {
 	},
 
 	-- The day and night clock (Shared/DayClock, started by Server/Systems/DayManager) and its bar
-	-- at the top of the screen (Client/Controllers/DayController). Every player sees the same time.
+	-- on the clock plank at the top of the screen (Client/Controllers/DayController). Every player
+	-- sees the same time.
 	-- Night doesn't change the lighting or the mimics yet.
 	Day = {
 		DaySeconds = 450, -- 7.5 minutes of day...
@@ -1233,13 +1309,12 @@ local Config = {
 		-- how mimics should change at night.
 		NightMimicBoost = 1.5,
 		-- The bar (pixels on a 1080p screen, like Config.Hud)
-		BarWidth = 420,
-		BarHeight = 38,
-		Icon = 64, -- the sun or moon riding the end of the fill
-		TimeText = 28,
-		Navy = Color3.fromRGB(25, 35, 75), -- the empty part of the bar
-		DayFill = Color3.fromRGB(255, 205, 50),
-		NightFill = Color3.fromRGB(120, 130, 230),
+		BarHeight = 24,
+		Icon = 44, -- the sun or moon riding the end of the fill
+		TimeText = 26,
+		TimeWidth = 86, -- the room for the time left, next to the bar
+		DayFill = Color3.fromRGB(238, 180, 70),
+		NightFill = Color3.fromRGB(92, 112, 150),
 		Text = {
 			TimeLeft = "%dm %ds", -- minutes and seconds until night (or morning)
 			SecondsLeft = "%ds", -- under a minute
@@ -1419,12 +1494,13 @@ local Config = {
 	-- (see Client/Controllers/MouseController). A small hint shows in the bottom-left corner.
 	FreeMouse = {
 		Key = Enum.KeyCode.LeftAlt,
-		-- The key hint in the bottom-left corner, under the backpack (it shows in first person,
-		-- with a keyboard). Sizes are on a 1080p screen, like Config.Hud.
+		-- The key hint in the bottom-left corner (it shows in first person, with a keyboard).
+		-- Sizes are on a 1080p screen, like Config.Hud.
 		FreeText = "1-9 tools · click chop · Shift sprint · Left Alt free mouse", -- while the mouse is locked
 		LockText = "Left Alt: lock mouse", -- while the mouse is free
-		HintHeight = 26, -- pixels tall (the text fills it)
-		HintWidth = 560, -- pixels wide
+		HintHeight = 56, -- pixels tall
+		HintWidth = 330, -- pixels wide (it takes two lines, so it stays clear of the tool bar)
+		HintText = 24, -- the biggest its words get
 		HintMargin = 24, -- pixels from the left and bottom edges of the screen
 		HintTransparency = 0.15, -- 0 = solid, 1 = invisible
 	},
@@ -2037,8 +2113,9 @@ local Config = {
 	-- UI
 	UI = {
 		NotifyDuration = 2, -- seconds a message stays on screen
-		NotifyWidth = 600, -- the message box under the day bar (pixels on a 1080p screen)
-		NotifyHeight = 48,
+		NotifyWidth = 720, -- the message plank under the zone sign (pixels on a 1080p screen)
+		NotifyHeight = 64,
+		NotifyText = 30, -- the biggest its words get
 		QuestsDoneHideDelay = 6, -- seconds the "All quests done" box stays before hiding
 	},
 }

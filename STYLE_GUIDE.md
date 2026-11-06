@@ -23,8 +23,15 @@ Uhyggen er tegneserie-uhygge: gys og grin, ingen blod og ikke noget ubehageligt.
 | Vand | 110, 146, 160 |
 | Knogle (tænder, titel) | 240, 232, 205 |
 | Bid (ordet TEETH) | 255, 107, 92 |
-| Mørk lilla (tandkød, paneler, omrids) | 26, 20, 42 |
+| Mørk lilla (tandkød og omrids på titelskærmen) | 26, 20, 42 |
 | Cursed-træer, glød | 120, 70, 240 |
+| UI: brædder | 150, 104, 66 / 138, 94, 58 / 126, 84, 50, med mørk kant 52, 34, 22 |
+| UI: træskiver | snitflade 214, 178, 128 med årringe 186, 146, 98, bark 74, 54, 40 |
+| UI: pergament | 232, 220, 190 med blæk 60, 44, 30 og rød nål 190, 60, 50 |
+| UI: mos (fremskridt, køb-knapper) | 112, 158, 66 |
+| UI: bær (close, liv) | 190, 60, 52 |
+| UI: rav (mønter, overskrifter) | 250, 205, 90 |
+| UI: tekst | creme 245, 235, 210 med mørkebrunt omrids 34, 22, 14 |
 
 Ingen skrigende grøn og ingen varm pink.
 
@@ -53,15 +60,21 @@ og de åbner sig igen på spillet.
 - HP-bar under sigtekornet og "TIMBER!" findes, men er slået fra (se Config).
 
 ## 7. UI
-HUD'en bygger på Theos eget lilla design ("Haunted forest game design"):
-- **Øverst til venstre:** liv og mod.
-- **Øverst til højre:** logs, Embers og mønter, og quests under dem.
-- **Øverst i midten:** zone, fremskridt, tid, dag og nat, og beskeder.
-- **Til højre:** små knapper til SHOP og UPGRADES.
-- **Nederst i midten:** nummererede lilla værktøjspladser med 3D-billeder af værktøjerne.
-- **Telefoner:** CHOP og SELL nederst til højre. Intet under tommelfingerens joystick.
-- **Farver:** mørk lilla paneler 26, 20, 42 med kant 59, 47, 89. Menuer er i samme lilla.
-- **Knapper:** runde hjørner og tyk kant, og de "popper" lidt, når man trykker.
+HUD'en ligner noget fra skoven: rå brædder med søm og mos, træskiver, reb og pergament.
+Pladserne kommer fra Theos eget design ("Haunted forest game design"), men ikke farverne: ingen lilla.
+- **Øverst til venstre:** et bræt med liv og mod.
+- **Øverst til højre:** et bræt med logs, Embers og mønter. Under det hænger et lille skilt med
+  værktøjs-prøven, og under det en fastnålet pergament-seddel med questen.
+- **Øverst i midten:** to skilte, der hænger i reb: uret (løbets tid, dag og nat) og zone-skiltet
+  (navn, fremskridt, hvad du skal gøre). Beskeder står på et bræt under dem.
+- **Til højre:** en vejviser med to bræt-pile: SHOP og UPGRADES.
+- **Nederst i midten:** værktøjerne på træskiver, der står på en hylde, med 3D-billeder af
+  værktøjerne. Det, du holder, er større og har en ravgul ring, og dets navn står over hylden.
+- **Telefoner:** CHOP og SELL er træskiver ved siden af Roblox' hop-knap. Intet under tommelfingerens
+  joystick, og ingen tastatur-mærker.
+- **Menuer:** store paneler af brædder med mørke rækker indeni.
+- **Knapper:** klodser i mos, bær eller vejret træ, og de "popper" lidt, når man trykker.
+- Farver og størrelser er i `Config.TimberUi` og `Config.Hud`, og brikkerne i `Client/UiKit`.
 
 ## 8. Lejren og bygningerne
 Lejren er det første, man ser, så den skal have sine egne idéer:

@@ -9,17 +9,53 @@
   "guidelinesGlob": "docs/guides/**/*.md",
   "readmeHeader": ".design-sync/conventions.md",
   "overrides": {
-    "Block": { "cardMode": "column" },
-    "Chain": { "cardMode": "column" },
-    "Corners": { "cardMode": "column" },
-    "Ghost": { "cardMode": "column" },
-    "Gnawbert": { "cardMode": "column" },
-    "ModelPart": { "cardMode": "column" },
-    "ModelStage": { "cardMode": "column" },
-    "MovingGroup": { "cardMode": "column" },
-    "Place": { "cardMode": "column" },
-    "Prism": { "cardMode": "column" },
-    "Skin": { "cardMode": "column" },
-    "Tooth": { "cardMode": "column" }
+    "Block": {
+      "cardMode": "column"
+    },
+    "Chain": {
+      "cardMode": "column"
+    },
+    "Corners": {
+      "cardMode": "column"
+    },
+    "Ghost": {
+      "cardMode": "column"
+    },
+    "GhostKeeper": {
+      "cardMode": "column"
+    },
+    "Gnawbert": {
+      "cardMode": "column"
+    },
+    "ModelPart": {
+      "cardMode": "column"
+    },
+    "ModelStage": {
+      "cardMode": "column"
+    },
+    "MovingGroup": {
+      "cardMode": "column"
+    },
+    "PeddlerCart": {
+      "cardMode": "column"
+    },
+    "Place": {
+      "cardMode": "column"
+    },
+    "Prism": {
+      "cardMode": "column"
+    },
+    "Skin": {
+      "cardMode": "column"
+    },
+    "ToolStump": {
+      "cardMode": "column"
+    },
+    "Tooth": {
+      "cardMode": "column"
+    },
+    "WantedPoster": {
+      "cardMode": "column"
+    }
   }
 }

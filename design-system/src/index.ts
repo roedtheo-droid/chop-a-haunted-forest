@@ -24,6 +24,14 @@ export { Ghost } from "./models/Ghost";
 export type { GhostProps } from "./models/Ghost";
 export { Gnawbert } from "./models/Gnawbert";
 export type { GnawbertProps } from "./models/Gnawbert";
+export { GhostKeeper } from "./models/GhostKeeper";
+export type { GhostKeeperProps } from "./models/GhostKeeper";
+export { PeddlerCart } from "./models/PeddlerCart";
+export type { PeddlerCartProps } from "./models/PeddlerCart";
+export { ToolStump } from "./models/ToolStump";
+export type { ToolStumpProps } from "./models/ToolStump";
+export { WantedPoster } from "./models/WantedPoster";
+export type { WantedPosterProps, PosterSketch } from "./models/WantedPoster";
 
 export { collectModel } from "./core/collect";
 export { toGltf } from "./core/gltf";

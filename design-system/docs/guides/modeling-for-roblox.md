@@ -15,6 +15,7 @@ These components build 3D models for the Roblox game Trees With Teeth, and each 
 - Part names matter, because the game finds parts by name to paint them. Use clear names like `Trunk`, `Teeth` or `Eye`.
 - Anything the game moves goes in its own `MovingGroup`, with its hinge where it should turn.
 - Keep a whole model under about 8,000 triangles. Each cut edge adds triangles, so small details can use `bevel={0}`.
+- Roblox can't import text. Leave a flat spot for any words, and the game writes them on it. To show where they go on the board, use a `ModelPart` with `stage`, which is never exported.
 
 ## From here to the game
 

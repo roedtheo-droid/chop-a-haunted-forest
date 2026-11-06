@@ -7,7 +7,7 @@ import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
 
-const MODELS = ["Gnawbert", "Ghost"];
+const MODELS = ["Gnawbert", "Ghost", "PeddlerCart", "ToolStump", "WantedPoster", "GhostKeeper"];
 const wanted = process.argv.length > 2 ? process.argv.slice(2) : MODELS;
 
 // A copy of the library that runs in Node. The models only use React to describe their pieces.

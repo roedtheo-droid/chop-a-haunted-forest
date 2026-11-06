@@ -1,6 +1,6 @@
 --!strict
 -- Each zone has its own light, fog, sky and background sound (the Look in Config.Zones): a
--- clear afternoon with fluffy clouds and birds in Pale Pines, thick fog, grey clouds and drips
+-- pale, misty morning with birds in Pale Pines, thick fog, grey clouds and drips
 -- in Fog Hollow, eerie dusk with purple clouds in Graveyard Grove. When you walk into a zone,
 -- this fades YOUR lighting, clouds and sound to it.
 --
@@ -87,7 +87,7 @@ local function update()
 	local position = viewPoint or (if root then root.Position else nil)
 	local zone = if position then Zones.indexAt(position) else nil
 	if position and not zone and Zones.isInCamp(position) then
-		zone = 1 -- the camp has zone 1's sunny look
+		zone = 1 -- the camp has zone 1's look
 	end
 	if not zone or zone == currentZone then
 		return -- same zone as before (or between zones): keep the look we have

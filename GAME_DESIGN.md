@@ -1,4 +1,4 @@
-# GAME DESIGN: Chop a Haunted Forest (Roblox)
+# GAME DESIGN: Trees With Teeth (Roblox)
 
 ## Instructions for Claude Code
 - Read this whole document before writing any code.

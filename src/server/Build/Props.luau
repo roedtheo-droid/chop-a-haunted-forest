@@ -19,12 +19,12 @@ local Blocky = require(script.Parent.Blocky)
 local GROUND = 0.05 -- the top of the camp's grass and the zone floors
 
 local STONE = Color3.fromRGB(143, 150, 163)
-local MOSS = Color3.fromRGB(95, 150, 60)
+local MOSS = Color3.fromRGB(108, 134, 84)
 local FIRE_COLOR = Color3.fromRGB(255, 138, 60)
 local CREAM = Color3.fromRGB(240, 228, 205)
 local MUSHROOM_RED = Color3.fromRGB(215, 55, 45)
 local GLOW_GREEN = Color3.fromRGB(140, 255, 120)
-local LEAF = Color3.fromRGB(70, 140, 55)
+local LEAF = Color3.fromRGB(92, 122, 78)
 local BERRY = Color3.fromRGB(205, 40, 55)
 local PUMPKIN = Color3.fromRGB(240, 130, 30)
 local PUMPKIN_GLOW = Color3.fromRGB(255, 200, 80)
@@ -33,8 +33,8 @@ local DIRT = Color3.fromRGB(85, 62, 45)
 local DARK_METAL = Color3.fromRGB(45, 45, 52)
 local REED = Color3.fromRGB(120, 140, 70)
 local CATTAIL = Color3.fromRGB(110, 70, 40)
-local LILY = Color3.fromRGB(80, 160, 70)
-local LILY_FLOWER = Color3.fromRGB(240, 150, 200)
+local LILY = Color3.fromRGB(96, 130, 88)
+local LILY_FLOWER = Color3.fromRGB(206, 176, 190)
 local YELLOW = Color3.fromRGB(255, 215, 70)
 
 local Props = {}
@@ -590,7 +590,7 @@ end
 -- A flower on a stem, for meadows and flower beds.
 function Props.flower(parent: Instance, base: Vector3, color: Color3, random: Random)
 	local height = random:NextNumber(0.7, 1.2)
-	decor(parent, "Stem", Vector3.new(0.2, height, 0.2), above(base, height / 2), Color3.fromRGB(60, 140, 50), Enum.Material.SmoothPlastic)
+	decor(parent, "Stem", Vector3.new(0.2, height, 0.2), above(base, height / 2), Color3.fromRGB(92, 118, 76), Enum.Material.SmoothPlastic)
 	decor(parent, "Bloom", Vector3.new(0.6, 0.6, 0.6), above(base, height + 0.2) * CFrame.Angles(0, random:NextNumber(0, 1), 0), color, Enum.Material.SmoothPlastic)
 end
 

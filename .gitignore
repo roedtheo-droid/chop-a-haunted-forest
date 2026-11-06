@@ -15,3 +15,12 @@ Thumbs.db
 # Old Rojo download (no longer used)
 rojo.exe
 rojo.zip
+
+# The 3D modeling library: installed packages and build output
+design-system/node_modules/
+design-system/dist/
+design-system/.ds-sync/
+design-system/ds-bundle/
+design-system/.design-sync/.cache/
+design-system/.design-sync/learnings/
+design-system/.design-sync/node_modules

@@ -1,0 +1,34 @@
+/* The game's colours (STYLE_GUIDE.md), for page designs around a model. Inside a model, use the
+   same names without the prefix: <ModelPart color="bark">. */
+:root {
+  --twt-bark: rgb(104 82 66);
+  --twt-bark-light: rgb(116 92 72);
+  --twt-bark-dark: rgb(80 60 47);
+  --twt-root: rgb(94 76 62);
+  --twt-inner-wood: rgb(235 200 150);
+  --twt-rings: rgb(186 146 98);
+  --twt-bone: rgb(240 232 205);
+  --twt-bite: rgb(255 107 92);
+  --twt-tongue: rgb(200 84 72);
+  --twt-gum: rgb(58 26 44);
+  --twt-throat: rgb(26 20 42);
+  --twt-iron: rgb(70 70 78);
+  --twt-iron-dark: rgb(40 40 46);
+  --twt-brass: rgb(190 152 82);
+  --twt-amber: rgb(238 180 70);
+  --twt-moss: rgb(112 138 92);
+  --twt-moss-light: rgb(128 150 100);
+  --twt-pine: rgb(70 104 76);
+  --twt-grass: rgb(112 134 84);
+  --twt-dirt: rgb(85 62 45);
+  --twt-plank: rgb(150 104 66);
+  --twt-plank-dark: rgb(126 84 50);
+  --twt-edge: rgb(52 34 22);
+  --twt-paper: rgb(232 220 190);
+  --twt-ink: rgb(60 44 30);
+  --twt-berry: rgb(190 60 52);
+  --twt-ghost: rgb(235 242 255);
+  --twt-cursed: rgb(120 70 240);
+  --twt-water: rgb(110 146 160);
+  --twt-mist: rgb(201 208 194);
+}

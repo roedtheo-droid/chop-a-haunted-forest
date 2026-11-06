@@ -83,8 +83,10 @@ Lejren er det første, man ser, så den skal have sine egne idéer:
 - **Ved savværket:** en gammel handelsvogn åbner SHOP-menuen.
 - **Mr. Graves** står ved sin bankboks.
 
-## 9. Blender-modeller
-- Modellerne bygges af Python-scripts i `blender/` (se README, "Blender models"), i samme kantede stil:
+## 9. Modeller
+- **Nye modeller laves i Claude Design** med biblioteket i `design-system/` (se README, "Models from
+  Claude Design"), i samme kantede stil og med samme regler for dele og farver. Gnawbert og spøgelset er de første.
+- De ældre modeller bygges af Python-scripts i `blender/` (se README, "Blender models"), i samme kantede stil:
   kasser med skrå kanter (bevel), ingen kugler eller runde stammer.
 - **Én farve pr. del:** hver farve er sin egen del, og spillet farver selv delene (tilfældige bladfarver,
   Cursed-træer, mimic-tell'en "Tint"). Farverne i Blender er kun til preview-billederne.

@@ -1,0 +1,25 @@
+{
+  "projectId": "3fe88102-c49b-4f54-b131-08ee58ce261e",
+  "pkg": "trees-with-teeth-3d",
+  "globalName": "TreesWithTeeth3D",
+  "shape": "package",
+  "buildCmd": "npm run build",
+  "docsDir": "docs",
+  "cssEntry": "tokens/colors.css",
+  "guidelinesGlob": "docs/guides/**/*.md",
+  "readmeHeader": ".design-sync/conventions.md",
+  "overrides": {
+    "Block": { "cardMode": "column" },
+    "Chain": { "cardMode": "column" },
+    "Corners": { "cardMode": "column" },
+    "Ghost": { "cardMode": "column" },
+    "Gnawbert": { "cardMode": "column" },
+    "ModelPart": { "cardMode": "column" },
+    "ModelStage": { "cardMode": "column" },
+    "MovingGroup": { "cardMode": "column" },
+    "Place": { "cardMode": "column" },
+    "Prism": { "cardMode": "column" },
+    "Skin": { "cardMode": "column" },
+    "Tooth": { "cardMode": "column" }
+  }
+}

@@ -43,6 +43,20 @@ opens a pull request and merges it once you say ok. You don't need to run git yo
 `default.project.json` is kept as the map of which folder goes where. It also means you could go
 back to Rojo any day without changing anything else.
 
+## Models from Claude Design
+
+New models are made in Claude Design, in the project
+[3D Roblox tools modeling](https://claude.ai/design/p/3fe88102-c49b-4f54-b131-08ee58ce261e), with the
+React library in `design-system/` (see its README). You can look at them there and drag them around.
+The finished files are in `models/` (`.gltf`). The older models below stay as they are.
+
+Models aren't scripts, so you import each one into Studio yourself, **once**:
+
+1. In Studio, open the **File** menu and click **Import**. Pick the file from the `models/` folder.
+2. In the import window, keep the settings as they are and click **Import**. Leave **Merge Meshes** off: the game needs the parts separate.
+3. The model shows up in the Workspace. Drag it into `ServerStorage > MapAssets`.
+4. Save the place (File > Save). The models live in the place file, not in GitHub.
+
 ## Blender models
 
 The trees, rocks, ground, the forest's edges, the view outside and (later) everything else

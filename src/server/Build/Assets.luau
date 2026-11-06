@@ -34,7 +34,7 @@ local function report(name: string, found: boolean)
 	end
 	reported[name] = true
 	if found then
-		print(`[Assets] Using the Blender model "{name}"`)
+		print(`[Assets] Using the model "{name}"`)
 	else
 		print(`[Assets] No "{name}" in ServerStorage.{Config.Models.Folder} yet: using parts instead`)
 	end

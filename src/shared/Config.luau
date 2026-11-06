@@ -801,9 +801,9 @@ local Config = {
 			LogPile = "LogPile",
 		},
 		FitTolerance = 0.05, -- how far (5%) a model's size may be off before the parts are used
-		-- Models made in Claude Design are .gltf files. Degrees to turn them when they're placed, in
-		-- case Studio imports them facing the wrong way (see Assets.gltf).
-		GltfTurn = 0,
+		-- Models made in Claude Design are .gltf files, and Studio imports those turned halfway round
+		-- too. Degrees to turn them back when they're placed (see Assets.gltf).
+		GltfTurn = 180,
 	},
 
 	-- Tools made from Theo's imported models (see toolModels at the top). The models go in a
@@ -1869,8 +1869,9 @@ local Config = {
 				Trunk = { Color = Color3.fromRGB(104, 82, 66), Material = Enum.Material.Wood },
 				Ridge = { Color = Color3.fromRGB(80, 60, 47), Material = Enum.Material.Wood },
 				Root = { Color = Color3.fromRGB(94, 76, 62), Material = Enum.Material.Wood },
-				Gum = { Color = Color3.fromRGB(58, 26, 44), Material = Enum.Material.SmoothPlastic },
-				Throat = { Color = Color3.fromRGB(26, 20, 42), Material = Enum.Material.SmoothPlastic },
+				-- Plain Plastic on the dark parts: SmoothPlastic is shiny, and the low sun washes it out.
+				Gum = { Color = Color3.fromRGB(44, 18, 34), Material = Enum.Material.Plastic },
+				Throat = { Color = Color3.fromRGB(16, 12, 26), Material = Enum.Material.Plastic },
 				Tongue = { Color = Color3.fromRGB(200, 84, 72), Material = Enum.Material.SmoothPlastic },
 				Teeth = { Color = Color3.fromRGB(240, 232, 205), Material = Enum.Material.SmoothPlastic },
 				Collar = { Color = Color3.fromRGB(40, 40, 46), Material = Enum.Material.Metal },
@@ -1880,11 +1881,11 @@ local Config = {
 				LidRidge = { Color = Color3.fromRGB(80, 60, 47), Material = Enum.Material.Wood },
 				Rings = { Color = Color3.fromRGB(235, 200, 150), Material = Enum.Material.Wood },
 				RingLines = { Color = Color3.fromRGB(186, 146, 98), Material = Enum.Material.Wood },
-				LidGum = { Color = Color3.fromRGB(58, 26, 44), Material = Enum.Material.SmoothPlastic },
+				LidGum = { Color = Color3.fromRGB(44, 18, 34), Material = Enum.Material.Plastic },
 				Fangs = { Color = Color3.fromRGB(240, 232, 205), Material = Enum.Material.SmoothPlastic },
-				Eye = { Color = Color3.fromRGB(238, 180, 70), Material = Enum.Material.Neon },
-				Pupil = { Color = Color3.fromRGB(26, 20, 42), Material = Enum.Material.SmoothPlastic },
-				Glint = { Color = Color3.fromRGB(240, 232, 205), Material = Enum.Material.Neon },
+				Eye = { Color = Color3.fromRGB(245, 190, 80), Material = Enum.Material.SmoothPlastic },
+				Pupil = { Color = Color3.fromRGB(12, 10, 18), Material = Enum.Material.Plastic },
+				Glint = { Color = Color3.fromRGB(240, 232, 205), Material = Enum.Material.SmoothPlastic },
 				Moss = { Color = Color3.fromRGB(112, 138, 92), Material = Enum.Material.Grass },
 			} :: { [string]: Types.SkinLook },
 			-- The parts that get darker at the worn sawmills (Sawmill.Wear).

@@ -27,6 +27,7 @@ local LOG_COLOR = Color3.fromRGB(125, 80, 48)
 local CHUTE_FLOOR = 0.25 -- how thick its floor boards are
 local CHUTE_RAIL = Vector2.new(0.35, 0.8) -- how wide and tall its side rails are
 local CHUTE_SLATS = 7 -- boards across its floor, for the logs to hop over
+local SIGN_SHARPNESS = 70 -- pixels per stud on the small signs, so their outlined words stay readable
 
 local SellYard = {}
 
@@ -58,6 +59,15 @@ local function decor(name: string, size: Vector3, cframe: CFrame, color: Color3,
 	local part = piece(name, size, cframe, color, material)
 	part.CanCollide = false
 	return part
+end
+
+-- Draw the words on a small sign with more pixels. With few, their thick outline fills the letters in.
+local function sharpen(board: BasePart)
+	for _, child in board:GetChildren() do
+		if child:IsA("SurfaceGui") then
+			child.PixelsPerStud = SIGN_SHARPNESS
+		end
+	end
 end
 
 -- Outlined text on one face of a part. `box` is where it goes on that face (scale numbers).
@@ -176,23 +186,24 @@ local function buildSign(perLog: number)
 	for _, side in { -1, 1 } do
 		decor("SignPost", Vector3.new(0.4, signY + 0.6, 0.4), at(x + side * 2.4, (signY + 0.6) / 2, z), darkWood, Enum.Material.Wood)
 	end
-	Blocky.sign(cfg.Text.SellLogs, origin * at(x, signY, z + 0.3), 6, 2.2, nil, model)
-	Blocky.sign(string.format(cfg.Text.PerLog, tostring(perLog)), origin * at(x, signY - 1.9, z + 0.3), 5, 1.3, Config.Style.Gold, model)
+	sharpen(Blocky.sign(cfg.Text.SellLogs, origin * at(x, signY, z + 0.3), 6, 2.2, nil, model))
+	sharpen(Blocky.sign(string.format(cfg.Text.PerLog, tostring(perLog)), origin * at(x, signY - 1.9, z + 0.3), 5, 1.3, Config.Style.Gold, model))
 end
 
--- A sign on a post by the chute: Gnawbert's name, and a warning.
+-- A sign on a post beside the chute, facing the pad: Gnawbert's name, and a warning.
 local function buildWarning()
 	group("WarningSign")
 	local cfg = Config.Sawmill
 	local text = cfg.Text
-	local x = -cfg.PadSize.X / 2 - EDGE_WIDTH - cfg.ChuteLength / 2 - 1
-	local z = padZ() + cfg.PadSize.Y / 2 - 0.5
-	decor("WarningPost", Vector3.new(0.4, 4, 0.4), at(x, 2, z), darkWood, Enum.Material.Wood)
-	local board = decor("WarningBoard", Vector3.new(4.4, 2.4, 0.3), at(x, 4.2, z + 0.25) * CFrame.Angles(0, math.rad(-12), 0), wood, Enum.Material.WoodPlanks)
+	local x = -cfg.PadSize.X / 2 - EDGE_WIDTH - 2
+	local z = padZ() + cfg.ChuteWidth / 2 + 2.2
+	decor("WarningPost", Vector3.new(0.4, 3.05, 0.4), at(x, 1.525, z), darkWood, Enum.Material.Wood) -- it stops under the board
+	local board = decor("WarningBoard", Vector3.new(4.4, 2.4, 0.3), at(x, 4.2, z) * CFrame.Angles(0, math.rad(65), 0), wood, Enum.Material.WoodPlanks)
 	for _, face in { Enum.NormalId.Front, Enum.NormalId.Back } do
 		paint(board, face, text.GnawbertName, Rect.new(0.06, 0.08, 0.94, 0.54), Config.Style.Gold)
 		paint(board, face, text.DoNotPet, Rect.new(0.1, 0.56, 0.9, 0.92))
 	end
+	sharpen(board)
 end
 
 -- A chopping block with an axe stuck in it, and a small pile of firewood, at the pad's front left.

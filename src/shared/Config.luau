@@ -1533,7 +1533,7 @@ local Config = {
 		CatchDistance = 4.5, -- it catches you when your middle is this close to its trunk's middle
 		CatchHeight = 8, -- ...and you're no more than this many studs above or below its roots
 		SleepAfter = 45, -- seconds without catching anyone before it roots itself again
-		HideAfterCatch = true, -- after catching someone it roots itself again right away, so friends can revive them
+		HideAfterCatch = true, -- once someone's out of it, it roots itself again right away instead of going after them
 		RepathInterval = 0.5, -- seconds between working out a new path to its target
 		SleepSearchRadius = 20, -- it roots itself again within this many studs
 		-- Tells (each mimic gets one at random)
@@ -1657,16 +1657,65 @@ local Config = {
 		SlamInterval = 4, -- seconds between slams
 		SlamWarning = 1.5, -- seconds the red circle shows before the slam lands (time to dodge)
 		SlamRadius = 10, -- studs
-		SlamKnockdown = 8, -- seconds a slam knocks you down (mimics use Knockdown.Duration)
+		SlamKnockdown = 8, -- seconds a slam knocks you down
 		MessageCooldown = 3, -- seconds between "chop the roots" hints for one player
 	},
 
-	-- Getting caught by a mimic
+	-- Getting flattened by the Elder Hollow's slam (Boss.SlamKnockdown says for how long)
 	Knockdown = {
-		Duration = 20, -- seconds you're down if nobody revives you
 		ReviveHoldTime = 3, -- seconds a friend holds E on you to revive you
 		ReviveDistance = 8, -- how close the friend must be
-		SafeTime = 5, -- seconds after getting up when mimics can't catch you again (time to run)
+		SafeTime = 5, -- seconds after getting up or out of a mimic when mimics can't catch you again (time to run)
+	},
+
+	-- Getting swallowed by a mimic (see Server/Systems/KnockdownManager and Client/Controllers/KnockdownController)
+	Swallow = {
+		Time = 15, -- seconds until it spits you out by itself
+		MashNeeded = 25, -- key presses to get out on your own
+		MashGap = 0.05, -- seconds: presses closer together than this don't count
+		ChopOutHits = 3, -- hits to chop a friend out, with fists or any tool that chops
+		-- You're held at the front of its trunk, not in the middle, so you can see out between the teeth.
+		HoldHeight = 3, -- studs above the ground: how high your middle is
+		HoldForward = 1, -- studs in front of the trunk
+		SpitDistance = 7, -- studs in front of it where you land
+		-- Your logs are flung this far from where you were caught, so you have to go and get them.
+		-- (Further than you land and can pick logs up from: see Logs.WalkOverRadius.)
+		SpillNear = 7, -- studs
+		SpillFar = 15, -- studs
+		ChewSpeed = 9, -- how fast it rocks while it chews (radians per second)
+		ChewAngle = 3, -- degrees
+		-- The "is inside" sign friends see on it
+		MarkDistance = 200, -- studs: how far away it shows
+		MarkOffset = 3, -- studs above the middle of the trunk
+		MarkSize = Vector2.new(360, 44), -- pixels
+		-- The teeth on your screen. Their edges are this share of the screen in from the top and bottom.
+		ShutAt = 0.44, -- just swallowed: you can hardly see out
+		OpenAt = 0.15, -- when you've almost mashed your way out
+		GoneAt = -0.3, -- off the screen, teeth and all
+		BiteTime = 0.12, -- seconds they take to snap shut
+		OpenTime = 0.3, -- seconds they take to open when you get out
+		JawChew = 0.008, -- how far they move as it chews
+		JawChewSpeed = 8, -- radians per second
+		PopSize = 0.025, -- how far they jump open when you press the key
+		PopFade = 8, -- how fast that fades (bigger is faster)
+		FollowSpeed = 14, -- how fast they follow your progress (bigger is faster)
+		TintColor = Color3.fromRGB(70, 10, 30), -- the inside of its mouth, over what you see
+		TintTransparency = 0.45,
+		-- The hop as you land
+		HopDelay = 0.1, -- seconds after you're let go
+		HopForward = 28, -- studs per second
+		HopUp = 30,
+		Text = {
+			Mark = "%s is inside! Chop it!", -- above the mimic, for everyone else
+			Swallowed = "%s was swallowed by a mimic! Chop it to get them out.",
+			Mash = "MASH E TO GET OUT!",
+			MashTouch = "TAP TO GET OUT!",
+			Hint = "It spits you out in %ds. A friend can chop you out.",
+			GotOut = "You got out. Run!",
+			SpatOut = "It spat you out. Run!",
+			ChoppedOut = "%s chopped you out!",
+			YouChopped = "You chopped %s out!",
+		},
 	},
 
 	-- Rare purple Cursed trees
@@ -1817,6 +1866,7 @@ local Config = {
 		Text = {
 			Full = "Your backpack is full! Sell your logs at a sawmill.",
 			Dropped = "You dropped %d log(s) where you fell. Go and get them!",
+			Spilled = "%d log(s) spilled on the ground. Go and get them!",
 		},
 		Length = 2.4, -- short, square-ish blocks
 		Thickness = 1.3,

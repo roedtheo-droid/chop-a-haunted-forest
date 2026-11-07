@@ -76,6 +76,10 @@ local list: { [string]: Types.RemoteKind } = {
 	-- The server decides the actual speed.
 	SetSprint = "Event",
 
+	-- Client -> server: "I pressed the key to get out of the mimic I'm in". No numbers: the server
+	-- counts the presses (see Server/Systems/KnockdownManager).
+	MashEscape = "Event",
+
 	-- Server -> client: the sleeping mimics your Lantern can see right now (a list of tree
 	-- Models, empty when you put it away). Only the server knows which trees are mimics,
 	-- so it only ever tells you about the ones close to your own lantern.

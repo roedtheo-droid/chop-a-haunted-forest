@@ -8,7 +8,8 @@
 -- Each log on the ground has a Value attribute: coins it's worth (depends on its tree).
 -- You pick logs up by walking over them or with the Log Vacuum (both in LogVacuumManager, which
 -- calls tryPickUp), so the server always decides, and the client sends nothing.
--- Dying drops your logs where you fell, so dying isn't a free trip back to a sawmill.
+-- Dying drops your logs where you fell, so dying isn't a free trip back to a sawmill. Being
+-- swallowed by a mimic spills them too.
 
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
@@ -18,6 +19,7 @@ local Config = require(ReplicatedStorage.Shared.Config)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Shop = require(ReplicatedStorage.Shared.Shop)
 local Tags = require(ReplicatedStorage.Shared.Tags)
+local Zones = require(ReplicatedStorage.Shared.Zones)
 local AnalyticsManager = require(script.Parent.AnalyticsManager)
 local QuestManager = require(script.Parent.QuestManager)
 local Blocky = require(script.Parent.Parent.Build.Blocky)
@@ -144,41 +146,58 @@ function LogManager.spawnLogs(origin: Vector3, direction: Vector3, length: numbe
 	end
 end
 
--- Someone died: their logs drop around where they fell, and are worth the same as before.
-local function dropLogs(player: Player, character: Model)
-	local root = character:FindFirstChild("HumanoidRootPart")
-	if not (root and root:IsA("BasePart")) then
-		return
+-- A player's logs drop around them, and are worth the same as before. They land between `near` and
+-- `far` studs away (close by if you don't say), inside the zone. Returns how many there were.
+-- Used when they die, and when a mimic swallows them.
+function LogManager.spill(player: Player, near: number?, far: number?): number
+	local character = player.Character
+	local root = if character then character:FindFirstChild("HumanoidRootPart") else nil
+	if not (character and root and root:IsA("BasePart")) then
+		return 0
 	end
 	local count, value = LogManager.takeAll(player)
 	if count <= 0 then
-		return
+		return 0
 	end
-	droppedLogs[player] = count
 
 	local cfg = Config.Logs
 	local shown = math.min(count, cfg.MaxDropped)
 	local each = value // shown
 	local extra = value % shown -- the coins that don't share out evenly go on the first few logs
 
+	-- Look for the ground, not a tree's leaves: they can hang low, and a mimic that catches you is
+	-- right on top of you.
+	local ignore: { Instance } = { character, logsFolder }
+	for _, tag in { Tags.Tree, Tags.AwakeMimic } do
+		for _, tree in CollectionService:GetTagged(tag) do
+			table.insert(ignore, tree)
+		end
+	end
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
-	params.FilterDescendantsInstances = { character, logsFolder }
+	params.FilterDescendantsInstances = ignore
 	local ground = workspace:Raycast(root.Position + Vector3.new(0, 2, 0), Vector3.new(0, -50, 0), params)
 	local y = if ground then ground.Position.Y else root.Position.Y - 3
+	local zoneId = Zones.indexAt(root.Position)
+	local bounds = if zoneId then Zones.getBounds(zoneId) else nil
+	local margin = Config.Forest.EdgeMargin
 
 	local random = Random.new()
 	local now = workspace:GetServerTimeNow()
 	for i = 1, shown do
 		local angle = random:NextNumber(0, math.pi * 2)
-		local distance = random:NextNumber(1, cfg.DropSpread)
-		local position = Vector3.new(
-			root.Position.X + math.cos(angle) * distance,
-			y + cfg.Thickness / 2,
-			root.Position.Z + math.sin(angle) * distance
-		)
+		local distance = random:NextNumber(near or 1, far or cfg.DropSpread)
+		local x = root.Position.X + math.cos(angle) * distance
+		local z = root.Position.Z + math.sin(angle) * distance
+		if bounds then
+			-- Not over a wall, where nobody could get at it.
+			x = math.clamp(x, bounds.MinX + margin, bounds.MaxX - margin)
+			z = math.clamp(z, bounds.MinZ + margin, bounds.MaxZ - margin)
+		end
+		local position = Vector3.new(x, y + cfg.Thickness / 2, z)
 		addLog(position, random:NextNumber(0, math.pi * 2), each + (if i <= extra then 1 else 0), false, now)
 	end
+	return count
 end
 
 -- Is this log still popping out of its tree? (Server time, so it's the same on every computer.)
@@ -196,7 +215,10 @@ local function onCharacterAdded(player: Player, character: Model)
 	local humanoid = character:WaitForChild("Humanoid", 10)
 	if humanoid and humanoid:IsA("Humanoid") then
 		humanoid.Died:Once(function()
-			dropLogs(player, character)
+			local spilled = LogManager.spill(player)
+			if spilled > 0 then
+				droppedLogs[player] = spilled
+			end
 			AnalyticsManager.event(player, "Died")
 		end)
 	end

@@ -292,7 +292,7 @@ local function slam(at: Vector3)
 			and flatDistance(root.Position, center) <= cfg.SlamRadius
 			and math.abs(root.Position.Y - groundY) <= SLAM_HEIGHT
 		then
-			KnockdownManager.knockDown(player, "Slam")
+			KnockdownManager.knockDown(player)
 		end
 	end
 	EffectsManager.playSound("BossSlam", center)

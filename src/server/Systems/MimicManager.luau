@@ -14,8 +14,9 @@
 -- Hitting a sleeping mimic wakes it (TreeManager calls MimicManager.wake). It shakes loose (it
 -- can't be hurt until that's over), then chases the nearest player in its zone, using
 -- PathfindingService to walk around the other trees. It's always a bit faster than that player
--- walks, so only sprinting gets away, while their stamina lasts. If it catches someone, they're knocked down (KnockdownManager)
--- and the mimic roots itself again somewhere nearby, so friends can come and revive them
+-- walks, so only sprinting gets away, while their stamina lasts. If it catches someone, it swallows
+-- them (KnockdownManager) and their logs spill. It holds still and chews until they're out, so friends
+-- can come and chop them out. Then it roots itself again somewhere nearby
 -- (Config.Mimics.HideAfterCatch). It also roots itself again after a while without
 -- catching anyone.
 -- Chopping an awake mimic down counts toward the zone's % like any other tree.
@@ -39,6 +40,7 @@ local AnalyticsManager = require(script.Parent.AnalyticsManager)
 local EffectsManager = require(script.Parent.EffectsManager)
 local ForestSpawner = require(script.Parent.ForestSpawner)
 local KnockdownManager = require(script.Parent.KnockdownManager)
+local LogManager = require(script.Parent.LogManager)
 local MovementManager = require(script.Parent.MovementManager)
 
 local TELLS = { "Tint", "Sway", "Tilt", "Creak", "Blink" }
@@ -67,6 +69,7 @@ type Mimic = {
 	Toughened: boolean, -- has it had its HP multiplied yet?
 	LastCatch: number, -- when it woke or last caught someone (os.clock)
 	WakingUntil: number, -- when it has finished shaking loose (os.clock)
+	Holding: Player?, -- the player it has swallowed
 	NextTell: number, -- when it creaks or blinks next (os.clock)
 	Lean: CFrame?, -- a leaning "Tilt" mimic's lean, put back every time it roots itself
 	SwayTween: Tween?,
@@ -366,6 +369,13 @@ local function chaseSpeed(mimic: Mimic, player: Player): number
 	return MovementManager.walkSpeedOf(player) + Config.Mimics.ChaseEdge[mimic.ZoneId]
 end
 
+-- Can it catch this player? Not one who's riding in a truck: it can't swallow the whole truck.
+local function canCatch(player: Player): boolean
+	local character = player.Character
+	local humanoid = if character then character:FindFirstChildOfClass("Humanoid") else nil
+	return KnockdownManager.canBeCaught(player) and not (humanoid and humanoid.Sit)
+end
+
 -- The nearest player in the mimic's zone that it's allowed to catch, and that player's root part.
 local function findTarget(mimic: Mimic): (Player?, BasePart?)
 	local position = mimic.Tree:GetPivot().Position
@@ -374,7 +384,7 @@ local function findTarget(mimic: Mimic): (Player?, BasePart?)
 	local bestDistance = math.huge
 	for _, player in Players:GetPlayers() do
 		local root = getRoot(player)
-		if root and KnockdownManager.canBeCaught(player) and Zones.indexAt(root.Position) == mimic.ZoneId then
+		if root and canCatch(player) and Zones.indexAt(root.Position) == mimic.ZoneId then
 			local distance = (root.Position - position).Magnitude
 			if distance < bestDistance then
 				bestPlayer = player
@@ -386,27 +396,6 @@ local function findTarget(mimic: Mimic): (Player?, BasePart?)
 	return bestPlayer, best
 end
 
--- Knock down everyone close enough. Returns true if it caught anyone.
-local function catchPlayers(mimic: Mimic): boolean
-	local position = mimic.Tree:GetPivot().Position
-	local cfg = Config.Mimics
-	local caught = false
-	for _, player in Players:GetPlayers() do
-		local root = getRoot(player)
-		if
-			root
-			and KnockdownManager.canBeCaught(player)
-			and flatDistance(root.Position, position) <= cfg.CatchDistance
-			and math.abs(root.Position.Y - position.Y) <= cfg.CatchHeight
-		then
-			KnockdownManager.knockDown(player)
-			mimic.LastCatch = os.clock()
-			caught = true
-		end
-	end
-	return caught
-end
-
 -- Keep the mimic inside its own zone.
 local function clampToZone(position: Vector3, zoneId: number): Vector3
 	local bounds = Zones.getBounds(zoneId)
@@ -415,6 +404,48 @@ local function clampToZone(position: Vector3, zoneId: number): Vector3
 		position.Y,
 		math.clamp(position.Z, bounds.MinZ + ZONE_EDGE, bounds.MaxZ - ZONE_EDGE)
 	)
+end
+
+-- The way it's facing, along the ground.
+local function flatLook(mimic: Mimic): Vector3
+	local look = mimic.Tree:GetPivot().LookVector
+	local flat = Vector3.new(look.X, 0, look.Z)
+	return if flat.Magnitude < 0.05 then Vector3.new(0, 0, -1) else flat.Unit
+end
+
+-- Swallow the nearest player close enough. Their logs spill where they stood. Returns who it caught.
+local function catchPlayer(mimic: Mimic): Player?
+	local cfg = Config.Mimics
+	local position = mimic.Tree:GetPivot().Position
+	local caught: Player? = nil
+	local nearest = cfg.CatchDistance
+	for _, player in Players:GetPlayers() do
+		local root = getRoot(player)
+		if root and canCatch(player) and math.abs(root.Position.Y - position.Y) <= cfg.CatchHeight then
+			local distance = flatDistance(root.Position, position)
+			if distance <= nearest then
+				caught = player
+				nearest = distance
+			end
+		end
+	end
+	if not caught then
+		return nil
+	end
+
+	local swallow = Config.Swallow
+	local spilled = LogManager.spill(caught, swallow.SpillNear, swallow.SpillFar)
+	if spilled > 0 then
+		notifyRemote:FireClient(caught, string.format(Config.Logs.Text.Spilled, spilled))
+	end
+	local look = flatLook(mimic)
+	local middle = position + Vector3.yAxis * swallow.HoldHeight
+	local inside = middle + look * (mimic.Trunk.Size.X / 2 + swallow.HoldForward)
+	local outside = clampToZone(middle + look * swallow.SpitDistance, mimic.ZoneId)
+	KnockdownManager.swallow(caught, CFrame.lookAt(inside, inside + look), CFrame.lookAt(outside, outside + look))
+	EffectsManager.playSound("Chomp", position)
+	mimic.LastCatch = os.clock()
+	return caught
 end
 
 -- Move `stepLength` studs along the waypoints, from waypoints[index] on. It uses up the whole step
@@ -471,8 +502,8 @@ end
 
 -- Work out a new path to the target and keep running meanwhile. (That takes a moment, and stopping
 -- for it every time would make the mimic slower than its speed says.) `route` is the way it's going.
--- Returns true if it caught someone on the way.
-local function chaseStep(mimic: Mimic, gen: number, path: Path, target: BasePart, speed: number, route: Route, groundY: number): boolean
+-- Returns who it caught on the way, if anyone.
+local function chaseStep(mimic: Mimic, gen: number, path: Path, target: BasePart, speed: number, route: Route, groundY: number): Player?
 	local from = mimic.Tree:GetPivot().Position
 	local goal = Vector3.new(target.Position.X, groundY, target.Position.Z)
 	local computing = true
@@ -500,7 +531,7 @@ local function chaseStep(mimic: Mimic, gen: number, path: Path, target: BasePart
 	while os.clock() - started < (if computing then PATH_TIMEOUT else interval) do
 		local dt = RunService.Heartbeat:Wait()
 		if not isCurrent(mimic, gen) then
-			return false
+			return nil
 		end
 		local fresh = found
 		if fresh then
@@ -513,11 +544,61 @@ local function chaseStep(mimic: Mimic, gen: number, path: Path, target: BasePart
 		else
 			stepTowards(mimic, { target.Position }, 1, speed * dt, groundY) -- no path yet: straight at them
 		end
-		if catchPlayers(mimic) then
-			return true
+		local caught = catchPlayer(mimic)
+		if caught then
+			return caught
 		end
 	end
-	return false
+	return nil
+end
+
+-- The sign on a mimic with someone inside, so friends can find it. (Not for the one inside: they
+-- know, and it would float right in front of their eyes.)
+local function addMark(mimic: Mimic, victim: Player): BillboardGui
+	local cfg = Config.Swallow
+	local style = Config.Style
+	local mark = Instance.new("BillboardGui")
+	mark.Name = "SwallowMark"
+	mark.Size = UDim2.fromOffset(cfg.MarkSize.X, cfg.MarkSize.Y)
+	mark.StudsOffset = Vector3.yAxis * cfg.MarkOffset
+	mark.AlwaysOnTop = true
+	mark.MaxDistance = cfg.MarkDistance
+	mark.PlayerToHideFrom = victim
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Text = string.format(cfg.Text.Mark, victim.DisplayName)
+	label.TextColor3 = style.Gold
+	label.Font = style.TitleFont
+	label.TextScaled = true
+	local stroke = Instance.new("UIStroke")
+	stroke.Thickness = style.TextStroke
+	stroke.Parent = label
+	label.Parent = mark
+	mark.Parent = mimic.Trunk
+	return mark
+end
+
+-- It holds still and chews until the player it swallowed is out. Friends can chop it meanwhile.
+local function holdVictim(mimic: Mimic, gen: number, victim: Player)
+	local cfg = Config.Swallow
+	local tree = mimic.Tree
+	local position = tree:GetPivot().Position
+	local start = CFrame.lookAt(position, position + flatLook(mimic)) -- it stops leaning into the chase
+	mimic.Holding = victim
+	local mark = addMark(mimic, victim)
+	local elapsed = 0
+	while isCurrent(mimic, gen) and KnockdownManager.isSwallowed(victim) do
+		elapsed += RunService.Heartbeat:Wait()
+		tree:PivotTo(start * CFrame.Angles(math.sin(elapsed * cfg.ChewSpeed) * math.rad(cfg.ChewAngle), 0, 0))
+	end
+	mark:Destroy()
+	mimic.Holding = nil
+	if isCurrent(mimic, gen) then
+		tree:PivotTo(start)
+		mimic.LastCatch = os.clock()
+		EffectsManager.playSound("Burp", start.Position)
+	end
 end
 
 ---------------------------------------------------------------------------
@@ -640,10 +721,15 @@ local function runAwake(mimic: Mimic, gen: number)
 		local player, target = findTarget(mimic)
 		if player and target then
 			local caught = chaseStep(mimic, gen, path, target, chaseSpeed(mimic, player), route, groundY)
-			if caught and Config.Mimics.HideAfterCatch then
-				-- Otherwise it would go straight for whoever comes to revive them.
-				rootAgain(mimic, gen)
-				return
+			if caught then
+				holdVictim(mimic, gen, caught)
+				if not isCurrent(mimic, gen) then
+					return -- chopped down
+				end
+				if Config.Mimics.HideAfterCatch then
+					rootAgain(mimic, gen)
+					return
+				end
 			end
 		else
 			task.wait(0.5) -- nobody to chase in its zone right now
@@ -722,15 +808,28 @@ function MimicManager.wake(tree: Model, hitBy: Player)
 	task.spawn(runAwake, mimic, mimic.Gen)
 end
 
--- A mimic was chopped down or burned: stop everything it was doing.
--- TreeManager makes it fall (or burn).
-function MimicManager.forget(tree: Model)
+-- A player hit this mimic: if it has someone inside, that helps to chop them out.
+function MimicManager.helpOut(tree: Model, helper: Player)
+	local mimic = mimics[tree]
+	local victim = if mimic then mimic.Holding else nil
+	if victim then
+		KnockdownManager.chopOut(victim, helper)
+	end
+end
+
+-- A mimic was chopped down (by `choppedBy`) or burned: stop everything it was doing, and let go of
+-- anyone inside. TreeManager makes it fall (or burn).
+function MimicManager.forget(tree: Model, choppedBy: Player?)
 	local mimic = mimics[tree]
 	if not mimic then
 		return
 	end
 	mimics[tree] = nil
 	mimic.Gen += 1
+	local victim = mimic.Holding
+	if victim then
+		KnockdownManager.free(victim, choppedBy)
+	end
 	stopSway(mimic)
 	CollectionService:RemoveTag(tree, Tags.AwakeMimic)
 	removeDebugEntry(tree)

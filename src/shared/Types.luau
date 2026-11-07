@@ -269,7 +269,7 @@ export type IntroShot = {
 
 -- What knocked a player down (see Server/Systems/KnockdownManager).
 -- It decides how long they're down and what their screen says.
-export type KnockdownCause = "Mimic" | "Slam"
+export type KnockdownCause = "Swallowed" | "Slam"
 
 -- The party's totals for one run, shown on the FOREST CLEARED! screen
 -- (sent by Server/Systems/RunManager).

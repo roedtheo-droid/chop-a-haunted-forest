@@ -1,7 +1,7 @@
 --!strict
 -- Decides every player's walk speed and jump, all in one place:
 --   walk speed = base speed + WalkSpeed upgrade + sprint bonus (while sprinting)
---   knocked down by a mimic = can't walk or jump at all
+--   knocked down, or inside a mimic = can't walk or jump at all
 -- Sprinting uses up stamina, and when it's gone you walk until it has filled up a bit. In the camp
 -- it doesn't run out, because nothing chases you there.
 -- The client only says "I'm sprinting" or "I stopped"; the server picks the numbers and keeps the

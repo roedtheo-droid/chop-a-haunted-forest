@@ -336,7 +336,7 @@ local function onSwing(player: Player, target: unknown, aimed: unknown)
 
 	if falling then
 		local wasMimic = MimicManager.isMimic(tree)
-		MimicManager.forget(tree)
+		MimicManager.forget(tree, player)
 		fellTree(tree, trunk, falling, not wasMimic)
 		QuestManager.report(player, "FellTree")
 		RunManager.record(player, "TreesFelled", 1) -- counts for whoever landed the last hit
@@ -354,6 +354,7 @@ local function onSwing(player: Player, target: unknown, aimed: unknown)
 
 	if not falling and MimicManager.isMimic(tree) then
 		MimicManager.wake(tree, player) -- does nothing if it's already awake
+		MimicManager.helpOut(tree, player) -- does nothing if it has nobody inside
 	end
 end
 

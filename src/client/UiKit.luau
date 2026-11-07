@@ -9,6 +9,7 @@
 --   * logSlice: a round slice of a log (the tool slots, the phone buttons)
 --   * paper: a parchment note with a pin; rope: a piece of rope for hanging signs
 --   * coin / ember: small round icons made from frames (no images needed)
+--   * jaw: a row of teeth along the top or bottom of the screen
 --   * screen / hudScale / keyBadge: the HUD (Config.Hud); its icons are drawn in Client/Icons
 -- Colours and sizes are in Config.Style and Config.TimberUi. It's not a controller, so it has no
 -- init()/start().
@@ -641,6 +642,62 @@ function UiKit.freeMouse(gui: ScreenGui)
 	button.Size = UDim2.fromOffset(1, 1)
 	button.Selectable = false
 	button.Parent = gui
+end
+
+-- One jaw along the top or bottom of the screen: a row of teeth pointing at the middle, with the
+-- dark gum over their roots. Half the screen tall, so two shut jaws cover all of it. Its edge is
+-- `reach` of the screen in from the top or bottom: 0.5 is shut.
+function UiKit.jaw(parent: Instance, name: string, isTop: boolean, reach: number): Frame
+	local jaws = Config.Intro.Jaws
+	local edge = if isTop then 1 else 0 -- the side of the jaw that faces the middle of the screen
+
+	local jaw = Instance.new("Frame")
+	jaw.Name = name
+	jaw.BackgroundTransparency = 1
+	jaw.AnchorPoint = Vector2.new(0, edge)
+	jaw.Position = UDim2.fromScale(0, if isTop then reach else 1 - reach)
+	jaw.Size = UDim2.fromScale(1, 0.5)
+	jaw.ZIndex = 5
+
+	local random = Random.new()
+	local spacing = 1 / jaws.Teeth
+	for index = 0, jaws.Teeth do
+		-- A square standing on its corner, half hidden behind the gum, looks like a pointed tooth.
+		-- The bottom jaw's teeth sit half a tooth along, so they fit between the top jaw's.
+		local side = spacing / math.sqrt(2) * random:NextNumber(jaws.ToothSizes[1], jaws.ToothSizes[2])
+		local tooth = Instance.new("Frame")
+		tooth.Name = "Tooth"
+		tooth.AnchorPoint = Vector2.new(0.5, 0.5)
+		tooth.Position = UDim2.fromScale((index + (if isTop then 0 else 0.5)) * spacing, edge)
+		tooth.Size = UDim2.fromScale(side, side)
+		tooth.SizeConstraint = Enum.SizeConstraint.RelativeXX -- both sizes follow the width, so it stays square
+		tooth.Rotation = 45 + random:NextNumber(-jaws.ToothTilt, jaws.ToothTilt)
+		tooth.BackgroundColor3 = jaws.ToothColor
+		tooth.BorderSizePixel = 0
+		tooth.ZIndex = 1
+		UiKit.border(tooth, jaws.GumColor, jaws.ToothEdge)
+		tooth.Parent = jaw
+	end
+
+	local gum = Instance.new("Frame")
+	gum.Name = "Gum"
+	gum.Size = UDim2.fromScale(1, 1)
+	gum.BackgroundColor3 = jaws.GumColor
+	gum.BorderSizePixel = 0
+	gum.ZIndex = 2
+	gum.Parent = jaw
+
+	local lip = Instance.new("Frame")
+	lip.Name = "Lip"
+	lip.AnchorPoint = Vector2.new(0, edge)
+	lip.Position = UDim2.fromScale(0, edge)
+	lip.Size = UDim2.new(1, 0, 0, jaws.LipSize)
+	lip.BackgroundColor3 = jaws.LipColor
+	lip.BorderSizePixel = 0
+	lip.Parent = gum
+
+	jaw.Parent = parent
+	return jaw
 end
 
 -- A screen with this attribute takes over the camera (like the Garage's showroom), so

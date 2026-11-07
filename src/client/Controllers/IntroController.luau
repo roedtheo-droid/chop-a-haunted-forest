@@ -152,61 +152,6 @@ local function updateCamera()
 	end
 end
 
--- One jaw along the top or bottom of the screen: a row of teeth pointing at the middle, with
--- the dark gum over their roots. Half the screen tall, so two shut jaws cover all of it.
-local function makeJaw(name: string, isTop: boolean): Frame
-	local jaws = cfg.Jaws
-	local edge = if isTop then 1 else 0 -- the side of the jaw that faces the middle of the screen
-
-	local jaw = Instance.new("Frame")
-	jaw.Name = name
-	jaw.BackgroundTransparency = 1
-	jaw.AnchorPoint = Vector2.new(0, edge)
-	jaw.Position = UDim2.fromScale(0, if isTop then jaws.Size else 1 - jaws.Size)
-	jaw.Size = UDim2.fromScale(1, 0.5)
-	jaw.ZIndex = 5
-
-	local random = Random.new()
-	local spacing = 1 / jaws.Teeth
-	for index = 0, jaws.Teeth do
-		-- A square standing on its corner, half hidden behind the gum, looks like a pointed tooth.
-		-- The bottom jaw's teeth sit half a tooth along, so they fit between the top jaw's.
-		local side = spacing / math.sqrt(2) * random:NextNumber(jaws.ToothSizes[1], jaws.ToothSizes[2])
-		local tooth = Instance.new("Frame")
-		tooth.Name = "Tooth"
-		tooth.AnchorPoint = Vector2.new(0.5, 0.5)
-		tooth.Position = UDim2.fromScale((index + (if isTop then 0 else 0.5)) * spacing, edge)
-		tooth.Size = UDim2.fromScale(side, side)
-		tooth.SizeConstraint = Enum.SizeConstraint.RelativeXX -- both sizes follow the width, so it stays square
-		tooth.Rotation = 45 + random:NextNumber(-jaws.ToothTilt, jaws.ToothTilt)
-		tooth.BackgroundColor3 = jaws.ToothColor
-		tooth.BorderSizePixel = 0
-		tooth.ZIndex = 1
-		UiKit.border(tooth, jaws.GumColor, jaws.ToothEdge)
-		tooth.Parent = jaw
-	end
-
-	local gum = Instance.new("Frame")
-	gum.Name = "Gum"
-	gum.Size = UDim2.fromScale(1, 1)
-	gum.BackgroundColor3 = jaws.GumColor
-	gum.BorderSizePixel = 0
-	gum.ZIndex = 2
-	gum.Parent = jaw
-
-	local lip = Instance.new("Frame")
-	lip.Name = "Lip"
-	lip.AnchorPoint = Vector2.new(0, edge)
-	lip.Position = UDim2.fromScale(0, edge)
-	lip.Size = UDim2.new(1, 0, 0, jaws.LipSize)
-	lip.BackgroundColor3 = jaws.LipColor
-	lip.BorderSizePixel = 0
-	lip.Parent = gum
-
-	jaw.Parent = introGui
-	return jaw
-end
-
 -- Move the jaws so their edges are `reach` of the screen in from the top and bottom (0.5 is shut).
 local function moveJaws(reach: number, seconds: number, direction: Enum.EasingDirection)
 	local info = TweenInfo.new(seconds, Enum.EasingStyle.Quad, direction)
@@ -222,8 +167,8 @@ local function buildGui()
 	introGui.DisplayOrder = 20 -- on top of every other screen
 	introGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-	topJaw = makeJaw("TopJaw", true)
-	bottomJaw = makeJaw("BottomJaw", false)
+	topJaw = UiKit.jaw(introGui, "TopJaw", true, cfg.Jaws.Size)
+	bottomJaw = UiKit.jaw(introGui, "BottomJaw", false, cfg.Jaws.Size)
 
 	-- The title block uses a share of the screen, but never gets too big on a PC.
 	titleGroup = Instance.new("Frame")

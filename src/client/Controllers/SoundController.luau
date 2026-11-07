@@ -81,7 +81,8 @@ function SoundController.start()
 		end
 	end)
 	player:GetAttributeChangedSignal("KnockedDown"):Connect(function()
-		if player:GetAttribute("KnockedDown") == true then
+		-- (Being swallowed has a chomp everyone hears, from Server/Systems/MimicManager.)
+		if player:GetAttribute("KnockedDown") == true and player:GetAttribute("DownCause") ~= "Swallowed" then
 			play("KnockedDown")
 		end
 	end)

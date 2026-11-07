@@ -89,11 +89,12 @@ mimics first and burn them safely with a torch.
   - Speed slightly slower than a player sprinting, faster than walking.
     (Players sprint by holding Shift; phones get a Sprint button. Sprinting uses up stamina,
     except in the camp.)
-  - If it touches a player, that player is "knocked down" (cannot move) for
-    20 seconds or until a teammate holds E on them for 3 seconds (revive).
+  - If it touches a player, it swallows them: teeth snap shut over their screen and
+    the logs they carry spill on the ground. They get out by mashing E or tapping,
+    or a teammate chops them out (3 hits). If nobody helps, it spits them out after
+    15 seconds. It can't catch a player who is sitting in a truck.
   - Awake mimics return to sleep (become a tree again somewhere nearby)
-    right after catching someone, so teammates can revive them, or after
-    45 seconds of not catching anyone.
+    once that player is out, or after 45 seconds of not catching anyone.
 - Torch tool: hitting a SLEEPING mimic burns it safely (counts as cleared,
   drops Embers). Hitting a normal tree with the torch does nothing.
 - Burning or chopping a mimic both count toward zone %.

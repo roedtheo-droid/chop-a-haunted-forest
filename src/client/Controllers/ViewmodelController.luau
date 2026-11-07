@@ -116,6 +116,11 @@ local function cameraTaken(): boolean
 	return false
 end
 
+-- Are you inside a mimic (see KnockdownController)?
+local function isSwallowed(): boolean
+	return player:GetAttribute("KnockedDown") == true and player:GetAttribute("DownCause") == "Swallowed"
+end
+
 local function plainPart(name: string, size: Vector3, shape: Enum.PartType): Part
 	local part = Instance.new("Part")
 	part.Name = name
@@ -518,6 +523,13 @@ local function update(dt: number)
 		viewmodel.Parent = nil
 		crosshair.Visible = false
 		UserInputService.MouseIconEnabled = not isTouch()
+		return
+	end
+	if isSwallowed() then
+		-- Nothing but the teeth: no arms and no crosshair. (A menu can still be open, with its mouse.)
+		viewmodel.Parent = nil
+		crosshair.Visible = false
+		UserInputService.MouseIconEnabled = menuOpen() and not isTouch()
 		return
 	end
 	viewmodel.Parent = camera

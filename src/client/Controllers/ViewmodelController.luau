@@ -1,5 +1,5 @@
 --!strict
--- First person, like in Chop a Forest (see STYLE_GUIDE.md and Config.FirstPerson):
+-- First person (see STYLE_GUIDE.md and Config.FirstPerson):
 --   * the camera is locked in your head, and Roblox hides your own body
 --   * two big blocky forearms and fists with rounded corners sit at the bottom of the screen.
 --     Each swing punches with one fist, taking turns: left, right, left...

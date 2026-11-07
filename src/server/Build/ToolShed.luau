@@ -3,11 +3,11 @@
 -- the map design). Below, +Z is the side with the door; Config.Shop.Turn turns the whole shed
 -- (90: the door faces +X, the middle of the camp). Its size comes from Config.Shop and
 -- everything is placed relative to its walls, so it can be made bigger or smaller; the
--- furniture stays player-sized. Inside, laid out like the shop in Chop a Forest:
---   * every tool on its own framed board on the walls (Build/ShedDisplays)
---   * the "???" shelf, the trial table, a fireplace, the counter with the shopkeeper and
---     the rest of the room (Build/ShedDecor)
--- ShopManager calls ToolShed.build and puts the prompts on the counter and the boards.
+-- furniture stays player-sized. Inside:
+--   * every tool floating over its own stump along the walls (Build/ShedDisplays)
+--   * the "???" shelf, the trial table, a fireplace, the counter with the ghost shopkeeper, wanted
+--     posters and the rest of the room (Build/ShedDecor)
+-- ShopManager calls ToolShed.build and puts the prompts on the counter and the tools' plates.
 -- When the Blender models are imported (Config.Models.Buildings), the shell, the lanterns and
 -- the barrel and crate outside are those models, each over its parts version: the parts turn
 -- invisible but still do the bumping, the lights and the smoke (see Blocky.dress).
@@ -371,12 +371,12 @@ end
 export type Built = {
 	Origin: CFrame, -- the middle of the floor plan at ground level, turned like the shed
 	Counter: BasePart, -- the "Open shop" prompt goes on it
-	Plates: { [string]: BasePart }, -- the price plate on each tool's board, by item Id ("Buy" prompts)
+	Plates: { [string]: BasePart }, -- the plate on each tool's stump, by item Id ("Buy" prompts)
 	TrialTable: BasePart, -- the trial table's top
 }
 
 -- Builds the shed with the middle of its floor plan at `ground`. `makeDisplay` makes the
--- look of a tool for its board on the wall.
+-- look of a tool, to float over its stump.
 function ToolShed.build(ground: Vector3, makeDisplay: (toolId: string) -> Model): Built
 	origin = CFrame.new(ground) * CFrame.Angles(0, math.rad(Config.Shop.Turn), 0)
 	dressed = false

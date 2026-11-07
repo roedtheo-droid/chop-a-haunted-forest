@@ -132,7 +132,7 @@ function LogManager.spawnLogs(origin: Vector3, direction: Vector3, length: numbe
 	local cfg = Config.Logs
 	local random = Random.new()
 	-- The fallen trunk lies from `origin` along `direction`, `length` long. It breaks into
-	-- `count` logs lying end to end along it, like in Chop a Forest.
+	-- `count` logs lying end to end along it.
 	local spacing = math.max(length / count, cfg.Length + cfg.Gap)
 	local yaw = math.atan2(-direction.Z, direction.X) -- a log lies along its X axis
 	local now = workspace:GetServerTimeNow()

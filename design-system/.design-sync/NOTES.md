@@ -15,13 +15,15 @@
 - `Corners` doesn't trip that warn, only because its previews happen to have different heights.
 
 ## Re-sync risks
+- Any change to the library rebuilds the shared bundle, so the driver marks every component as changed, not
+  only the new one (seen 2026-11-06, adding four models). Expect to read and grade all the sheets.
 - Standalone Claude Design closes by December 14, 2026. Before a re-sync, `get_project` may return a
   `moveState`; then give its notice to Theo and stop, as the skill says.
 - `.design-sync/conventions.md` names components and palette colours by hand. Re-check them against the
   build whenever `src/core/palette.ts` or the exports in `src/index.ts` change.
-- The Gnawbert and Ghost previews animate (`chomping`, `floating`), so a screenshot can differ a little
-  from run to run. Grades are kept by source, so this doesn't clear them.
+- The Gnawbert, Ghost and GhostKeeper previews animate (`chomping`, `floating`), so a screenshot can differ a
+  little from run to run. Grades are kept by source, so this doesn't clear them.
 - Verified in headless Chromium and by Theo opening the project on 2026-11-06, when only the first three
   components were there. The full set has only been seen in headless Chromium.
-- Not verified: importing `models/*.gltf` into Roblox Studio, and asking Claude Design's agent to build a
-  new model with the kit.
+- `models/*.gltf` import into Roblox Studio works (Gnawbert and Ghost, 2026-11-06).
+- Not verified: asking Claude Design's agent to build a new model with the kit.

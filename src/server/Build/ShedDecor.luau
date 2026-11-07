@@ -1,22 +1,26 @@
 --!strict
--- Everything inside the Tool Shed apart from the tool boards (Build/ShedDisplays), laid out
--- like the shop in Chop a Forest. Below, +Z is the side with the door and the back wall is at
--- -Z (Build/ToolShed turns the whole shed). The middle of the floor plan is (0, 0, 0) at
--- ground level, and the floor is FLOOR_TOP above that.
+-- Everything inside the Tool Shed apart from the tool stumps (Build/ShedDisplays). Below, +Z is
+-- the side with the door and the back wall is at -Z (Build/ToolShed turns the whole shed). The
+-- middle of the floor plan is (0, 0, 0) at ground level, and the floor is FLOOR_TOP above that.
 --   * back-left corner: the "???" shelf (tools still to come) and the trial table under it
 --   * right wall: a stone fireplace under the chimney with antlers above it, a nook full of
 --     log ends, a two-man saw, coat hooks with two plaid jackets and a notice board
 --   * the middle: a round rug with a checkers table and two stools, two lanterns above
---   * by the door: the counter with the shopkeeper (the old shop menu)
--- All for looks, apart from the counter and the trial table (ShopManager and the trial put
+--   * by the door: the counter (the old shop menu) with a friendly ghost behind it
+--   * on the walls: wanted posters of mimics
+-- The ghost and the posters come from Claude Design (design-system/src/models/); until they're
+-- imported into Studio, plain parts stand in. All for looks, apart from the counter and the trial table (ShopManager and the trial put
 -- prompts on them). It's not a system, so it has no init()/start().
 
+local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
+local Tags = require(ReplicatedStorage.Shared.Tags)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Assets = require(script.Parent.Assets)
 local Blocky = require(script.Parent.Blocky)
+local ShedDisplays = require(script.Parent.ShedDisplays)
 
 local WALL = 1
 local FLOOR_TOP = 0.7
@@ -37,9 +41,6 @@ local CHECKER_BLACK = Color3.fromRGB(35, 32, 30)
 local TAG_RED = Color3.fromRGB(215, 45, 40)
 local ROBUX_GREEN = Color3.fromRGB(80, 210, 90)
 local SAND = Color3.fromRGB(235, 200, 120)
-local SKIN = Color3.fromRGB(255, 210, 90)
-local SHIRT = Color3.fromRGB(75, 150, 70)
-local TROUSERS = Color3.fromRGB(50, 70, 120)
 -- The two plaid jackets on the coat hooks: their colour and the darker lines across it.
 local JACKETS = {
 	{ Color = Color3.fromRGB(70, 140, 70), Lines = Color3.fromRGB(35, 75, 40) },
@@ -81,6 +82,13 @@ end
 -- In it, +Z points out of the wall into the room and +X points towards the door.
 local function rightWall(along: number): CFrame
 	return CFrame.new(Config.Shop.BuildingSize.X / 2 - WALL, 0, along) * CFrame.Angles(0, -math.pi / 2, 0)
+end
+
+-- Only for looks: nothing bumps into these parts, and clicks and raycasts go through them.
+local function settle(part: BasePart)
+	part.CanCollide = false
+	part.CanQuery = false
+	part.CanTouch = false
 end
 
 local function addLight(part: BasePart, color: Color3, range: number, brightness: number)
@@ -368,8 +376,66 @@ local function buildLanterns()
 	end
 end
 
+-- The plain parts that stand in for the shopkeeper until its model is imported. `frame` is the spot
+-- under it, with its front along +Z.
+local function addKeeperParts(frame: CFrame)
+	local cfg = Config.Shop.Keeper
+	local function add(name: string, size: Vector3, offset: Vector3): Part
+		local look = cfg.Looks[name]
+		local part = Blocky.part(name, size, frame * CFrame.new(offset), look.Color, look.Material, model)
+		settle(part)
+		return part
+	end
+	add("Body", Vector3.new(3.3, 4.4, 3), Vector3.new(0, 5.4, 0)).Transparency = cfg.Transparency
+	for _, side in { -1, 1 } do
+		add("Arm", Vector3.new(0.9, 0.9, 2.2), Vector3.new(side * 1.5, 4.9, 1.9)).Transparency = cfg.Transparency
+		add("Eye", Vector3.new(0.55, 0.75, 0.12), Vector3.new(side * 0.58, 6.35, 1.52))
+		add("Mustache", Vector3.new(0.85, 0.28, 0.12), Vector3.new(side * 0.45, 5.65, 1.52))
+	end
+	add("Mouth", Vector3.new(0.6, 0.12, 0.1), Vector3.new(0, 5.3, 1.52))
+	add("Hat", Vector3.new(3.4, 0.18, 3.4), Vector3.new(0, 7.3, 0))
+	add("Hat", Vector3.new(2.2, 0.85, 2.2), Vector3.new(0, 7.8, 0))
+	add("Apron", Vector3.new(2.5, 1.6, 0.2), Vector3.new(0, 4.2, 1.55))
+end
+
+-- The shopkeeper: a friendly ghost floating between the counter and the front wall, facing into
+-- the room (-Z), bobbing up and down on every player's computer (see Client/SpinnerController).
+local function buildKeeper(counterX: number, counterZ: number)
+	group("Shopkeeper")
+	local cfg = Config.Shop.Keeper
+	local frame = origin * at(counterX, FLOOR_TOP + cfg.Height, counterZ + cfg.Behind) * CFrame.Angles(0, math.pi, 0)
+	local skin = Assets.gltf(model, cfg.Model, frame)
+	if skin then
+		for _, part in skin:GetChildren() do
+			if part:IsA("BasePart") then
+				local look = cfg.Looks[part.Name]
+				if look then
+					part.Color = look.Color
+					part.Material = look.Material
+				end
+				if cfg.SeeThrough[part.Name] then
+					part.Transparency = cfg.Transparency
+				end
+				settle(part)
+			end
+		end
+	else
+		addKeeperParts(frame)
+	end
+	-- It moves along the hub's X axis, which points up.
+	local head = (frame * CFrame.new(0, cfg.HeadHeight, 0)).Position
+	local hub = Blocky.part("Hub", Vector3.new(0.2, 0.2, 0.2), CFrame.new(head) * CFrame.Angles(0, 0, math.pi / 2), Color3.new(), Enum.Material.SmoothPlastic, model)
+	hub.Transparency = 1
+	settle(hub)
+	model.PrimaryPart = hub
+	model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic -- see Client/SpinnerController
+	model:SetAttribute("SpinSpeed", 0)
+	model:SetAttribute("Bob", cfg.Bob)
+	CollectionService:AddTag(model, Tags.Spinner)
+end
+
 -- The counter by the door (the old shop menu's "Open shop" prompt goes on it), with the
--- shopkeeper standing between it and the front wall. Returns the counter.
+-- shopkeeper between it and the front wall. Returns the counter.
 local function buildCounter(): Part
 	group("Counter")
 	local style = Config.Style
@@ -381,23 +447,73 @@ local function buildCounter(): Part
 	piece("CounterTop", Vector3.new(10.6, 0.4, 2.8), at(x, FLOOR_TOP + 3.6, z), Blocky.shade(style.Wood, 0.2), Enum.Material.Wood)
 	decor("Register", Vector3.new(1.8, 1.2, 1.4), at(x + 3, FLOOR_TOP + 4.4, z + 0.2), style.Metal, Enum.Material.Metal)
 	decor("Papers", Vector3.new(1.4, 0.3, 1), at(x - 3, FLOOR_TOP + 3.95, z), PAPER, Enum.Material.SmoothPlastic)
-
-	-- The shopkeeper: a blocky figure in an apron and a hat, facing into the room (-Z).
-	local keeper = CFrame.new(x, 0, z + 2.6) * CFrame.Angles(0, math.pi, 0)
-	local function part(size: Vector3, offset: Vector3, color: Color3, material: Enum.Material)
-		decor("Shopkeeper", size, keeper * CFrame.new(offset), color, material)
-	end
-	part(Vector3.new(1.6, 2, 1), Vector3.new(0, FLOOR_TOP + 1, 0), TROUSERS, Enum.Material.SmoothPlastic)
-	part(Vector3.new(2.4, 2.2, 1.2), Vector3.new(0, FLOOR_TOP + 3.1, 0), SHIRT, Enum.Material.SmoothPlastic)
-	part(Vector3.new(2, 2, 0.15), Vector3.new(0, FLOOR_TOP + 2.8, 0.65), style.DarkWood, Enum.Material.Fabric)
-	for _, side in { -1, 1 } do
-		part(Vector3.new(0.8, 2, 1), Vector3.new(side * 1.6, FLOOR_TOP + 3.1, 0), SHIRT, Enum.Material.SmoothPlastic)
-		part(Vector3.new(0.25, 0.25, 0.05), Vector3.new(side * 0.35, FLOOR_TOP + 5.1, 0.73), Color3.new(0, 0, 0), Enum.Material.SmoothPlastic)
-	end
-	part(Vector3.new(1.4, 1.4, 1.4), Vector3.new(0, FLOOR_TOP + 4.9, 0), SKIN, Enum.Material.SmoothPlastic)
-	part(Vector3.new(2.2, 0.2, 2.2), Vector3.new(0, FLOOR_TOP + 5.7, 0), Blocky.shade(style.DarkWood, -0.2), Enum.Material.Fabric)
-	part(Vector3.new(1.4, 0.8, 1.4), Vector3.new(0, FLOOR_TOP + 6.2, 0), Blocky.shade(style.DarkWood, -0.2), Enum.Material.Fabric)
+	buildKeeper(x, z)
 	return counter
+end
+
+-- Words on a poster: plain ink, with no outline. `box` is where they go on the paper (scale numbers).
+local function inkWords(gui: SurfaceGui, text: string, box: Rect, font: Enum.Font)
+	local label = Instance.new("TextLabel")
+	label.Name = "Words"
+	label.Position = UDim2.fromScale(box.Min.X, box.Min.Y)
+	label.Size = UDim2.fromScale(box.Width, box.Height)
+	label.BackgroundTransparency = 1
+	label.Text = text
+	label.TextColor3 = Config.Shop.Posters.Looks.Ink.Color
+	label.Font = font
+	label.TextScaled = true
+	label.TextWrapped = true
+	label.Parent = gui
+end
+
+-- The wanted posters of mimics on the walls, in the gaps between the tool stumps.
+local function buildPosters()
+	local cfg = Config.Shop.Posters
+	local style = Config.Style
+	for index, poster in cfg.List do
+		group(`WantedPoster{index}`)
+		local frame = ShedDisplays.wallFrame(origin, poster.Wall, poster.Along)
+			* at(0, FLOOR_TOP + poster.Height, cfg.WallGap)
+			* CFrame.Angles(0, 0, math.rad(poster.Tilt))
+		local function add(name: string, size: Vector3, offset: Vector3)
+			local look = cfg.Looks[name]
+			settle(Blocky.part(name, size, frame * CFrame.new(offset), look.Color, look.Material, model))
+		end
+		local skin = Assets.gltf(model, cfg.Model, frame)
+		if skin then
+			for _, part in skin:GetChildren() do
+				if part:IsA("BasePart") then
+					-- The model holds three drawings: keep this poster's.
+					local sketch = string.match(part.Name, "^Sketch(%u)")
+					if sketch and sketch ~= poster.Sketch then
+						part:Destroy()
+						continue
+					end
+					local look = if string.sub(part.Name, -4) == "Face" then cfg.Looks.Paper elseif sketch then cfg.Looks.Ink else cfg.Looks[part.Name]
+					if look then
+						part.Color = look.Color
+						part.Material = look.Material
+					end
+					settle(part)
+				end
+			end
+		else
+			add("Paper", Vector3.new(cfg.Size.X, cfg.Size.Y, 0.08), Vector3.new(0, cfg.Size.Y / 2, 0.04))
+			add("Ink", Vector3.new(2.6, 2.8, 0.04), Vector3.new(0, 4.2, 0.11))
+			for _, side in { -1, 1 } do
+				add("Paper", Vector3.new(0.5, 0.5, 0.04), Vector3.new(side * 0.6, 4.7, 0.16))
+			end
+		end
+		-- The words go on a see-through board just in front of the paper.
+		local board = Blocky.part("Words", Vector3.new(cfg.Size.X, cfg.Size.Y, 0.02), frame * CFrame.new(0, cfg.Size.Y / 2, 0.1), Color3.new(), Enum.Material.SmoothPlastic, model)
+		board.Transparency = 1
+		settle(board)
+		local gui = Blocky.face(board, Enum.NormalId.Back) -- the face pointing into the room
+		gui.PixelsPerStud = cfg.Sharpness
+		inkWords(gui, cfg.Title, Rect.new(0.12, 0.065, 0.88, 0.17), style.TitleFont)
+		inkWords(gui, poster.Line, Rect.new(0.1, 0.7, 0.9, 0.83), style.BodyFont)
+		inkWords(gui, string.format(cfg.Reward, Config.Embers.PerMimic), Rect.new(0.08, 0.845, 0.71, 0.93), style.TitleFont)
+	end
 end
 
 -- Builds the room's decor into `parent` (the shed). `shedOrigin` is the middle of the floor
@@ -416,6 +532,7 @@ function ShedDecor.build(shedOrigin: CFrame, isDressed: boolean, makeDisplay: (t
 	buildNoticeBoard()
 	buildRugAndCheckers()
 	buildLanterns()
+	buildPosters()
 	local counter = buildCounter()
 	return counter, trialTable
 end

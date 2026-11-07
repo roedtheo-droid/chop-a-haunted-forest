@@ -1,7 +1,7 @@
 --!strict
 -- Builds a sawmill in every zone (the building is in Build/SawmillBuilding), each with a sell
--- yard in front (Build/SellYard): the "FEED ME" pad, signs, and a chute up to Gnawbert, with shop
--- extras beside it (Build/YardShop, sold by PerkManager).
+-- yard in front (Build/SellYard): the "FEED ME" pad, signs, and a chute up to Gnawbert, with a
+-- peddler's cart beside it (Build/PeddlerCart, PerkManager puts its prompt on).
 -- When a player steps on a pad, the SERVER takes all their logs and pays them coins.
 -- On phones and tablets the round SELL button (Client/HudController) does the same while you
 -- stand near a pad: the server keeps a "NearSellPad" attribute up to date to light it up, and
@@ -25,16 +25,16 @@ local EffectsManager = require(script.Parent.EffectsManager)
 local LogManager = require(script.Parent.LogManager)
 local QuestManager = require(script.Parent.QuestManager)
 local RunManager = require(script.Parent.RunManager)
+local PeddlerCart = require(script.Parent.Parent.Build.PeddlerCart)
 local SawmillBuilding = require(script.Parent.Parent.Build.SawmillBuilding)
 local SellYard = require(script.Parent.Parent.Build.SellYard)
-local YardShop = require(script.Parent.Parent.Build.YardShop)
 
 local SawmillManager = {}
 
 local notifyRemote: RemoteEvent
 local soldRemote: RemoteEvent
 local pads: { BasePart } = {}
-local shopSpots: { YardShop.Spots } = {}
+local cartSpots: { BasePart } = {}
 -- When each player last sold, so standing on the pad doesn't sell over and over.
 local lastSell: { [Player]: number } = {}
 
@@ -141,9 +141,9 @@ local function build(center: Vector3, index: number): BasePart
 	local treeType = Config.TreeTypes[zone.TreeType]
 	local perLog = if treeType then treeType.LogValue else 0
 	local pad = SellYard.build(ground, wear, perLog, model)
-	-- The shop extras beside the pad (PerkManager puts their prompts on).
+	-- The peddler's cart beside the pad (PerkManager puts its prompt on).
 	local padZ, padRight = SellYard.padSpot()
-	table.insert(shopSpots, YardShop.build(ground, wear, padZ, padRight, model))
+	table.insert(cartSpots, PeddlerCart.build(ground, wear, padZ, padRight, model))
 
 	model.Parent = workspace
 	return pad
@@ -154,9 +154,9 @@ function SawmillManager.getPads(): { BasePart }
 	return pads
 end
 
--- The Log Sack stump, Infinite Bag stump and 2X COINS board beside every pad.
-function SawmillManager.getShopSpots(): { YardShop.Spots }
-	return shopSpots
+-- Where the prompt goes on the peddler's cart beside every pad.
+function SawmillManager.getCartSpots(): { BasePart }
+	return cartSpots
 end
 
 function SawmillManager.init()

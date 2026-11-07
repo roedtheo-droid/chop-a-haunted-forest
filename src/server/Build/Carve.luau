@@ -1,5 +1,5 @@
 --!strict
--- Carving a tree's trunk, like in Chop a Forest (rules in Shared/Carving, numbers in Config.Cut).
+-- Carving a tree's trunk (rules in Shared/Carving, numbers in Config.Cut).
 -- The server only decides WHERE each hit bites a hole: it keeps each tree's list of holes and
 -- stores it on the tree as the "Holes" attribute. Every player's computer cuts the holes itself
 -- (Client/Controllers/CarveController), so everyone sees the same dents, and nothing heavy has

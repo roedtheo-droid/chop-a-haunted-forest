@@ -225,7 +225,7 @@ local function buildChoppingBlock()
 end
 
 -- How far out (Z) the pad's middle is, and where its right edge is (X, with its dark edge),
--- from the middle of the sawmill's floor plan (Build/YardShop stands beside it).
+-- from the middle of the sawmill's floor plan (Build/PeddlerCart stands beside it).
 function SellYard.padSpot(): (number, number)
 	return padZ(), Config.Sawmill.PadSize.X / 2 + EDGE_WIDTH
 end

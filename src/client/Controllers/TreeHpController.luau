@@ -1,5 +1,5 @@
 --!strict
--- The tree's health bar, like in Chop a Forest: while you aim at a tree, its name ("Oak") shows
+-- The tree's health bar: while you aim at a tree, its name ("Oak") shows
 -- just under the crosshair in white with a black outline, and under that a rounded dark bar
 -- with "4.1/4.6 HP". The fill is green when the tree is healthy and turns yellow, orange and
 -- red as it loses HP, and grey at 0 (Config.TreeHpBar).

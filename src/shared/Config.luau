@@ -212,7 +212,7 @@ local chopFeel: { [string]: Types.ChopFeelConfig } = {
 		Sound = "ChopFists",
 		Swing = SWING,
 		SwingSpeed = 1.6,
-		ChipsMin = 3, -- 3 to 6 little wood cubes per punch, like in Chop a Forest
+		ChipsMin = 3, -- 3 to 6 little wood cubes per punch
 		ChipsMax = 6,
 		ChipSize = 0.35,
 		Wobble = 1.5,
@@ -373,7 +373,7 @@ local treeTypes: { [string]: Types.TreeTypeConfig } = {
 	-- Pale Pines: a pale, misty morning. Washed-out greens, bone-white birches and a few rusty trees.
 	Birch = {
 		Name = "Oak", -- the parts version of these trees is an oak
-		MaxHP = 50, -- 10 punches with Fists, like in Chop a Forest
+		MaxHP = 50, -- 10 punches with Fists
 		LogValue = 5,
 		Scale = 1,
 		TrunkColors = { Color3.fromRGB(104, 82, 66), Color3.fromRGB(116, 92, 72), Color3.fromRGB(94, 76, 62) },
@@ -691,7 +691,7 @@ local Config = {
 		Enabled = true, -- false sends nothing
 	},
 
-	-- Extra chop text, like in Chop a Forest. Both are off by default to keep the effects clean.
+	-- Extra chop text. Both are off by default to keep the effects clean.
 	ShowTreeHpBar = false, -- true: the tree's name and HP show under the crosshair (see TreeHpBar)
 	ShowTimberText = false, -- true: "TIMBER!" pops up when a tree falls (see Timber)
 
@@ -1685,7 +1685,7 @@ local Config = {
 		BirchName = "Birch", -- a birch's name on the tree HP bar, when it's built from parts
 		MinTrunkScale = 0.4, -- the boss's trunk width at 0 HP, compared to full width (shows damage)
 		-- Hitting a tree cuts into it where you aim: see Cut below.
-		-- A felled tree, like in Chop a Forest: the top slips down a little at the break, tips over
+		-- A felled tree: the top slips down a little at the break, tips over
 		-- away from the player who felled it and reaches the ground 1.5 s after the break
 		-- (CrackTime + FallTime). It bounces, a dust cloud rolls along it and leaves burst off the
 		-- crown, then the crown vanishes and the trunk turns into logs lying in a row where it
@@ -1702,7 +1702,7 @@ local Config = {
 		StumpHeight = 1.2, -- the stump a felled tree leaves behind
 	},
 
-	-- Carving (see Server/Build/Carve), like in Chop a Forest: every hit scoops a round hole out
+	-- Carving (see Server/Build/Carve): every hit scoops a round hole out
 	-- of the trunk where you aim. Hit the same spot and the dent gets wider and deeper; hit
 	-- somewhere else and a new dent starts there. The trunk has layers like a real one (bark,
 	-- pale wood, a darker ring, a pale heart), so a dent shows a dark bark rim, then pale wood,
@@ -1803,7 +1803,7 @@ local Config = {
 			Full = "Your backpack is full! Sell your logs at a sawmill.",
 			Dropped = "You dropped %d log(s) where you fell. Go and get them!",
 		},
-		Length = 2.4, -- short, square-ish blocks, like in Chop a Forest
+		Length = 2.4, -- short, square-ish blocks
 		Thickness = 1.3,
 		Gap = 0.15, -- studs between the logs lying in a row where the trunk landed
 		-- The trunk breaks into the logs: each one hops a little where it lands (every player's
@@ -1948,28 +1948,109 @@ local Config = {
 		UpgradesAnywhere = true, -- upgrades can be bought from anywhere (the UPGRADES menu); tools only here
 		BuyCooldown = 0.25, -- seconds between purchases for one player
 
-		-- The framed boards on the walls inside, one per tool (see Server/Build/ShedDisplays).
-		-- Wall: "Back" (facing the door) or "Left" (on your left as you walk in). Along: studs
-		-- from the middle of that wall (on the back wall + is right, on the left wall + is
-		-- towards the door). Big: the big board on dark planks with the turning sunburst.
-		-- Tilt: degrees the tool leans on its board (0 = straight up).
+		-- The tool stumps inside, one per tool (see Server/Build/ShedDisplays).
+		-- Wall: "Back" (facing the door) or "Left" (on your left as you walk in). Along: studs from
+		-- the middle of that wall (on the back wall + is right, on the left wall + is towards the
+		-- door). Big: a bigger stump, for the best tool. Tilt: degrees the tool leans (0 = straight up).
+		-- Upright: its model already stands up (the others lie along their handle, and get stood up).
 		Displays = {
-			{ Item = "Axe", Wall = "Back", Along = -19, Tilt = 35 },
-			{ Item = "Chainsaw", Wall = "Back", Along = -5, Tilt = 60, Big = true },
-			{ Item = "LogVacuum", Wall = "Back", Along = 8, Tilt = 55 },
-			{ Item = "GhostVacuum", Wall = "Back", Along = 18.5, Tilt = 55 },
-			{ Item = "SteelAxe", Wall = "Left", Along = -9, Tilt = 35 },
-			{ Item = "Lantern", Wall = "Left", Along = 1, Tilt = 0 },
-			{ Item = "Torch", Wall = "Left", Along = 11, Tilt = 25 },
-		} :: { { Item: string, Wall: string, Along: number, Tilt: number, Big: boolean? } },
-		BoardSize = Vector2.new(9, 9.5), -- width and height of a normal board
-		BigBoardSize = Vector2.new(13, 12),
-		BoardHeight = 8.7, -- how high the middle of a normal board is above the floor
-		ToolScale = 2.2, -- the tool on a board is this many times its normal size
-		BigToolScale = 3,
-		SunburstRays = 14,
-		SunburstSpeed = 0.25, -- radians per second (one turn every 25 seconds)
-		DisplayPromptDistance = 9, -- how close to a board you must be to see "Buy"
+			{ Item = "Axe", Wall = "Back", Along = -14, Tilt = 0 },
+			{ Item = "Chainsaw", Wall = "Back", Along = -3, Tilt = 0, Big = true },
+			{ Item = "LogVacuum", Wall = "Back", Along = 8, Tilt = 0 },
+			{ Item = "GhostVacuum", Wall = "Back", Along = 18, Tilt = 0 },
+			{ Item = "SteelAxe", Wall = "Left", Along = -7, Tilt = 0 },
+			{ Item = "Lantern", Wall = "Left", Along = 3, Tilt = 0, Upright = true },
+			{ Item = "Torch", Wall = "Left", Along = 13, Tilt = 0 },
+		} :: { { Item: string, Wall: string, Along: number, Tilt: number, Big: boolean?, Upright: boolean? } },
+		DisplayPromptDistance = 9, -- how close to a tool's plate you must be to see "Buy"
+		BobSpeed = 1.3, -- radians per second: how fast the floating things in the shed bob up and down
+		-- How a tool stump looks. The model comes from Claude Design; until it's imported into Studio,
+		-- plain parts stand in. Sizes are in studs, from the middle of its bottom, with +Z its front.
+		ToolStump = {
+			Model = "ToolStump",
+			BigScale = 1.25, -- how much bigger a Big stump is
+			WallGap = 3.95, -- from the wall to the stump's middle
+			ColliderSize = Vector3.new(5.2, 3.5, 5.2), -- the invisible block you bump into
+			PostSpot = Vector3.new(0, 0, -3.25), -- the post behind the stump
+			PostSize = Vector3.new(1, 13.2, 1),
+			PlateSpot = Vector3.new(0, 1.75, 2.86), -- the middle of the plate on its front
+			PlateSize = Vector2.new(4.2, 2.5),
+			PlateLean = 7, -- degrees it leans back, like the stump's side
+			PlateSharpness = 70, -- pixels per stud, so the outlined words stay readable
+			ToolMiddle = 6.75, -- how high the middle of the tool floats
+			ToolRoom = Vector2.new(5.2, 5.6), -- how wide and tall a tool can be: between the post, the stump and the lantern
+			ToolScale = 2.2, -- the tool is this many times its normal size, if it fits
+			BigToolScale = 3,
+			ToolSpin = 0.5, -- radians per second (one turn every 12 seconds)
+			ToolBob = 0.18, -- studs it floats up and down
+			ToolFireSize = 1.6, -- the Torch's fire, small enough to stay under the lantern
+			ToolFireHeat = 3,
+			LightRange = 14,
+			LightBrightness = 0.9,
+			Looks = {
+				Trunk = { Color = Color3.fromRGB(104, 82, 66), Material = Enum.Material.Wood },
+				Ridge = { Color = Color3.fromRGB(80, 60, 47), Material = Enum.Material.Wood },
+				Root = { Color = Color3.fromRGB(94, 76, 62), Material = Enum.Material.Wood },
+				Rings = { Color = Color3.fromRGB(235, 200, 150), Material = Enum.Material.Wood },
+				RingLines = { Color = Color3.fromRGB(186, 146, 98), Material = Enum.Material.Wood },
+				Moss = { Color = Color3.fromRGB(112, 138, 92), Material = Enum.Material.Grass },
+				Post = { Color = Color3.fromRGB(80, 60, 47), Material = Enum.Material.Wood },
+				Arm = { Color = Color3.fromRGB(80, 60, 47), Material = Enum.Material.Wood },
+				Chain = { Color = Color3.fromRGB(70, 70, 78), Material = Enum.Material.Metal },
+				Iron = { Color = Color3.fromRGB(40, 40, 46), Material = Enum.Material.Metal },
+				Lamp = { Color = Color3.fromRGB(255, 215, 120), Material = Enum.Material.Neon },
+			} :: { [string]: Types.SkinLook },
+		},
+		-- The shopkeeper, a friendly ghost floating behind the counter. Only for looks: it doesn't drain
+		-- courage like the ghosts in the forest. The model comes from Claude Design; until it's imported,
+		-- plain parts stand in (see Server/Build/ShedDecor).
+		Keeper = {
+			Model = "GhostKeeper",
+			Behind = 2.75, -- studs behind the middle of the counter
+			Height = -0.4, -- studs above the floor, so its hands rest on the counter
+			HeadHeight = 5.8, -- how far above its origin the middle of the model's head is
+			Bob = 0.12, -- studs it floats up and down
+			Transparency = 0.12, -- how see-through its SeeThrough parts are
+			SeeThrough = { Body = true, Arm = true } :: { [string]: boolean },
+			Looks = {
+				Body = { Color = Color3.fromRGB(235, 242, 255), Material = Enum.Material.SmoothPlastic },
+				Arm = { Color = Color3.fromRGB(235, 242, 255), Material = Enum.Material.SmoothPlastic },
+				Eye = { Color = Color3.fromRGB(16, 12, 26), Material = Enum.Material.Plastic },
+				Glint = { Color = Color3.fromRGB(240, 232, 205), Material = Enum.Material.SmoothPlastic },
+				Glasses = { Color = Color3.fromRGB(190, 152, 82), Material = Enum.Material.Metal },
+				Mustache = { Color = Color3.fromRGB(80, 60, 47), Material = Enum.Material.Fabric },
+				Mouth = { Color = Color3.fromRGB(16, 12, 26), Material = Enum.Material.Plastic },
+				Hat = { Color = Color3.fromRGB(52, 34, 22), Material = Enum.Material.Fabric },
+				HatBand = { Color = Color3.fromRGB(150, 104, 66), Material = Enum.Material.Fabric },
+				Apron = { Color = Color3.fromRGB(150, 104, 66), Material = Enum.Material.Fabric },
+				Strap = { Color = Color3.fromRGB(126, 84, 50), Material = Enum.Material.Fabric },
+			} :: { [string]: Types.SkinLook },
+		},
+		-- The wanted posters of mimics on the walls (see Server/Build/ShedDecor). The model comes from
+		-- Claude Design and holds three drawings ("A" a pine, "B" a stump, "C" an oak). The game writes the
+		-- words. Wall and Along work like in Displays. Height: studs from the floor to the poster's
+		-- bottom. Tilt: degrees it hangs crooked.
+		Posters = {
+			Model = "WantedPoster",
+			Size = Vector2.new(5.6, 7.4), -- the paper
+			WallGap = 0.35, -- studs from the wall, so it clears the logs
+			Sharpness = 50, -- pixels per stud
+			Title = "WANTED",
+			Reward = "REWARD: %d EMBERS", -- the Embers for burning a mimic (Embers.PerMimic)
+			List = {
+				{ Wall = "Back", Along = 2.5, Height = 3.6, Tilt = -2, Sketch = "A", Line = "THIS PINE. IT ATE MY HAT." },
+				{ Wall = "Back", Along = -8.5, Height = 3.9, Tilt = 3, Sketch = "B", Line = "GNAWBERT'S COUSIN. DO NOT PET." },
+				{ Wall = "Left", Along = 8, Height = 3.7, Tilt = -3, Sketch = "C", Line = "THIS OAK. LAST SEEN RUNNING." },
+			} :: { { Wall: string, Along: number, Height: number, Tilt: number, Sketch: string, Line: string } },
+			Looks = {
+				Paper = { Color = Color3.fromRGB(232, 220, 190), Material = Enum.Material.Fabric },
+				Fold = { Color = Color3.fromRGB(206, 188, 150), Material = Enum.Material.Fabric },
+				Border = { Color = Color3.fromRGB(60, 44, 30), Material = Enum.Material.Fabric },
+				Ink = { Color = Color3.fromRGB(60, 44, 30), Material = Enum.Material.Fabric },
+				Nail = { Color = Color3.fromRGB(40, 40, 46), Material = Enum.Material.Metal },
+				Seal = { Color = Color3.fromRGB(190, 60, 52), Material = Enum.Material.Plastic },
+			} :: { [string]: Types.SkinLook },
+		},
 		MysteryItems = 1, -- the "???" signs on the shelf in the top-left corner (tools still to come)
 
 		-- Every text in the Tool Shed. %s is filled in.
@@ -2009,35 +2090,80 @@ local Config = {
 		},
 	},
 
-	-- The shop extras beside each sell pad (see Server/Build/YardShop and
-	-- Server/Systems/PerkManager): the Log Sack upgrade on a stump, and two Robux game passes.
-	-- A game pass is bought once and kept forever (Roblox remembers it, nothing is saved by us).
-	-- While a GamePassId is 0 it shows "Coming soon".
+	-- The Robux game passes, and the peddler's cart beside each sell pad that opens the SHOP menu (see
+	-- Server/Systems/PerkManager and Server/Build/PeddlerCart). A game pass is bought once and kept
+	-- forever (Roblox remembers it, nothing is saved by us). While a GamePassId is 0 it shows "Coming soon".
 	Perks = {
 		InfiniteBag = { GamePassId = 0, RobuxPrice = 149 }, -- carry as many logs as you like
 		DoubleCoins = { GamePassId = 0, RobuxPrice = 199, Multiplier = 2 }, -- logs sell for 2x coins
-		BigBeaverPrice = 129, -- the Big Beaver pet is only a decoration for now
-		PromptDistance = 8,
-		BagColor = Color3.fromRGB(70, 35, 95), -- the Infinite Bag, dark purple
-		SackColor = Color3.fromRGB(150, 100, 55), -- the Log Sack, brown leather
-		BeaverColor = Color3.fromRGB(125, 80, 45),
+		PromptDistance = 10, -- how close to a cart you must be to see "Open shop"
+		MenuDistance = 24, -- the SHOP menu closes when you walk this far from the cart you opened it at
+		-- How the cart looks. The model comes from Claude Design; until it's imported into Studio, plain
+		-- parts stand in. Sizes are in studs, from the middle of its bottom, with +Z the side that sells.
+		Cart = {
+			Model = "PeddlerCart",
+			Gap = 5, -- from the sell pad's right edge to the cart's middle
+			Along = 1.3, -- from the pad's middle to the cart's middle, away from the sawmill
+			ColliderSize = Vector3.new(9.6, 7, 6.4), -- the invisible block you bump into
+			PromptSpot = Vector3.new(0, 4.6, 3.2), -- where "Open shop" shows: under the sign
+			SignSpot = Vector3.new(0, 5.88, 2.45), -- in front of the hanging sign, where its word goes
+			SignSize = Vector2.new(4.9, 1.5),
+			SignSharpness = 70, -- pixels per stud, so the outlined word stays readable
+			LightRange = 14,
+			LightBrightness = 0.9,
+			Looks = {
+				Rim = { Color = Color3.fromRGB(52, 34, 22), Material = Enum.Material.Wood },
+				Spoke = { Color = Color3.fromRGB(126, 84, 50), Material = Enum.Material.Wood },
+				Hub = { Color = Color3.fromRGB(40, 40, 46), Material = Enum.Material.Metal },
+				Deck = { Color = Color3.fromRGB(126, 84, 50), Material = Enum.Material.WoodPlanks },
+				Board = { Color = Color3.fromRGB(150, 104, 66), Material = Enum.Material.WoodPlanks },
+				Post = { Color = Color3.fromRGB(126, 84, 50), Material = Enum.Material.Wood },
+				Leg = { Color = Color3.fromRGB(126, 84, 50), Material = Enum.Material.Wood },
+				Shaft = { Color = Color3.fromRGB(126, 84, 50), Material = Enum.Material.Wood },
+				Log = { Color = Color3.fromRGB(104, 82, 66), Material = Enum.Material.Wood },
+				Rings = { Color = Color3.fromRGB(235, 200, 150), Material = Enum.Material.Wood },
+				Canvas = { Color = Color3.fromRGB(112, 138, 92), Material = Enum.Material.Fabric },
+				CanvasLight = { Color = Color3.fromRGB(232, 220, 190), Material = Enum.Material.Fabric },
+				Sack = { Color = Color3.fromRGB(186, 146, 98), Material = Enum.Material.Fabric },
+				Rope = { Color = Color3.fromRGB(126, 84, 50), Material = Enum.Material.Fabric },
+				Stitch = { Color = Color3.fromRGB(190, 152, 82), Material = Enum.Material.Metal },
+				Crate = { Color = Color3.fromRGB(150, 104, 66), Material = Enum.Material.WoodPlanks },
+				Trim = { Color = Color3.fromRGB(126, 84, 50), Material = Enum.Material.Wood },
+				Coin = { Color = Color3.fromRGB(190, 152, 82), Material = Enum.Material.Metal },
+				Chain = { Color = Color3.fromRGB(70, 70, 78), Material = Enum.Material.Metal },
+				Sign = { Color = Color3.fromRGB(150, 104, 66), Material = Enum.Material.WoodPlanks },
+				Iron = { Color = Color3.fromRGB(40, 40, 46), Material = Enum.Material.Metal },
+				Lamp = { Color = Color3.fromRGB(255, 215, 120), Material = Enum.Material.Neon },
+				Bell = { Color = Color3.fromRGB(190, 152, 82), Material = Enum.Material.Metal },
+			} :: { [string]: Types.SkinLook },
+			-- The parts that get darker at the worn sawmills (Sawmill.Wear).
+			Wears = {
+				Rim = true,
+				Spoke = true,
+				Deck = true,
+				Board = true,
+				Post = true,
+				Leg = true,
+				Shaft = true,
+				Log = true,
+				Canvas = true,
+				CanvasLight = true,
+				Sack = true,
+				Crate = true,
+				Trim = true,
+				Sign = true,
+			} :: { [string]: boolean },
+		},
 		Text = {
-			SackName = "Log Sack",
-			SackObject = "%s: %d logs", -- its name and how many logs you'll carry after buying it
-			SackAction = "Buy %s", -- the coins it costs
-			Max = "MAX",
 			InfiniteBag = "Infinite Bag",
 			DoubleCoins = "2X COINS",
 			TwoX = "2X",
-			Buy = "BUY!",
-			Robux = "R$ %s",
-			RobuxAction = "Buy R$%s",
-			ComingSoon = "Coming soon",
+			CartName = "Peddler's Cart",
+			CartAction = "Open shop",
+			CartSign = "SHOP",
 			NotOnSale = "The %s is coming soon!",
 			Owned = "You already have the %s.",
 			Bought = "You got the %s!",
-			InfiniteCount = "Logs %d/∞", -- the backpack counter with the Infinite Bag
-			BigBeaver = "Big Beaver",
 		},
 	},
 

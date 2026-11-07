@@ -60,4 +60,4 @@ const Biter = () => (
 </ModelStage>
 ```
 
-`Gnawbert` and `Ghost` are finished models to study. Their `.prompt.md` files show their props.
+`Gnawbert`, `Ghost`, `GhostKeeper`, `PeddlerCart`, `ToolStump` and `WantedPoster` are finished models to study. Their `.prompt.md` files show their props.

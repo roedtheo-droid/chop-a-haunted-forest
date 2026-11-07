@@ -1952,15 +1952,16 @@ local Config = {
 		-- Wall: "Back" (facing the door) or "Left" (on your left as you walk in). Along: studs from
 		-- the middle of that wall (on the back wall + is right, on the left wall + is towards the
 		-- door). Big: a bigger stump, for the best tool. Tilt: degrees the tool leans (0 = straight up).
+		-- Upright: its model already stands up (the others lie along their handle, and get stood up).
 		Displays = {
 			{ Item = "Axe", Wall = "Back", Along = -14, Tilt = 0 },
 			{ Item = "Chainsaw", Wall = "Back", Along = -3, Tilt = 0, Big = true },
 			{ Item = "LogVacuum", Wall = "Back", Along = 8, Tilt = 0 },
 			{ Item = "GhostVacuum", Wall = "Back", Along = 18, Tilt = 0 },
 			{ Item = "SteelAxe", Wall = "Left", Along = -7, Tilt = 0 },
-			{ Item = "Lantern", Wall = "Left", Along = 3, Tilt = 0 },
+			{ Item = "Lantern", Wall = "Left", Along = 3, Tilt = 0, Upright = true },
 			{ Item = "Torch", Wall = "Left", Along = 13, Tilt = 0 },
-		} :: { { Item: string, Wall: string, Along: number, Tilt: number, Big: boolean? } },
+		} :: { { Item: string, Wall: string, Along: number, Tilt: number, Big: boolean?, Upright: boolean? } },
 		DisplayPromptDistance = 9, -- how close to a tool's plate you must be to see "Buy"
 		BobSpeed = 1.3, -- radians per second: how fast the floating things in the shed bob up and down
 		-- How a tool stump looks. The model comes from Claude Design; until it's imported into Studio,
@@ -1982,6 +1983,8 @@ local Config = {
 			BigToolScale = 3,
 			ToolSpin = 0.5, -- radians per second (one turn every 12 seconds)
 			ToolBob = 0.18, -- studs it floats up and down
+			ToolFireSize = 1.6, -- the Torch's fire, small enough to stay under the lantern
+			ToolFireHeat = 3,
 			LightRange = 14,
 			LightBrightness = 0.9,
 			Looks = {
@@ -2102,7 +2105,7 @@ local Config = {
 			Gap = 5, -- from the sell pad's right edge to the cart's middle
 			Along = 1.3, -- from the pad's middle to the cart's middle, away from the sawmill
 			ColliderSize = Vector3.new(9.6, 7, 6.4), -- the invisible block you bump into
-			PromptSpot = Vector3.new(0, 3.5, 3.2),
+			PromptSpot = Vector3.new(0, 4.6, 3.2), -- where "Open shop" shows: under the sign
 			SignSpot = Vector3.new(0, 5.88, 2.45), -- in front of the hanging sign, where its word goes
 			SignSize = Vector2.new(4.9, 1.5),
 			SignSharpness = 70, -- pixels per stud, so the outlined word stays readable

@@ -194,9 +194,24 @@ local function toolReach(display: Model, middle: Vector3): (number, number)
 	return radius, high - low
 end
 
+-- A Fire burns towards the top of its part, and that part lies on its side here, so give the fire a
+-- part of its own that stands up.
+local function standFiresUp(display: Model)
+	for _, fire in display:GetDescendants() do
+		local part = fire.Parent
+		if fire:IsA("Fire") and part and part:IsA("BasePart") then
+			local holder = Blocky.part("FireSpot", Vector3.new(0.2, 0.2, 0.2), CFrame.new(part.Position), Color3.new(), Enum.Material.SmoothPlastic, display)
+			holder.Transparency = 1
+			fire.Parent = holder
+			fire.Size = cfg.ToolFireSize
+			fire.Heat = cfg.ToolFireHeat
+		end
+	end
+end
+
 -- The tool, floating above the stump and leaning `tilt` degrees. It's as big as Config says, or
 -- smaller if it wouldn't fit under the lantern or would hit the post as it turns.
-local function addFloatingTool(spot: CFrame, scale: number, big: boolean, item: Types.ShopItem, tilt: number, makeDisplay: (toolId: string) -> Model, parent: Instance)
+local function addFloatingTool(spot: CFrame, scale: number, big: boolean, item: Types.ShopItem, tilt: number, upright: boolean, makeDisplay: (toolId: string) -> Model, parent: Instance)
 	local middle = (spot * CFrame.new(0, cfg.ToolMiddle * scale, 0)).Position
 	local display = makeDisplay(item.Id)
 	-- Its pivot is the handle, so move it until the middle of the whole tool is on `middle`.
@@ -204,7 +219,8 @@ local function addFloatingTool(spot: CFrame, scale: number, big: boolean, item: 
 		local box = display:GetBoundingBox()
 		display:PivotTo(display:GetPivot() + (middle - box.Position))
 	end
-	display:PivotTo(CFrame.new(middle) * spot.Rotation * CFrame.Angles(0, 0, math.rad(-tilt)) * CFrame.Angles(math.pi / 2, 0, 0))
+	local stand = if upright then CFrame.identity else CFrame.Angles(math.pi / 2, 0, 0)
+	display:PivotTo(CFrame.new(middle) * spot.Rotation * CFrame.Angles(0, 0, math.rad(-tilt)) * stand)
 	display:ScaleTo(if big then cfg.BigToolScale else cfg.ToolScale)
 	centre()
 	local radius, height = toolReach(display, middle)
@@ -213,6 +229,7 @@ local function addFloatingTool(spot: CFrame, scale: number, big: boolean, item: 
 		display:ScaleTo(display:GetScale() * shrink)
 		centre()
 	end
+	standFiresUp(display)
 	for _, part in display:GetDescendants() do
 		if part:IsA("BasePart") then
 			settle(part)
@@ -256,7 +273,7 @@ function ShedDisplays.build(origin: CFrame, floorTop: number, makeDisplay: (tool
 		end
 		addColliders(stump, scale, group)
 		addLight(group, scale)
-		addFloatingTool(stump, scale, big, item, spot.Tilt, makeDisplay, group)
+		addFloatingTool(stump, scale, big, item, spot.Tilt, spot.Upright == true, makeDisplay, group)
 		plates[item.Id] = addPlate(stump, scale, item, group)
 	end
 	return plates

@@ -11,9 +11,10 @@
 --   Creak  it creaks when you're close
 --   Blink  a knot on its trunk sometimes opens like an eye
 --
--- Hitting a sleeping mimic wakes it (TreeManager calls MimicManager.wake). It shakes
--- loose, then chases the nearest player in its zone, using PathfindingService to walk
--- around the other trees. If it catches someone, they're knocked down (KnockdownManager)
+-- Hitting a sleeping mimic wakes it (TreeManager calls MimicManager.wake). It shakes loose (it
+-- can't be hurt until that's over), then chases the nearest player in its zone, using
+-- PathfindingService to walk around the other trees. It's always a bit faster than that player
+-- walks, so only sprinting gets away, while their stamina lasts. If it catches someone, they're knocked down (KnockdownManager)
 -- and the mimic roots itself again somewhere nearby, so friends can come and revive them
 -- (Config.Mimics.HideAfterCatch). It also roots itself again after a while without
 -- catching anyone.
@@ -38,6 +39,7 @@ local AnalyticsManager = require(script.Parent.AnalyticsManager)
 local EffectsManager = require(script.Parent.EffectsManager)
 local ForestSpawner = require(script.Parent.ForestSpawner)
 local KnockdownManager = require(script.Parent.KnockdownManager)
+local MovementManager = require(script.Parent.MovementManager)
 
 local TELLS = { "Tint", "Sway", "Tilt", "Creak", "Blink" }
 local EYE_COLOR = Color3.fromRGB(255, 60, 40)
@@ -50,6 +52,7 @@ local SINK_DEPTH = 3 -- studs it sinks into the ground when it roots itself agai
 local SINK_TIME = 0.5
 local ZONE_EDGE = 2 -- it stays at least this far inside its zone
 local MAX_SPOT_TRIES = 40
+local PATH_TIMEOUT = 2 -- seconds it waits for a new path at most, before it asks for another one
 
 type Mimic = {
 	Tree: Model,
@@ -63,6 +66,7 @@ type Mimic = {
 	Gen: number,
 	Toughened: boolean, -- has it had its HP multiplied yet?
 	LastCatch: number, -- when it woke or last caught someone (os.clock)
+	WakingUntil: number, -- when it has finished shaking loose (os.clock)
 	NextTell: number, -- when it creaks or blinks next (os.clock)
 	Lean: CFrame?, -- a leaning "Tilt" mimic's lean, put back every time it roots itself
 	SwayTween: Tween?,
@@ -70,6 +74,12 @@ type Mimic = {
 	Knot: BasePart?,
 	KnotColor: Color3?,
 	Creak: Sound?,
+}
+
+-- The way a chasing mimic is going: the points to pass, and which one is next.
+type Route = {
+	Points: { Vector3 },
+	Index: number,
 }
 
 local MimicManager = {}
@@ -275,6 +285,7 @@ local function makeMimic(tree: Model, zoneId: number)
 		Gen = 0,
 		Toughened = false,
 		LastCatch = 0,
+		WakingUntil = 0,
 		NextTell = 0,
 	}
 	mimics[tree] = mimic
@@ -350,9 +361,15 @@ local function removeEyes(mimic: Mimic)
 	end
 end
 
--- The nearest player in the mimic's zone that it's allowed to catch.
-local function findTarget(mimic: Mimic): BasePart?
+-- How fast it chases `player`: always a bit faster than they walk, and more so in the deeper zones.
+local function chaseSpeed(mimic: Mimic, player: Player): number
+	return MovementManager.walkSpeedOf(player) + Config.Mimics.ChaseEdge[mimic.ZoneId]
+end
+
+-- The nearest player in the mimic's zone that it's allowed to catch, and that player's root part.
+local function findTarget(mimic: Mimic): (Player?, BasePart?)
 	local position = mimic.Tree:GetPivot().Position
+	local bestPlayer: Player? = nil
 	local best: BasePart? = nil
 	local bestDistance = math.huge
 	for _, player in Players:GetPlayers() do
@@ -360,12 +377,13 @@ local function findTarget(mimic: Mimic): BasePart?
 		if root and KnockdownManager.canBeCaught(player) and Zones.indexAt(root.Position) == mimic.ZoneId then
 			local distance = (root.Position - position).Magnitude
 			if distance < bestDistance then
+				bestPlayer = player
 				best = root
 				bestDistance = distance
 			end
 		end
 	end
-	return best
+	return bestPlayer, best
 end
 
 -- Knock down everyone close enough. Returns true if it caught anyone.
@@ -399,27 +417,34 @@ local function clampToZone(position: Vector3, zoneId: number): Vector3
 	)
 end
 
--- Move one frame's worth towards waypoints[index]. Returns the next waypoint index.
-local function stepTowards(mimic: Mimic, waypoints: { Vector3 }, index: number, dt: number, groundY: number): number
+-- Move `stepLength` studs along the waypoints, from waypoints[index] on. It uses up the whole step
+-- even if that goes past a waypoint, or it would lose a little speed at each one.
+-- Returns the next waypoint index.
+local function stepTowards(mimic: Mimic, waypoints: { Vector3 }, index: number, stepLength: number, groundY: number): number
 	local tree = mimic.Tree
 	local pivot = tree:GetPivot()
 	local position = pivot.Position
-	local waypoint = waypoints[index]
-	local goal = Vector3.new(waypoint.X, groundY, waypoint.Z)
-	local offset = goal - position
-	local stepLength = Config.Mimics.ChaseSpeed * dt
-
-	local newPosition: Vector3
-	if offset.Magnitude <= stepLength then
-		newPosition = goal
-		index += 1
-	else
-		newPosition = position + offset.Unit * stepLength
+	local facing = Vector3.zero
+	local left = stepLength
+	while left > 0 and index <= #waypoints do
+		local waypoint = waypoints[index]
+		local goal = Vector3.new(waypoint.X, groundY, waypoint.Z)
+		local offset = goal - position
+		if offset.Magnitude > 0.05 then
+			facing = Vector3.new(offset.X, 0, offset.Z)
+		end
+		if offset.Magnitude > left then
+			position += offset.Unit * left
+			left = 0
+		else
+			position = goal
+			left -= offset.Magnitude
+			index += 1
+		end
 	end
-	newPosition = clampToZone(newPosition, mimic.ZoneId)
+	local newPosition = clampToZone(position, mimic.ZoneId)
 
 	-- Face the way it's going, lean into the chase and waddle a little.
-	local facing = Vector3.new(offset.X, 0, offset.Z)
 	if facing.Magnitude < 0.05 then
 		facing = Vector3.new(pivot.LookVector.X, 0, pivot.LookVector.Z)
 	end
@@ -431,40 +456,62 @@ local function stepTowards(mimic: Mimic, waypoints: { Vector3 }, index: number, 
 	return index
 end
 
--- Work out a path to the target, then follow it until it's time to work out a new one.
+-- A new path starts where the mimic was when it asked for it, and it has run on since. Go on from
+-- the point after the one nearest to where it is now, so it doesn't turn back.
+local function nextPointOn(points: { Vector3 }, position: Vector3): number
+	local nearest, nearestDistance = 1, math.huge
+	for index, point in points do
+		local distance = flatDistance(point, position)
+		if distance < nearestDistance then
+			nearest, nearestDistance = index, distance
+		end
+	end
+	return math.min(nearest + 1, #points)
+end
+
+-- Work out a new path to the target and keep running meanwhile. (That takes a moment, and stopping
+-- for it every time would make the mimic slower than its speed says.) `route` is the way it's going.
 -- Returns true if it caught someone on the way.
-local function chaseStep(mimic: Mimic, gen: number, path: Path, target: BasePart, groundY: number): boolean
+local function chaseStep(mimic: Mimic, gen: number, path: Path, target: BasePart, speed: number, route: Route, groundY: number): boolean
 	local from = mimic.Tree:GetPivot().Position
 	local goal = Vector3.new(target.Position.X, groundY, target.Position.Z)
-	local waypoints: { Vector3 } = { goal } -- if no path is found, walk straight at the target
-
-	local ok = pcall(function()
-		path:ComputeAsync(from, goal)
-	end)
-	if not isCurrent(mimic, gen) then
-		return false -- working out the path takes a moment, and the mimic may be gone by then
-	end
-	if ok and path.Status == Enum.PathStatus.Success then
-		local points: { Vector3 } = {}
-		for i, waypoint in path:GetWaypoints() do
-			if i > 1 then -- the first waypoint is where it already stands
-				table.insert(points, waypoint.Position)
+	local computing = true
+	local found: { Vector3 }? = nil
+	task.spawn(function()
+		local ok = pcall(function()
+			path:ComputeAsync(from, goal)
+		end)
+		if ok and path.Status == Enum.PathStatus.Success then
+			local points: { Vector3 } = {}
+			for i, waypoint in path:GetWaypoints() do
+				if i > 1 then -- the first waypoint is where it stood
+					table.insert(points, waypoint.Position)
+				end
+			end
+			if #points > 0 then
+				found = points
 			end
 		end
-		if #points > 0 then
-			waypoints = points
-		end
-	end
+		computing = false
+	end)
 
-	local stopAt = os.clock() + Config.Mimics.RepathInterval
-	local index = 1
-	while os.clock() < stopAt do
+	local started = os.clock()
+	local interval = Config.Mimics.RepathInterval
+	while os.clock() - started < (if computing then PATH_TIMEOUT else interval) do
 		local dt = RunService.Heartbeat:Wait()
 		if not isCurrent(mimic, gen) then
 			return false
 		end
-		if index <= #waypoints then
-			index = stepTowards(mimic, waypoints, index, dt, groundY)
+		local fresh = found
+		if fresh then
+			found = nil
+			route.Points = fresh
+			route.Index = nextPointOn(fresh, mimic.Tree:GetPivot().Position)
+		end
+		if route.Index <= #route.Points then
+			route.Index = stepTowards(mimic, route.Points, route.Index, speed * dt, groundY)
+		else
+			stepTowards(mimic, { target.Position }, 1, speed * dt, groundY) -- no path yet: straight at them
 		end
 		if catchPlayers(mimic) then
 			return true
@@ -584,14 +631,15 @@ local function runAwake(mimic: Mimic, gen: number)
 		WaypointSpacing = 4,
 	})
 	local groundY = start.Position.Y
+	local route: Route = { Points = {}, Index = 1 }
 	while isCurrent(mimic, gen) do
 		if os.clock() - mimic.LastCatch > Config.Mimics.SleepAfter then
 			rootAgain(mimic, gen)
 			return
 		end
-		local target = findTarget(mimic)
-		if target then
-			local caught = chaseStep(mimic, gen, path, target, groundY)
+		local player, target = findTarget(mimic)
+		if player and target then
+			local caught = chaseStep(mimic, gen, path, target, chaseSpeed(mimic, player), route, groundY)
 			if caught and Config.Mimics.HideAfterCatch then
 				-- Otherwise it would go straight for whoever comes to revive them.
 				rootAgain(mimic, gen)
@@ -618,6 +666,12 @@ function MimicManager.isSleeping(tree: Model): boolean
 	return mimic ~= nil and not mimic.Awake and CollectionService:HasTag(tree, Tags.Tree)
 end
 
+-- Still shaking loose? Then it can't be hurt yet, so it can't be chopped down before the chase starts.
+function MimicManager.isWaking(tree: Model): boolean
+	local mimic = mimics[tree]
+	return mimic ~= nil and mimic.Awake and os.clock() < mimic.WakingUntil
+end
+
 -- Every sleeping mimic within `radius` studs of `position` (used by LanternManager).
 function MimicManager.sleepingNear(position: Vector3, radius: number): { Model }
 	local found: { Model } = {}
@@ -638,6 +692,7 @@ function MimicManager.wake(tree: Model, hitBy: Player)
 	mimic.Awake = true
 	mimic.Gen += 1
 	mimic.LastCatch = os.clock()
+	mimic.WakingUntil = os.clock() + Config.Mimics.WakeTime
 	stopSway(mimic)
 	CollectionService:RemoveTag(tree, Tags.Tree)
 	CollectionService:AddTag(tree, Tags.AwakeMimic)
@@ -646,7 +701,7 @@ function MimicManager.wake(tree: Model, hitBy: Player)
 	-- Awake mimics are tougher. HP and MaxHP both go up, so the damage done so far stays.
 	if not mimic.Toughened then
 		mimic.Toughened = true
-		local multiplier = Config.Mimics.HPMultiplier
+		local multiplier = Config.Mimics.HPMultiplier[mimic.ZoneId]
 		tree:SetAttribute("MaxHP", getNumber(tree, "MaxHP") * multiplier)
 		tree:SetAttribute("HP", getNumber(tree, "HP") * multiplier)
 	end

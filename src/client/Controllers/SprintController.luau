@@ -1,7 +1,7 @@
 --!strict
 -- Hold Shift to sprint. Phones and tablets get a "Sprint" button to hold instead.
--- This only tells the server "sprinting" or "stopped"; the server sets the actual speed,
--- so changing numbers here can't make anyone faster.
+-- This only tells the server "sprinting" or "stopped"; the server sets the actual speed and keeps
+-- your stamina (see Server/Systems/MovementManager), so changing numbers here can't make anyone faster.
 
 local ContextActionService = game:GetService("ContextActionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

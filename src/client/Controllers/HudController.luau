@@ -1,6 +1,7 @@
 --!strict
 -- The HUD's corners, in the timber look (sizes and texts in Config.Hud):
---   * top left: a plank with your health and your courage (see Server/Systems/CourageManager)
+--   * top left: a plank with your health, your courage (see Server/Systems/CourageManager) and your
+--     stamina (see Server/Systems/MovementManager)
 --   * top right: a plank with your logs (red when the sack is full), Embers and Coins, with a
 --     "+15" that drops down when one goes up. Under it hangs a small tag for the tool trial:
 --     "TRIAL 180s", the T key and its price. T (or tapping the tag) starts the trial, like the
@@ -51,6 +52,7 @@ local player = Players.LocalPlayer
 local column: Frame
 local healthBar: UiKit.Bar
 local courageBar: UiKit.Bar
+local staminaBar: UiKit.Bar
 local healthWatchers: { RBXScriptConnection } = {}
 local counters: { Counter } = {}
 local backpackLabel: TextLabel
@@ -78,7 +80,7 @@ function HudController.rightColumn(): Frame
 end
 
 ---------------------------------------------------------------------------------------------
--- Top left: health and courage
+-- Top left: health, courage and stamina
 
 local function addVitalRow(plank: Frame, name: string, row: number, icon: IconMaker, color: Color3): UiKit.Bar
 	local y = Hud.VitalsPad + (row - 0.5) * Hud.VitalsRow
@@ -98,11 +100,12 @@ local function addVitalRow(plank: Frame, name: string, row: number, icon: IconMa
 end
 
 local function addVitals(gui: ScreenGui)
-	local plank = UiKit.plank(gui, "Vitals", 2)
+	local plank = UiKit.plank(gui, "Vitals", 3)
 	plank.Position = UDim2.fromOffset(Hud.Margin, Hud.Margin)
-	plank.Size = UDim2.fromOffset(Hud.VitalsWidth, 2 * (Hud.VitalsPad + Hud.VitalsRow))
+	plank.Size = UDim2.fromOffset(Hud.VitalsWidth, 2 * Hud.VitalsPad + 3 * Hud.VitalsRow)
 	healthBar = addVitalRow(plank, "Health", 1, Icons.heart, Hud.Health)
 	courageBar = addVitalRow(plank, "Courage", 2, Icons.ghost, Hud.Courage)
+	staminaBar = addVitalRow(plank, "Stamina", 3, Icons.boot, Hud.Stamina)
 end
 
 local function refreshHealth(humanoid: Humanoid)
@@ -138,6 +141,14 @@ local function pulseCourage()
 	local value = player:GetAttribute("Courage")
 	local low = typeof(value) == "number" and value < Config.Courage.LowAt
 	courageBar.Fill.BackgroundTransparency = if low then 0.35 * (0.5 + 0.5 * math.sin(os.clock() * PULSE_SPEED)) else 0
+end
+
+local function refreshStamina()
+	local cfg = Config.Player.Stamina
+	local value = player:GetAttribute("Stamina")
+	local stamina = if typeof(value) == "number" then value else cfg.Max
+	staminaBar.Fill.BackgroundColor3 = if player:GetAttribute("Tired") == true then Hud.Tired else Hud.Stamina
+	UiKit.setBar(staminaBar, stamina / cfg.Max, string.format(Text.Stamina, math.ceil(stamina)))
 end
 
 ---------------------------------------------------------------------------------------------
@@ -480,6 +491,10 @@ function HudController.start()
 
 	refreshCourage()
 	player:GetAttributeChangedSignal("Courage"):Connect(refreshCourage)
+
+	refreshStamina()
+	player:GetAttributeChangedSignal("Stamina"):Connect(refreshStamina)
+	player:GetAttributeChangedSignal("Tired"):Connect(refreshStamina)
 
 	player.CharacterAdded:Connect(watchHealth)
 	if player.Character then

@@ -319,7 +319,12 @@ local function onSwing(player: Player, target: unknown, aimed: unknown)
 		return
 	end
 
-	-- 6. All good: chop it.
+	-- 6. A mimic that's still shaking loose can't be hurt yet.
+	if MimicManager.isWaking(tree) then
+		return
+	end
+
+	-- 7. All good: chop it.
 	AnalyticsManager.onboarding(player, "FirstHit")
 	-- Visible damage: a rough hole bitten out of the trunk where the player aimed (see Build/Carve;
 	-- every computer cuts it). Bigger hits bite bigger holes; it only looks like damage, the HP is what counts.

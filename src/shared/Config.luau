@@ -1146,7 +1146,7 @@ local Config = {
 		NarrowScale = 0.35, -- the smallest it gets on a very narrow screen
 		Margin = 24, -- pixels from the screen's edges
 
-		-- Top left: a plank with your health and courage
+		-- Top left: a plank with your health, courage and stamina
 		VitalsWidth = 380,
 		VitalsRow = 54, -- how tall each row is
 		VitalsPad = 6, -- pixels above and below the rows
@@ -1155,6 +1155,8 @@ local Config = {
 		Health = Color3.fromRGB(196, 66, 58), -- the health bar: berries
 		Courage = Color3.fromRGB(132, 182, 190), -- the courage bar: pale mist
 		Scared = Color3.fromRGB(220, 50, 50), -- the courage bar when you're scared (it pulses)
+		Stamina = Color3.fromRGB(132, 160, 84), -- the stamina bar: moss
+		Tired = Color3.fromRGB(214, 128, 60), -- the stamina bar when you ran out and can't sprint yet
 
 		-- Top right: a column with the ledger plank, the trial tag and the quest note
 		ColumnGap = 10,
@@ -1257,6 +1259,7 @@ local Config = {
 			BossDefeatedHint = "The Elder Hollow has fallen!", -- ...and once it has fallen
 			Camp = "Lumber Camp", -- the sign's name while you're in the camp
 			Health = "%d", -- on the health bar
+			Stamina = "Stamina %d%%", -- on the stamina bar (%% shows a %)
 			Trial = "TRIAL %ds", -- the trial's length, before you start it
 			Free = "FREE", -- the trial's price while it has no product id (free once per run)
 			Robux = "R$%d",
@@ -1522,9 +1525,11 @@ local Config = {
 	-- Mimics: trees that wake up and chase you when you chop them.
 	-- How many there are is set per zone (MimicPercent in the zones list above).
 	Mimics = {
-		HPMultiplier = 2, -- when it wakes up, a mimic gets this many times its tree's HP
-		WakeTime = 1.5, -- seconds it shakes loose before chasing (your head start)
-		ChaseSpeed = 20, -- faster than walking (16), slower than sprinting (16 + SprintBonus)
+		HPMultiplier = { 2, 3, 4 }, -- when it wakes up, a mimic gets this many times its tree's HP (zone 1, 2 and 3)
+		WakeTime = 1.5, -- seconds it shakes loose before chasing: your head start, and it can't be hurt yet
+		-- How fast it chases: this much faster than the player it's after can walk (zone 1, 2 and 3).
+		-- Keep these below Player.SprintBonus, so sprinting still gets away while your stamina lasts.
+		ChaseEdge = { 3, 4, 5 },
 		CatchDistance = 4.5, -- it catches you when your middle is this close to its trunk's middle
 		CatchHeight = 8, -- ...and you're no more than this many studs above or below its roots
 		SleepAfter = 45, -- seconds without catching anyone before it roots itself again
@@ -1779,6 +1784,16 @@ local Config = {
 	Player = {
 		BaseWalkSpeed = 16, -- Roblox's normal walk speed
 		SprintBonus = 8, -- holding Shift (or the Sprint button) adds this to your walk speed
+		-- Sprinting uses up stamina, except in the camp (see Server/Systems/MovementManager).
+		Stamina = {
+			Max = 100,
+			Tick = 0.1, -- seconds between updates
+			Drain = 17, -- lost per second while sprinting (about 6 seconds from full)
+			Regen = 10, -- gained per second while not sprinting (10 seconds from empty)
+			RegenDelay = 0.5, -- seconds after you stop sprinting before it starts filling up
+			RecoverAt = 25, -- after running out, you can't sprint until it's back up to this
+			MovingSpeed = 2, -- studs per second: slower than this doesn't count as running
+		},
 	},
 
 	-- Server checks

@@ -87,7 +87,8 @@ mimics first and burn them safely with a torch.
 - If a mimic is hit with an axe (or any chopping tool): it WAKES.
   - It uproots, chases the nearest player using PathfindingService.
   - Speed slightly slower than a player sprinting, faster than walking.
-    (Players sprint by holding Shift; phones get a Sprint button.)
+    (Players sprint by holding Shift; phones get a Sprint button. Sprinting uses up stamina,
+    except in the camp.)
   - If it touches a player, that player is "knocked down" (cannot move) for
     20 seconds or until a teammate holds E on them for 3 seconds (revive).
   - Awake mimics return to sleep (become a tree again somewhere nearby)
